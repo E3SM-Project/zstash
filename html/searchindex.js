@@ -1,0 +1,1 @@
+Search.setIndex({docnames:["index"],envversion:52,filenames:["index.rst"],objects:{},objnames:{},objtypes:{},terms:{index:[],modul:[],page:[],search:[]},titles:["zstash\u2019s documentation"],titleterms:{document:0,indic:[],tabl:[],welcom:[],zstash:0}})
