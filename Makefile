@@ -6,7 +6,7 @@ SPHINXOPTS    =
 SPHINXBUILD   = python -msphinx
 SPHINXPROJ    = zstash
 SOURCEDIR     = source
-BUILDDIR      = ./
+BUILDDIR      = docs
 
 # Put it first so that "make" without argument is like "make help".
 help:
