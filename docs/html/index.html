@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>zstash’s documentation &mdash; zstash  documentation</title>
+  <title>Zstash documentation &mdash; zstash  documentation</title>
   
 
   
@@ -35,7 +35,8 @@
         <link rel="index" title="Index"
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="zstash  documentation" href="#"/> 
+    <link rel="top" title="zstash  documentation" href="#"/>
+        <link rel="next" title="Quickstart guide" href="quickstart.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -84,11 +85,14 @@
               
             
             
-              <!-- Local TOC -->
-              <div class="local-toc"><ul>
-<li><a class="reference internal" href="#">zstash’s documentation</a></li>
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Zstash documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a></li>
 </ul>
-</div>
+
             
           
         </div>
@@ -131,7 +135,7 @@
     
       <li><a href="#">Docs</a> &raquo;</li>
         
-      <li>zstash’s documentation</li>
+      <li>Zstash documentation</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -150,9 +154,59 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="zstash-s-documentation">
-<h1>zstash’s documentation<a class="headerlink" href="#zstash-s-documentation" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="zstash-documentation">
+<h1>Zstash documentation<a class="headerlink" href="#zstash-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="what-is-zstash">
+<h2>What is zstash?<a class="headerlink" href="#what-is-zstash" title="Permalink to this headline">¶</a></h2>
+<p>Zstash is a prototype <strong>HPSS long-term archiving</strong> solution for ACME.</p>
+<p>Zstash is written entirely in Python (2.7) using standard libraries.
+Its design is intentionally minimalistic to provide an effective
+long-term HPSS archiving solution without creating an overly complicated
+(and hard to maintain) tool.</p>
+<p><strong>Key features:</strong></p>
+<ul class="simple">
+<li>Files are archived into standard <strong>tar files</strong> with a user <strong>specified maximum size</strong>.</li>
+<li>Tar archives are first created locally, then transferred to HPSS.</li>
+<li><strong>Checksums (md5)</strong> of individual input files are computed <em>on-the-fly</em> while the
+file is being archived. For large files, this saves a considerable amount of
+time compared to separate checksumming and archiving steps.</li>
+<li>Checksums and additional metadata (size, modification time, tar archive and offset)
+are stored in a sqlite3 <strong>database</strong>.</li>
+<li>The database enables faster retrieval of individual files by locating in which tar
+archive a specific file is stored, as well as its location (offset) within the
+tar archive.</li>
+<li><strong>File integrity</strong> is verified by computing checksums on-the-fly while <strong>extracting</strong>
+files.</li>
+</ul>
+<p>To date, zstash has only been tested on NERSC, but should easily be portable
+to other computing centers. ACME users are welcome to try it
+out, while keeping in mind that zstash is currently under development. As such,
+its design and functionality may change, or it may be replaced with a better
+tool, should one emerge.</p>
 <div class="toctree-wrapper compound">
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Zstash documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#archiving">Archiving</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#extracting">Extracting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="design.html#how-does-zstash-work">How does zstash work?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design.html#why-not-use-htar">Why not use ‘htar’?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design.html#why-not-just-use-cput-r">Why not just use ‘cput -R’?</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#create-a-conda-environment">Create a conda environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#checkout-and-edit-documentation">Checkout and edit documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#initial-setup-for-reference-only">Initial setup (for reference only)</a></li>
+</ul>
+</li>
+</ul>
+</div>
 </div>
 </div>
 
@@ -163,6 +217,13 @@
            </div>
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="quickstart.html" class="btn btn-neutral float-right" title="Quickstart guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+    </div>
   
 
   <hr/>

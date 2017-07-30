@@ -1,6 +1,5 @@
 
 
-
 <!DOCTYPE html>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
@@ -9,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Index &mdash; zstash  documentation</title>
+  <title>Quickstart guide &mdash; zstash  documentation</title>
   
 
   
@@ -34,9 +33,11 @@
 
   
         <link rel="index" title="Index"
-              href="#"/>
+              href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="zstash  documentation" href="index.html"/> 
+    <link rel="top" title="zstash  documentation" href="index.html"/>
+        <link rel="next" title="Design considerations" href="design.html"/>
+        <link rel="prev" title="Zstash documentation" href="index.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -86,9 +87,14 @@
             
             
               <p class="caption"><span class="caption-text">Contents:</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#archiving">Archiving</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#extracting">Extracting</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a></li>
 </ul>
@@ -135,12 +141,14 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Index</li>
+      <li>Quickstart guide</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
+            <a href="_sources/quickstart.rst.txt" rel="nofollow"> View page source</a>
+          
         
       </li>
     
@@ -152,11 +160,39 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-
-<h1 id="index">Index</h1>
-
-<div class="genindex-jumpbox">
- 
+  <div class="section" id="quickstart-guide">
+<h1>Quickstart guide<a class="headerlink" href="#quickstart-guide" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>First, make sure that Python 2.7 is loaded in your environment. On NERSC
+machines:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>module load python/2.7-anaconda-4.4
+</pre></div>
+</div>
+<p>Clone the github repository in your preferred location</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> &lt;myInstallDir&gt;
+git clone git@github.com:ACME-Climate/zstash.git zstash
+</pre></div>
+</div>
+<p>Optionally, create a symbolic link to the executable in your
+<cite>~/bin</cite> directory:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> ~/bin
+ln -s &lt;myInstallDir&gt;/zstash/zstash.py zstash
+</pre></div>
+</div>
+<p>If <cite>~/bin</cite> is not already in you PATH, you can add it using</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span><span class="nv">$HOME</span>/bin:<span class="nv">$PATH</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="archiving">
+<h2>Archiving<a class="headerlink" href="#archiving" title="Permalink to this headline">¶</a></h2>
+<p>…to do…</p>
+</div>
+<div class="section" id="extracting">
+<h2>Extracting<a class="headerlink" href="#extracting" title="Permalink to this headline">¶</a></h2>
+<p>…to do…</p>
+</div>
 </div>
 
 
@@ -166,6 +202,15 @@
            </div>
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="design.html" class="btn btn-neutral float-right" title="Design considerations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral" title="Zstash documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
