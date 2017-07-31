@@ -91,11 +91,14 @@
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#archiving">Archiving</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#extracting">Extracting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#archive">Archive</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#extract">Extract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#list-content">List content</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example">Example</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="todo.html">To do: possible future enhancements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a></li>
 </ul>
 
@@ -166,32 +169,113 @@
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
 <p>First, make sure that Python 2.7 is loaded in your environment. On NERSC
 machines:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>module load python/2.7-anaconda-4.4
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ module load python/2.7-anaconda-4.4
 </pre></div>
 </div>
 <p>Clone the github repository in your preferred location</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> &lt;myInstallDir&gt;
-git clone git@github.com:ACME-Climate/zstash.git zstash
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd &lt;myInstallDir&gt;
+$ git clone git@github.com:ACME-Climate/zstash.git zstash
 </pre></div>
 </div>
 <p>Optionally, create a symbolic link to the executable in your
 <cite>~/bin</cite> directory:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> ~/bin
-ln -s &lt;myInstallDir&gt;/zstash/zstash.py zstash
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd ~/bin
+$ ln -s &lt;myInstallDir&gt;/zstash/zstash.py zstash
 </pre></div>
 </div>
 <p>If <cite>~/bin</cite> is not already in you PATH, you can add it using</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span><span class="nv">$HOME</span>/bin:<span class="nv">$PATH</span>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ export PATH=$HOME/bin:$PATH
 </pre></div>
 </div>
 </div>
-<div class="section" id="archiving">
-<h2>Archiving<a class="headerlink" href="#archiving" title="Permalink to this headline">¶</a></h2>
-<p>…to do…</p>
+<div class="section" id="archive">
+<h2>Archive<a class="headerlink" href="#archive" title="Permalink to this headline">¶</a></h2>
+<p>To create a new zstash archive:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ zstash create --hpss=&lt;path to HPSS&gt; &lt;local path&gt;
+</pre></div>
 </div>
-<div class="section" id="extracting">
-<h2>Extracting<a class="headerlink" href="#extracting" title="Permalink to this headline">¶</a></h2>
-<p>…to do…</p>
+<p>where</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system,</li>
+<li>and <code class="docutils literal"><span class="pre">&lt;local</span> <span class="pre">path&gt;</span></code> specifies the path to the local directory that should be archived.</li>
+</ul>
+<p>Additional optional arguments:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
+they have been transferred to HPSS. Normally, they are deleted after
+successful transfer.</li>
+<li><code class="docutils literal"><span class="pre">--maxsize</span> <span class="pre">MAXSIZE</span></code> specifies the maximum size (in GB) for tar files. Zstash
+will create tar files that are smaller than MAXSIZE except when individual
+input files exceed MAXSIZE (as individual files are never split up between
+different tar files).</li>
+</ul>
+<p>Local tar files as well as the sqlite3 index database (index.db) will be stored
+under <code class="docutils literal"><span class="pre">&lt;local</span> <span class="pre">path&gt;/zstash</span></code>.</p>
+</div>
+<div class="section" id="extract">
+<h2>Extract<a class="headerlink" href="#extract" title="Permalink to this headline">¶</a></h2>
+<p>To extract files from an existing zstash archive into current &lt;mydir&gt;:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
+$ zstash extract --hpss=&lt;path to HPSS&gt; [files]
+</pre></div>
+</div>
+<p>where</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system,</li>
+<li>and <code class="docutils literal"><span class="pre">[files]</span></code> is a list of files to extract (standard wildcards supported). Leave empty
+to extract all the files.</li>
+</ul>
+</div>
+<div class="section" id="list-content">
+<h2>List content<a class="headerlink" href="#list-content" title="Permalink to this headline">¶</a></h2>
+<p>Zstash does not yet include a built-in functionality to list content of archives.
+However, the content can be obtained by directly querying the index database.</p>
+<p>To list <strong>all the files</strong> in an archive:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
+$ sqlite3 zstash/index.db &quot;select * from files;&quot;
+</pre></div>
+</div>
+<p>For each file, the following information will be printed</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>file # | path | size | modification time |md5 checksum |tar archive | offset (within tar)
+</pre></div>
+</div>
+<p>To list <strong>files matching a specified pattern</strong> (for example */run/*.nc):</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db &quot;select * from files where name glob &#39;*/run/*.nc&#39;;&quot;
+</pre></div>
+</div>
+<p>To list <strong>all the files in a specific tar fole</strong> (for example 000000.tar):</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db &quot;select * from files where tar is &#39;000000.tar&#39;;&quot;
+</pre></div>
+</div>
+</div>
+<div class="section" id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
+<p>Simple illustration how to <strong>archive</strong> output from an ACME simulation located
+under <cite>$CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison</cite>:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+$ zstash create --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison .
+</pre></div>
+</div>
+<p>Once dome, you should see the archive files on hsi:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ hsi
+&gt; cd test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+&gt; ls
+000000.tar   index.db
+</pre></div>
+</div>
+<p>The data from this test simulation is small, so in this case there is only a single tar
+file (000000.tar) and the index database (index.db).</p>
+<p>To <strong>extract all</strong> the files</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/test
+$ zstash extract --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+</pre></div>
+</div>
+<p>or to <strong>extract selected files</strong></p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/test
+$ zstash extract --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
+  *.cam.h0*.nc *.clm2.h0*.nc
+</pre></div>
+</div>
 </div>
 </div>
 

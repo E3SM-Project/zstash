@@ -20,15 +20,15 @@ long-term HPSS archiving solution without creating an overly complicated
 **Key features:**
 
 * Files are archived into standard **tar files** with a user **specified maximum size**.
-* Tar archives are first created locally, then transferred to HPSS.
-* **Checksums (md5)** of individual input files are computed *on-the-fly* while the
-  file is being archived. For large files, this saves a considerable amount of
+* Tar files are first created locally, then transferred to HPSS.
+* **Checksums (md5)** of input files are computed *on-the-fly* during
+  archiving. For large files, this saves a considerable amount of
   time compared to separate checksumming and archiving steps.
-* Checksums and additional metadata (size, modification time, tar archive and offset) 
-  are stored in a sqlite3 **database**.
-* The database enables faster retrieval of individual files by locating in which tar
-  archive a specific file is stored, as well as its location (offset) within the 
-  tar archive.
+* Checksums and additional metadata (size, modification time, tar file and offset) 
+  are stored in a sqlite3 **index database**.
+* **Database enables faster retrieval** of individual files by locating in which tar
+  file a specific file is stored, as well as its location (offset) within the 
+  tar file.
 * **File integrity** is verified by computing checksums on-the-fly while **extracting** 
   files.
 
@@ -46,5 +46,6 @@ tool, should one emerge.
    self
    quickstart
    design
+   todo
    contributing
 

@@ -36,7 +36,7 @@
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="zstash  documentation" href="index.html"/>
-        <link rel="prev" title="Design considerations" href="design.html"/> 
+        <link rel="prev" title="To do: possible future enhancements" href="todo.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -90,6 +90,7 @@
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="todo.html">To do: possible future enhancements</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Contributing to this documentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#create-a-conda-environment">Create a conda environment</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#checkout-and-edit-documentation">Checkout and edit documentation</a></li>
@@ -163,21 +164,22 @@
 <h1>Contributing to this documentation<a class="headerlink" href="#contributing-to-this-documentation" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="create-a-conda-environment">
 <h2>Create a conda environment<a class="headerlink" href="#create-a-conda-environment" title="Permalink to this headline">¶</a></h2>
-<p>The documentation for zstash is created using
-<a class="reference external" href="http://www.sphinx-doc.org/en/stable">Sphinx</a>. Sphinx is a tool that makes
-it easy to create intelligent and beautiful documentation, written by Georg
-Brandl and licensed under the BSD license.</p>
-<p>First, make sure that Python 2.7 is loaded in your environment. On NERSC
-machines:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>module load python/2.7-anaconda-4.4
+<p>This documentation is created using
+<a class="reference external" href="http://www.sphinx-doc.org/en/stable">Sphinx</a>. Sphinx is an open-source tool
+that makes it easy to create intelligent and beautiful documentation, written
+by Georg Brandl and licensed under the BSD license.</p>
+<p>First, make sure that you have conda for Python 2.7 in your
+path. On NERSC machines, you can load it with:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ module load python/2.7-anaconda-4.4
 </pre></div>
 </div>
 <p>Create a new conda environment, install Sphinx as well as the
-Sphinx ‘readthedocs’ <a class="reference external" href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span>conda create -n sphinx
-<span class="nb">source</span> activate sphinx
-conda install -c anaconda <span class="nv">sphinx</span><span class="o">=</span><span class="m">1</span>.6.2
-pip install sphinx_rtd_theme
+Sphinx <a class="reference external" href="https://github.com/rtfd/sphinx_rtd_theme">readthedocs theme</a>.
+Use Sphinx version 1.6.2 as errors were encountered with 1.6.3</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ conda create -n sphinx
+$ source activate sphinx
+$ conda install -c anaconda sphinx=1.6.2
+$ pip install sphinx_rtd_theme
 </pre></div>
 </div>
 </div>
@@ -187,43 +189,42 @@ pip install sphinx_rtd_theme
 branch named ‘gh-pages’. This special branch is used by Github.com to directly
 serve static web pages (see <a class="reference external" href="https://pages.github.com/">GitHub Pages</a>).</p>
 <p>Clone the repository and checkout the ‘gh-pages’ branch:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> &lt;myDir&gt;
-git clone git@github.com:ACME-Climate/zstash.git zstash
-<span class="nb">cd</span> zstash
-git checkout gh-pages
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd &lt;myDir&gt;
+$ git clone git@github.com:ACME-Climate/zstash.git zstash
+$ cd zstash
+$ git checkout gh-pages
 </pre></div>
 </div>
 <p>You should now see two sub-directories: <cite>source</cite> contains the documentation
 source files, and <cite>docs</cite> the html web pages created by Sphinx.</p>
 <p>To modify the documentation, simply edit the files under <cite>source</cite>.
 Sphinx uses <a class="reference external" href="http://docutils.sourceforge.net/rst.html">reStructuredText</a>
-as its markup language.</p>
-<p>For more information on how to write documentation using Sphinx, you can refer
-to</p>
+as its markup language. For more information on how to write documentation
+using Sphinx, you can refer to</p>
 <ul class="simple">
 <li><a class="reference external" href="http://www.sphinx-doc.org/en/stable/tutorial.html">First Steps with Sphinx</a></li>
 <li><a class="reference external" href="http://www.sphinx-doc.org/en/stable/rest.html#external-links">reStructuredText Primer</a></li>
 </ul>
 <p>To see the changes you made to the documentation, rebuild the web pages</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> &lt;myDir&gt;/zstash
-make html
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd &lt;myDir&gt;/zstash
+$ make html
 </pre></div>
 </div>
 <p>and view them locally in a web browser at <cite>file:///&lt;myDir&gt;/zstash/index.html</cite>.</p>
 <p>Sphinx may occasionally not build the new files properly. If that is the case,
 try removing the <cite>docs</cite> sub-directory (be careful not to remove <cite>source</cite>)
 and rebuild entirely:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> &lt;myDir&gt;/zstash
-rm -r docs
-make html
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd &lt;myDir&gt;/zstash
+$ rm -r docs
+$ make html
 </pre></div>
 </div>
 <p>Once you are satisfied with your modifications, commit and push them back to
 the repository:</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nb">cd</span> &lt;myDir&gt;/zstash
-git add .
-git commit
-git push origin gh-pages
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd &lt;myDir&gt;/zstash
+$ git add .
+$ git commit
+$ git push origin gh-pages
 </pre></div>
 </div>
 <p>Your changes will then be available on the
@@ -231,7 +232,57 @@ git push origin gh-pages
 </div>
 <div class="section" id="initial-setup-for-reference-only">
 <h2>Initial setup (for reference only)<a class="headerlink" href="#initial-setup-for-reference-only" title="Permalink to this headline">¶</a></h2>
-<p>…to do…</p>
+<p>The instructions below only apply for the initial configuration of the
+Sphinx documentation on the Github repository. They are documented here
+for reference only. Do not follow them unless you are setting up documentation
+for a new repository. (Adapted from <a class="reference external" href="http://datadesk.latimes.com/posts/2012/01/sphinx-on-github">Sphinx documentation on GitHub</a>.)</p>
+<p>Create Sphinx conda environment (see above).</p>
+<p>Create a new git branch (gh-pages):</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ git branch gh-pages
+$ git checkout gh-pages
+</pre></div>
+</div>
+<p>Clear out any­thing from the master branch and start fresh</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ git symbolic-ref HEAD refs/heads/gh-pages
+$ rm .git/index
+$ git clean -fdx
+</pre></div>
+</div>
+<p>Create documentation</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ sphinx-quickstart
+</pre></div>
+</div>
+<p>accept suggested default options, except</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>Separate source and build directories (y/N) [n]: y
+</pre></div>
+</div>
+<p>Edit Makefile and change BUILDIR</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>BUILDDIR = docs
+</pre></div>
+</div>
+<p>Try building documentation</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ make html
+</pre></div>
+</div>
+<p>Create an empty .nojekyll file to indicate to Github.com that this
+is not a Jekyll static website:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ touch .nojekyll
+</pre></div>
+</div>
+<p>Create a top-level re-direction file:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ vi index.html
+</pre></div>
+</div>
+<p>with the following:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>&lt;meta http-equiv=&quot;refresh&quot; content=&quot;0; url=./docs/html/index.html&quot; /&gt;
+</pre></div>
+</div>
+<p>Commit and push back to Github:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ git add .
+$ git commit
+$ git push origin gh-pages
+</pre></div>
+</div>
 </div>
 </div>
 
@@ -246,7 +297,7 @@ git push origin gh-pages
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="design.html" class="btn btn-neutral" title="Design considerations" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="todo.html" class="btn btn-neutral" title="To do: possible future enhancements" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

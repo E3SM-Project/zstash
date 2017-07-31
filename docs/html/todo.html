@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Design considerations &mdash; zstash  documentation</title>
+  <title>To do: possible future enhancements &mdash; zstash  documentation</title>
   
 
   
@@ -36,8 +36,8 @@
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="zstash  documentation" href="index.html"/>
-        <link rel="next" title="To do: possible future enhancements" href="todo.html"/>
-        <link rel="prev" title="Quickstart guide" href="quickstart.html"/> 
+        <link rel="next" title="Contributing to this documentation" href="contributing.html"/>
+        <link rel="prev" title="Design considerations" href="design.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -90,13 +90,12 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Design considerations</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#how-does-zstash-work">How does zstash work?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#why-not-use-htar">Why not use ‘htar’?</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#why-not-just-use-cput-r">Why not just use ‘cput -R’?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">To do: possible future enhancements</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#improvements">Improvements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#new-functionality">New functionality</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="todo.html">To do: possible future enhancements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a></li>
 </ul>
 
@@ -142,13 +141,13 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Design considerations</li>
+      <li>To do: possible future enhancements</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/design.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/todo.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -161,19 +160,50 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="design-considerations">
-<h1>Design considerations<a class="headerlink" href="#design-considerations" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="how-does-zstash-work">
-<h2>How does zstash work?<a class="headerlink" href="#how-does-zstash-work" title="Permalink to this headline">¶</a></h2>
-<p>…to do…</p>
+  <div class="section" id="to-do-possible-future-enhancements">
+<h1>To do: possible future enhancements<a class="headerlink" href="#to-do-possible-future-enhancements" title="Permalink to this headline">¶</a></h1>
+<p>Possible future enhancements depending on project priorities.</p>
+<div class="section" id="improvements">
+<h2>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Test and modify for <strong>other computing centers</strong> available to ACME.</li>
+<li>Implement option to <strong>exclude</strong> certain files from archiving, either by
+specifying a list of files (patterns) directly on the command line or in
+an external file:<ul>
+<li><code class="docutils literal"><span class="pre">--exclude</span> <span class="pre">&quot;build/*/*.o&quot;,&quot;build/*/*.mod&quot;</span></code></li>
+<li>or <code class="docutils literal"><span class="pre">--exclude-file</span> <span class="pre">&lt;file&gt;</span></code></li>
+</ul>
+</li>
+<li>Implement <strong>verbosity</strong> level option.</li>
+<li>…</li>
+</ul>
 </div>
-<div class="section" id="why-not-use-htar">
-<h2>Why not use ‘htar’?<a class="headerlink" href="#why-not-use-htar" title="Permalink to this headline">¶</a></h2>
-<p>…to do…</p>
-</div>
-<div class="section" id="why-not-just-use-cput-r">
-<h2>Why not just use ‘cput -R’?<a class="headerlink" href="#why-not-just-use-cput-r" title="Permalink to this headline">¶</a></h2>
-<p>…to do…</p>
+<div class="section" id="new-functionality">
+<h2>New functionality<a class="headerlink" href="#new-functionality" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><strong>zstash list</strong><ul>
+<li>Support wildcards.</li>
+<li>List from all or selected tar files.</li>
+</ul>
+</li>
+<li><strong>zstash update</strong><ul>
+<li>Similar to ‘zstash create’, but add new or modified
+files to an existing archive.</li>
+<li>Modify ‘zstash extract’ functionality to deal with
+multiple versions of the same file, by either:<ul>
+<li>only extracting the most recent one,</li>
+<li>extracting all of them (naming older older ones file.txt, file.txt.1, file.txt.2, …).</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>zsstash verify</strong><ul>
+<li>Similar to ‘zstash extract’. Read and compute
+checksums of all input files, without actually extracting them.</li>
+</ul>
+</li>
+<li>…</li>
+</ul>
 </div>
 </div>
 
@@ -187,10 +217,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="todo.html" class="btn btn-neutral float-right" title="To do: possible future enhancements" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="contributing.html" class="btn btn-neutral float-right" title="Contributing to this documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="quickstart.html" class="btn btn-neutral" title="Quickstart guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="design.html" class="btn btn-neutral" title="Design considerations" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

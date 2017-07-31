@@ -90,6 +90,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="todo.html">To do: possible future enhancements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a></li>
 </ul>
 
@@ -166,15 +167,15 @@ long-term HPSS archiving solution without creating an overly complicated
 <p><strong>Key features:</strong></p>
 <ul class="simple">
 <li>Files are archived into standard <strong>tar files</strong> with a user <strong>specified maximum size</strong>.</li>
-<li>Tar archives are first created locally, then transferred to HPSS.</li>
-<li><strong>Checksums (md5)</strong> of individual input files are computed <em>on-the-fly</em> while the
-file is being archived. For large files, this saves a considerable amount of
+<li>Tar files are first created locally, then transferred to HPSS.</li>
+<li><strong>Checksums (md5)</strong> of input files are computed <em>on-the-fly</em> during
+archiving. For large files, this saves a considerable amount of
 time compared to separate checksumming and archiving steps.</li>
-<li>Checksums and additional metadata (size, modification time, tar archive and offset)
-are stored in a sqlite3 <strong>database</strong>.</li>
-<li>The database enables faster retrieval of individual files by locating in which tar
-archive a specific file is stored, as well as its location (offset) within the
-tar archive.</li>
+<li>Checksums and additional metadata (size, modification time, tar file and offset)
+are stored in a sqlite3 <strong>index database</strong>.</li>
+<li><strong>Database enables faster retrieval</strong> of individual files by locating in which tar
+file a specific file is stored, as well as its location (offset) within the
+tar file.</li>
 <li><strong>File integrity</strong> is verified by computing checksums on-the-fly while <strong>extracting</strong>
 files.</li>
 </ul>
@@ -189,14 +190,21 @@ tool, should one emerge.</p>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#installation">Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#archiving">Archiving</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#extracting">Extracting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#archive">Archive</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#extract">Extract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#list-content">List content</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#example">Example</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="design.html#how-does-zstash-work">How does zstash work?</a></li>
 <li class="toctree-l2"><a class="reference internal" href="design.html#why-not-use-htar">Why not use ‘htar’?</a></li>
 <li class="toctree-l2"><a class="reference internal" href="design.html#why-not-just-use-cput-r">Why not just use ‘cput -R’?</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="todo.html">To do: possible future enhancements</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="todo.html#improvements">Improvements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="todo.html#new-functionality">New functionality</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a><ul>
