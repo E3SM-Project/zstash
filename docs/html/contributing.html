@@ -260,6 +260,20 @@ $ git clean -fdx
 <div class="highlight-none"><div class="highlight"><pre><span></span>BUILDDIR = docs
 </pre></div>
 </div>
+<p>Remove old build directory</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ rmdir build
+</pre></div>
+</div>
+<p>Change the Sphinx theme to ‘ReadTheDocs’. Edit ‘source/conf.py and change</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>html_theme = &#39;alabaster&#39;
+</pre></div>
+</div>
+<p>to</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>import sphinx_rtd_theme
+html_theme = &quot;sphinx_rtd_theme&quot;
+html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+</pre></div>
+</div>
 <p>Try building documentation</p>
 <div class="highlight-none"><div class="highlight"><pre><span></span>$ make html
 </pre></div>

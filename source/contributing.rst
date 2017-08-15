@@ -113,6 +113,20 @@ Edit Makefile and change BUILDIR ::
 
   BUILDDIR = docs
 
+Remove old build directory ::
+
+  $ rmdir build
+
+Change the Sphinx theme to 'ReadTheDocs'. Edit 'source/conf.py and change ::
+
+  html_theme = 'alabaster'
+
+to ::
+
+  import sphinx_rtd_theme
+  html_theme = "sphinx_rtd_theme"
+  html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+
 Try building documentation ::
 
   $ make html
