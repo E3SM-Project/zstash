@@ -452,6 +452,14 @@ def extract():
     con = sqlite3.connect(DB_FILENAME, detect_types=sqlite3.PARSE_DECLTYPES)
     cur = con.cursor()
 
+    # Retrieve configuration from database
+    for attr in dir(config):
+        value = getattr(config, attr)
+        if not callable(value) and not attr.startswith("__"):
+            cur.execute(u"select value from config where arg=?", (attr,))
+            value = cur.fetchone()[0]
+            setattr(config, attr, value)
+
     # Find matching files
     matches = []
     for file in args.files:
