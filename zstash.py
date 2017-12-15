@@ -544,6 +544,11 @@ def extractFiles(files):
                 # Verify md5 checksum
                 if md5 != file[4]:
                     logging.error('md5 mismatch for: %s' % (fname))
+                    logging.error('md5 of extracted file: %s' % (md5))
+                    logging.error('md5 of original file:  %s' % (file[4]))
+                else:
+                    logging.debug('Valid md5: %s %s' % (md5,fname))
+
             else:
                 tar.extract(tarinfo)
                 # Note: tar.extract() will not restore time stamps of symbolic
