@@ -12,6 +12,7 @@ import sys
 import tarfile
 
 from datetime import datetime
+from fnmatch import fnmatch
 from subprocess import Popen, PIPE
 
 # Block size
@@ -79,6 +80,8 @@ def create():
     required.add_argument('--hpss', type=str, help='path to HPSS storage',
                           required=True)
     optional = parser.add_argument_group('optional named arguments')
+    optional.add_argument("--exclude", type=str,
+                          help="comma separated list of file patterns to exclude")
     optional.add_argument("--maxsize", type=float,
                           help="maximum size of tar archives "
                                "(in GB, default 256)",
@@ -202,10 +205,11 @@ create table files (
     files = [os.path.normpath(os.path.join(x[0], x[1]))
              for x in files if x[0] != os.path.join('.', CACHE)]
 
-    # Eliminate based on exclude pattern
-    # ...to do
+    # Eliminate files based on exclude pattern
+    if args.exclude != None:
+        files = excludeFiles(args.exclude, files)
 
-    # Add files
+    # Add files to archive
     failures = addfiles(-1, files)
 
     # Close database and transfer to HPSS. Always keep local copy
@@ -218,6 +222,24 @@ create table files (
         logging.warning('Some files could not be archived')
         for file in failures:
             logging.error('Archiving %s' % (file))
+
+
+def excludeFiles(exclude, files):
+
+    # Construct lits of files to exclude, based on
+    #  https://codereview.stackexchange.com/questions/33624/
+    #  filtering-a-long-list-of-files-through-a-set-of-ignore-patterns-using-iterators
+    exclude_patterns = exclude.split(',')
+    exclude_files = []
+    for file in files:
+        if any(fnmatch(file, pattern) for pattern in exclude_patterns):
+            exclude_files.append(file)
+            continue
+
+    # Now, remove them
+    new_files = [f for f in files if f not in exclude_files]
+
+    return new_files
 
 
 def addfiles(itar, files):
@@ -279,8 +301,10 @@ def update():
     required = parser.add_argument_group('required named arguments')
     optional = parser.add_argument_group('optional named arguments')
     optional.add_argument('--hpss', type=str, help='path to HPSS storage')
+    optional.add_argument("--exclude", type=str,
+                          help="comma separated list of file patterns to exclude")
     optional.add_argument('--dry-run',
-                          help='dry run, only list files to be updated in archive (default false)',
+                          help='dry run, only list files to be updated in archive',
                           action="store_true")
     args = parser.parse_args(sys.argv[2:])
 
@@ -329,8 +353,9 @@ def update():
     files = [os.path.normpath(os.path.join(x[0], x[1]))
              for x in files if x[0] != os.path.join('.', CACHE)]
 
-    # Eliminate based on exclude pattern
-    # ...to do
+    # Eliminate files based on exclude pattern
+    if args.exclude != None:
+        files = excludeFiles(args.exclude, files)
 
     # Eliminate files that are already archived and up to date
     newfiles = []
