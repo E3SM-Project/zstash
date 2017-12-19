@@ -32,6 +32,7 @@ class Config(object):
     maxsize = None
     keep = None
 
+
 # -----------------------------------------------------------------------------
 def main():
 
@@ -77,18 +78,21 @@ def create():
         description='Create a new zstash archive')
     parser.add_argument('path', type=str, help='root directory to archive')
     required = parser.add_argument_group('required named arguments')
-    required.add_argument('--hpss', type=str, help='path to HPSS storage',
-                          required=True)
+    required.add_argument(
+        '--hpss', type=str, help='path to HPSS storage',
+        required=True)
     optional = parser.add_argument_group('optional named arguments')
-    optional.add_argument("--exclude", type=str,
-                          help="comma separated list of file patterns to exclude")
-    optional.add_argument("--maxsize", type=float,
-                          help="maximum size of tar archives "
-                               "(in GB, default 256)",
-                          default=256)
-    optional.add_argument('--keep',
-                          help='keep files in local cache (default off)',
-                          action="store_true")
+    optional.add_argument(
+        '--exclude', type=str,
+        help='comma separated list of file patterns to exclude')
+    optional.add_argument(
+        '--maxsize', type=float,
+        help='maximum size of tar archives (in GB, default 256)',
+        default=256)
+    optional.add_argument(
+        '--keep',
+        help='keep files in local cache (default off)',
+        action="store_true")
     # Now that we're inside a subcommand, ignore the first two argvs
     # (zstash create)
     args = parser.parse_args(sys.argv[2:])
@@ -206,7 +210,7 @@ create table files (
              for x in files if x[0] != os.path.join('.', CACHE)]
 
     # Eliminate files based on exclude pattern
-    if args.exclude != None:
+    if args.exclude is not None:
         files = excludeFiles(args.exclude, files)
 
     # Add files to archive
@@ -292,6 +296,7 @@ def addfiles(itar, files):
 
     return failures
 
+
 def update():
 
     # Parser
@@ -301,11 +306,13 @@ def update():
     required = parser.add_argument_group('required named arguments')
     optional = parser.add_argument_group('optional named arguments')
     optional.add_argument('--hpss', type=str, help='path to HPSS storage')
-    optional.add_argument("--exclude", type=str,
-                          help="comma separated list of file patterns to exclude")
-    optional.add_argument('--dry-run',
-                          help='dry run, only list files to be updated in archive',
-                          action="store_true")
+    optional.add_argument(
+        '--exclude', type=str,
+        help='comma separated list of file patterns to exclude')
+    optional.add_argument(
+        '--dry-run',
+        help='dry run, only list files to be updated in archive',
+        action="store_true")
     args = parser.parse_args(sys.argv[2:])
 
     # Open database
@@ -354,7 +361,7 @@ def update():
              for x in files if x[0] != os.path.join('.', CACHE)]
 
     # Eliminate files based on exclude pattern
-    if args.exclude != None:
+    if args.exclude is not None:
         files = excludeFiles(args.exclude, files)
 
     # Eliminate files that are already archived and up to date
@@ -366,23 +373,23 @@ def update():
         mode = statinfo.st_mode
         # For symbolic links or directories, size should be 0
         if stat.S_ISLNK(mode) or stat.S_ISDIR(mode):
-           size_new = 0
+            size_new = 0
         else:
-           size_new = statinfo.st_size
+            size_new = statinfo.st_size
 
         cur.execute(u"select * from files where name = ?", (file,))
         new = True
         while True:
             match = cur.fetchone()
-            if match == None:
-                break;
+            if match is None:
+                break
             size = match[2]
             mdtime = match[3]
             if (size_new == size) and (mdtime_new == mdtime):
                 # File exists with same size and modification time
                 new = False
-                break;
-            #print(file,size_new,size,mdtime_new,mdtime)
+                break
+            # print(file,size_new,size,mdtime_new,mdtime)
         if (new):
             newfiles.append(file)
 
@@ -418,6 +425,7 @@ def update():
         logging.warning('Some files could not be archived')
         for file in failures:
             logging.error('Archiving %s' % (file))
+
 
 # Add file to tar archive while computing its hash
 # Return file offset (in tar archive), size and md5 hash
@@ -572,7 +580,7 @@ def extractFiles(files):
                     logging.error('md5 of extracted file: %s' % (md5))
                     logging.error('md5 of original file:  %s' % (file[4]))
                 else:
-                    logging.debug('Valid md5: %s %s' % (md5,fname))
+                    logging.debug('Valid md5: %s %s' % (md5, fname))
 
             else:
                 tar.extract(tarinfo)
@@ -584,7 +592,7 @@ def extractFiles(files):
                     tmp1 = tarinfo.mtime
                     tmp2 = datetime.fromtimestamp(tmp1)
                     tmp3 = tmp2.strftime("%Y%m%d%H%M.%S")
-                    os.system('touch -h -t %s %s' % (tmp3,tarinfo.name))
+                    os.system('touch -h -t %s %s' % (tmp3, tarinfo.name))
 
         except:
             logging.error('Retrieving %s' % (file[1]))
