@@ -1,0 +1,23 @@
+package:
+  name: zstash
+  version: {{ environ['VERSION'] }}
+
+source:
+  git_url: git://github.com/ACME-Climate/zstash
+  git_tag: {{ environ['TAG'] }}
+build:
+  script: python setup.py install
+  string: {{ environ['BUILD_NAME'] }}
+
+requirements:
+  build:
+    - python
+    - setuptools
+  
+  run:
+    - sqlite3
+    - tarfile
+
+about:
+    home: https://github.com/ACME-Climate/zstash
+    summary: A utility to create, update, and extract files from HPSS tar archives
