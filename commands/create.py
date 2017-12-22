@@ -13,7 +13,7 @@ import errno
 import sqlite3
 
 from subprocess import Popen, PIPE
-from zstash.lib.util import hpss_put, addfiles, excludeFiles
+from lib.util import hpss_put, addfiles, excludeFiles
 
 
 def create(config):

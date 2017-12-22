@@ -52,7 +52,8 @@ def update(config):
         else:
             logging.error('--hpss argument is required when local copy of '
                           'database is unavailable')
-            raise Exception
+            parser.print_help()
+            return
     config.connnection = sqlite3.connect(
         config.db_filename,
         detect_types=sqlite3.PARSE_DECLTYPES)
