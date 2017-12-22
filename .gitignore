@@ -1,0 +1,3 @@
+*.pyc
+zstash.egg-info
+dist
