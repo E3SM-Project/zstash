@@ -10,11 +10,12 @@ import logging
 import os.path
 import sys
 
-from zstash.commands.create import create
-from zstash.commands.update import update
-from zstash.commands.extract import extract
-from zstash.lib.config import Config
-from zstash.lib.strings import main_usage
+from commands.create import create
+from commands.update import update
+from commands.extract import extract
+
+from lib.config import Config
+from lib.strings import main_usage
 
 # Block size
 BLOCK_SIZE = 1024 * 1014

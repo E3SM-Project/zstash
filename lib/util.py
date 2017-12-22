@@ -14,7 +14,7 @@ from datetime import datetime
 from subprocess import Popen, PIPE
 from fnmatch import fnmatch
 
-from zstash.lib.strings import extract_md5_mismatch
+from lib.strings import extract_md5_mismatch
 
 # -----------------------------------------------------------------------------
 
