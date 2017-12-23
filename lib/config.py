@@ -18,6 +18,17 @@ class Config(object):
         self._connection = kwargs.get('connection')
         self._cursor = kwargs.get('cursor')
         self._block_size = kwargs.get('block_size')
+    
+    def items(self):
+        return {
+            'path': self._path,
+            'hpss': self._hpss,
+            'maxsize': self._maxsize,
+            'keep': self._keep,
+            'cache': self._cache,
+            'db_filename': self._db_filename,
+            'block_size': self._block_size
+        }
 
     @property
     def path(self):
