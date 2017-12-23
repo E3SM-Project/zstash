@@ -139,7 +139,8 @@ create table files (
     config.connection.commit()
 
     # Store configuration in database
-    for attr, value in config.items():
+    configitems = config.items()
+    for attr, value in configitems.items():
         if not callable(value) and not attr.startswith("__"):
             config.cursor.execute(
                 u"insert into config values (?,?)", (attr, value))
