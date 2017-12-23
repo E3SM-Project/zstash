@@ -28,7 +28,7 @@ class Config(object):
             'cache': self._cache,
             'db_filename': self._db_filename,
             'block_size': self._block_size
-        }
+        }.items()
 
     @property
     def path(self):

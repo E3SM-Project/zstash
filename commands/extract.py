@@ -49,8 +49,7 @@ def extract(config):
     config.cursor = config.connection.cursor()
 
     # Retrieve configuration from database
-    for attr in dir(config):
-        value = getattr(config, attr)
+    for attr, value in config.items():
         if not callable(value) and not attr.startswith("__"):
             config.cursor.execute(u"select value from config where arg=?", (attr,))
             value = config.cursor.fetchone()[0]

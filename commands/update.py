@@ -60,8 +60,7 @@ def update(config):
     config.cursor = config.connnection.cursor()
 
     # Retrieve configuration from database
-    for attr in dir(config):
-        value = getattr(config, attr)
+    for attr, value in config.items():
         if not callable(value) and not attr.startswith("__"):
             config.cursor.execute(
                 u"select value from config where arg=?", (attr,))
