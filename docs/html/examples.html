@@ -1,0 +1,322 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Examples &mdash; zstash  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="zstash  documentation" href="index.html"/>
+        <link rel="next" title="Design considerations" href="design.html"/>
+        <link rel="prev" title="Quickstart guide" href="quickstart.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> zstash
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic">Basic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#excluding-some-files">Excluding some files</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="todo.html">To do: possible future enhancements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">zstash</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Examples</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/examples.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="examples">
+<h1>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="basic">
+<h2>Basic<a class="headerlink" href="#basic" title="Permalink to this headline">¶</a></h2>
+<p>Simple illustration how to <strong>archive</strong> output from an ACME simulation located
+under <cite>$CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison</cite>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+$ zstash create --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison .
+</pre></div>
+</div>
+<p>Once done, you should see the archive files on hsi:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ hsi
+&gt; cd test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+&gt; ls
+000000.tar   index.db
+</pre></div>
+</div>
+<p>The data from this test simulation is small, so in this case there is only a single tar
+file (000000.tar) and the index database (index.db).</p>
+<p>We now run again with the ‘<strong>update</strong>’ functionality:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+$ zstash update --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+</pre></div>
+</div>
+<p>Since nothing has changed, zstash simply returns</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Nothing</span> <span class="n">to</span> <span class="n">update</span>
+</pre></div>
+</div>
+<p>Now, let’s add a new file</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ mkdir new
+$ echo &quot;This is a new file...&quot; &gt; new/file.txt
+</pre></div>
+</div>
+<p>and rerun zstash update</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ zstash update --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+</pre></div>
+</div>
+<p>Zstash recognizes the presence of a new file and adds it to the archive:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Gathering</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">files</span> <span class="n">to</span> <span class="n">archive</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Creating</span> <span class="n">new</span> <span class="n">tar</span> <span class="n">archive</span> <span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">new</span><span class="o">/</span><span class="n">file</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">DEBUG</span><span class="p">:</span> <span class="n">Closing</span> <span class="n">tar</span> <span class="n">archive</span> <span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">db</span>
+</pre></div>
+</div>
+<p>Note that the new file is added into a new archive tar file (000001.tar) even
+though the first archive tar file (000000.tar) is smaller than the target size
+and therefore could potentially hold more data. This is a design choice that
+was made out of caution to avoid the risk of damaging an existing tar file by
+appending to it.</p>
+<p>To <strong>extract all</strong> the files</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/test
+$ zstash extract --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+</pre></div>
+</div>
+<p>or to <strong>extract selected files</strong></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/test
+$ zstash extract --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
+  *.cam.h0*.nc *.clm2.h0*.nc
+</pre></div>
+</div>
+</div>
+<div class="section" id="excluding-some-files">
+<h2>Excluding some files<a class="headerlink" href="#excluding-some-files" title="Permalink to this headline">¶</a></h2>
+<p>You may decide that there are certain type of files that do not need archiving.
+For example, if you want to skip archiving *.o and *.mod files under the build
+subdirectory:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+$ zstash create --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
+  --exclude=&quot;build/*/*.o&quot;,&quot;build/*/*.mod&quot; .
+</pre></div>
+</div>
+<p>Running update with the same exclude patterns will also ignore these files
+rather than r=treating them as new:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ zstash update --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
+  --exclude=&quot;build/*/*.o&quot;,&quot;build/*/*.mod&quot;
+
+[...]
+
+INFO: Nothing to update
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="design.html" class="btn btn-neutral float-right" title="Design considerations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="quickstart.html" class="btn btn-neutral" title="Quickstart guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, E3SM.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

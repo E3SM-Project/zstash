@@ -21,7 +21,7 @@ Optionally, create a symbolic link to the executable in your
 `~/bin` directory: ::
 
    $ cd ~/bin
-   $ ln -s <myInstallDir>/zstash/zstash.py zstash
+   $ ln -s <myInstallDir>/zstash/zstash zstash
 
 If `~/bin` is not already in you PATH, you can add it using ::
 
@@ -42,6 +42,7 @@ where
 
 Additional optional arguments:
 
+* ``--exclude`` comma separated list of file patterns to exclude
 * ``--keep`` to keep a copy of the tar files on the local file system after 
   they have been transferred to HPSS. Normally, they are deleted after 
   successful transfer.
@@ -67,6 +68,21 @@ where
 * and ``[files]`` is a list of files to extract (standard wildcards supported). Leave empty 
   to extract all the files.
 
+Update
+======
+
+An existing archive can be updated to add new or modified files into an existing zstash 
+archive: ::
+
+   $ cd <mydir>
+   $ zstash update --hpss=<path to HPSS> [files]
+
+where
+
+* ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system,
+* ``--exclude`` comma separated list of file patterns to exclude,
+* ``--dry-run`` dry run, only list files to be updated in archive.
+
 List content
 ============
 
@@ -90,32 +106,3 @@ To list **all the files in a specific tar fole** (for example 000000.tar): ::
 
    $ sqlite3 zstash/index.db "select * from files where tar is '000000.tar';"
 
-Example
-=======
-
-Simple illustration how to **archive** output from an ACME simulation located
-under `$CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison`::
-
-  $ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
-  $ zstash create --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison .
-
-Once dome, you should see the archive files on hsi: ::
-
-  $ hsi
-  > cd test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
-  > ls 
-  000000.tar   index.db
-
-The data from this test simulation is small, so in this case there is only a single tar 
-file (000000.tar) and the index database (index.db).
-
-To **extract all** the files ::
-
-  $ cd $CSCRATCH/ACME_simulations/test
-  $ zstash extract --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
-
-or to **extract selected files** ::
-
-  $ cd $CSCRATCH/ACME_simulations/test
-  $ zstash extract --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
-    *.cam.h0*.nc *.clm2.h0*.nc

@@ -46,7 +46,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'zstash'
-copyright = u'2017, ACME'
+copyright = u'2018, E3SM'
 author = u'Chris Golaz'
 
 # The version info for the project you're documenting, acts as replacement for

@@ -10,7 +10,7 @@ Zstash documentation
 What is zstash?
 ===============
 
-Zstash is a prototype **HPSS long-term archiving** solution for ACME.
+Zstash is a prototype **HPSS long-term archiving** solution for E3SM.
 
 Zstash is written entirely in Python (2.7) using standard libraries.
 Its design is intentionally minimalistic to provide an effective
@@ -33,7 +33,7 @@ long-term HPSS archiving solution without creating an overly complicated
   files.
 
 To date, zstash has only been tested on NERSC, but should easily be portable
-to other computing centers. ACME users are welcome to try it 
+to other computing centers. E3SM users are welcome to try it 
 out, while keeping in mind that zstash is currently under development. As such,
 its design and functionality may change, or it may be replaced with a better 
 tool, should one emerge.
@@ -45,6 +45,7 @@ tool, should one emerge.
 
    self
    quickstart
+   examples
    design
    todo
    contributing

@@ -37,7 +37,7 @@
         <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="zstash  documentation" href="index.html"/>
         <link rel="next" title="To do: possible future enhancements" href="todo.html"/>
-        <link rel="prev" title="Quickstart guide" href="quickstart.html"/> 
+        <link rel="prev" title="Examples" href="examples.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -90,6 +90,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Design considerations</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#how-does-zstash-work">How does zstash work?</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#why-not-use-htar">Why not use ‘htar’?</a></li>
@@ -169,11 +170,52 @@
 </div>
 <div class="section" id="why-not-use-htar">
 <h2>Why not use ‘htar’?<a class="headerlink" href="#why-not-use-htar" title="Permalink to this headline">¶</a></h2>
-<p>…to do…</p>
+<p>Htar is an HPSS utility with many nice features. From the NERSC <a class="reference external" href="http://www.nersc.gov/users/storage-and-file-systems/hpss/storing-and-retrieving-data/clients/htar-usage/">htar documentation page</a>:</p>
+<blockquote>
+<div>HTAR is a command line utility that creates and manipulates HPSS-resident
+tar-format archive files. It is ideal for storing groups of files in HPSS.
+Since the tar file is created directly in HPSS, it is generally faster and
+uses less local space than creating a local tar file then storing that into
+HPSS. Furthermore, HTAR creates an index file that (by default) is stored
+along with the archive in HPSS. This allows you to list the contents of
+an archive without retrieving it to local storage first. The index file is
+only created if the HTAR bundle is successfully stored in the archive.</div></blockquote>
+<p>This sounds great. In fact, some of these htar functionalities served as inspiration for zstash.
+However, htar also suffers from a number of limitations that were deemed to be show stoppers:</p>
+<blockquote>
+<div><p><strong>Member File Path Length</strong> *</p>
+<p>File path names within an HTAR aggregate of the form prefix/name are limited to
+<strong>154 characters</strong> for the prefix and 99 characters for the file name. Link names
+cannot exceed 99 characters.</p>
+<p><strong>Member File Size</strong></p>
+<p>The maximum file size the NERSC archive will support is approximately 20 TB.
+However, we recommend you aim for HTAR aggregate sizes of several hundred GBs.
+Member files within an HTAR aggregate are limited to approximately <strong>68GB</strong>.</p>
+</div></blockquote>
+<p>Both the member file path length and file size were simply too restrictive
+for archiving output from E3SM simulations. Furthermore, htar lacks the ability
+to compute checksums of member files.</p>
 </div>
 <div class="section" id="why-not-just-use-cput-r">
 <h2>Why not just use ‘cput -R’?<a class="headerlink" href="#why-not-just-use-cput-r" title="Permalink to this headline">¶</a></h2>
-<p>…to do…</p>
+<p>This is the brute force approach: recursive conditional put. It will recursively
+transfer all your files to tape and only do so if the file isn’t already on tape.</p>
+<p>While this approach <em>may</em> work, it is not recommended when dealing with very
+large number of (relatively small) files as mentioned on the
+<a class="reference external" href="http://www.nersc.gov/users/storage-and-file-systems/hpss/storing-and-retrieving-data/mistakes-to-avoid">NERSC Mistakes to avoid</a> page:</p>
+<blockquote>
+<div><p><em>Large tape storage systems do not work well with small files. Retrieval
+of large numbers of small files from HPSS will incur significant delays
+due to the characteristics of tape media:</em></p>
+<ul class="simple">
+<li><em>File retrieval from tape media involves loading tapes into tape drives
+and positioning the media. This operation can be quite time consuming.</em></li>
+<li><em>Storing large numbers of small files may spread them across dozens or
+hundreds of tapes.</em></li>
+<li><em>Mounting dozens of tapes and then seeking to particular locations on
+tape can take a long time and impair usability for others.</em></li>
+</ul>
+</div></blockquote>
 </div>
 </div>
 
@@ -190,7 +232,7 @@
         <a href="todo.html" class="btn btn-neutral float-right" title="To do: possible future enhancements" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="quickstart.html" class="btn btn-neutral" title="Quickstart guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="examples.html" class="btn btn-neutral" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -199,7 +241,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017, ACME.
+        &copy; Copyright 2018, E3SM.
 
     </p>
   </div>

@@ -89,6 +89,7 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="todo.html">To do: possible future enhancements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a></li>
@@ -159,7 +160,7 @@
 <h1>Zstash documentation<a class="headerlink" href="#zstash-documentation" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="what-is-zstash">
 <h2>What is zstash?<a class="headerlink" href="#what-is-zstash" title="Permalink to this headline">¶</a></h2>
-<p>Zstash is a prototype <strong>HPSS long-term archiving</strong> solution for ACME.</p>
+<p>Zstash is a prototype <strong>HPSS long-term archiving</strong> solution for E3SM.</p>
 <p>Zstash is written entirely in Python (2.7) using standard libraries.
 Its design is intentionally minimalistic to provide an effective
 long-term HPSS archiving solution without creating an overly complicated
@@ -180,7 +181,7 @@ tar file.</li>
 files.</li>
 </ul>
 <p>To date, zstash has only been tested on NERSC, but should easily be portable
-to other computing centers. ACME users are welcome to try it
+to other computing centers. E3SM users are welcome to try it
 out, while keeping in mind that zstash is currently under development. As such,
 its design and functionality may change, or it may be replaced with a better
 tool, should one emerge.</p>
@@ -192,8 +193,13 @@ tool, should one emerge.</p>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#installation">Installation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#archive">Archive</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#extract">Extract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#update">Update</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#list-content">List content</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#basic">Basic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#excluding-some-files">Excluding some files</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a><ul>
@@ -238,7 +244,7 @@ tool, should one emerge.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017, ACME.
+        &copy; Copyright 2018, E3SM.
 
     </p>
   </div>

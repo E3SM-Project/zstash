@@ -90,6 +90,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">To do: possible future enhancements</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#improvements">Improvements</a></li>
@@ -166,14 +167,7 @@
 <div class="section" id="improvements">
 <h2>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Test and modify for <strong>other computing centers</strong> available to ACME.</li>
-<li>Implement option to <strong>exclude</strong> certain files from archiving, either by
-specifying a list of files (patterns) directly on the command line or in
-an external file:<ul>
-<li><code class="docutils literal"><span class="pre">--exclude</span> <span class="pre">&quot;build/*/*.o&quot;,&quot;build/*/*.mod&quot;</span></code></li>
-<li>or <code class="docutils literal"><span class="pre">--exclude-file</span> <span class="pre">&lt;file&gt;</span></code></li>
-</ul>
-</li>
+<li>Test and modify for <strong>other computing centers</strong> available to E3SM.</li>
 <li>Implement <strong>verbosity</strong> level option.</li>
 <li>…</li>
 </ul>
@@ -184,17 +178,6 @@ an external file:<ul>
 <li><strong>zstash list</strong><ul>
 <li>Support wildcards.</li>
 <li>List from all or selected tar files.</li>
-</ul>
-</li>
-<li><strong>zstash update</strong><ul>
-<li>Similar to ‘zstash create’, but add new or modified
-files to an existing archive.</li>
-<li>Modify ‘zstash extract’ functionality to deal with
-multiple versions of the same file, by either:<ul>
-<li>only extracting the most recent one,</li>
-<li>extracting all of them (naming older older ones file.txt, file.txt.1, file.txt.2, …).</li>
-</ul>
-</li>
 </ul>
 </li>
 <li><strong>zsstash verify</strong><ul>
@@ -229,7 +212,7 @@ checksums of all input files, without actually extracting them.</li>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017, ACME.
+        &copy; Copyright 2018, E3SM.
 
     </p>
   </div>

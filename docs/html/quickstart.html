@@ -36,7 +36,7 @@
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="zstash  documentation" href="index.html"/>
-        <link rel="next" title="Design considerations" href="design.html"/>
+        <link rel="next" title="Examples" href="examples.html"/>
         <link rel="prev" title="Zstash documentation" href="index.html"/> 
 
   
@@ -93,10 +93,11 @@
 <li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#archive">Archive</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#extract">Extract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#update">Update</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#list-content">List content</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#example">Example</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="todo.html">To do: possible future enhancements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a></li>
@@ -180,7 +181,7 @@ $ git clone git@github.com:ACME-Climate/zstash.git zstash
 <p>Optionally, create a symbolic link to the executable in your
 <cite>~/bin</cite> directory:</p>
 <div class="highlight-none"><div class="highlight"><pre><span></span>$ cd ~/bin
-$ ln -s &lt;myInstallDir&gt;/zstash/zstash.py zstash
+$ ln -s &lt;myInstallDir&gt;/zstash/zstash zstash
 </pre></div>
 </div>
 <p>If <cite>~/bin</cite> is not already in you PATH, you can add it using</p>
@@ -201,6 +202,7 @@ $ ln -s &lt;myInstallDir&gt;/zstash/zstash.py zstash
 </ul>
 <p>Additional optional arguments:</p>
 <ul class="simple">
+<li><code class="docutils literal"><span class="pre">--exclude</span></code> comma separated list of file patterns to exclude</li>
 <li><code class="docutils literal"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
 they have been transferred to HPSS. Normally, they are deleted after
 successful transfer.</li>
@@ -226,6 +228,21 @@ $ zstash extract --hpss=&lt;path to HPSS&gt; [files]
 to extract all the files.</li>
 </ul>
 </div>
+<div class="section" id="update">
+<h2>Update<a class="headerlink" href="#update" title="Permalink to this headline">¶</a></h2>
+<p>An existing archive can be updated to add new or modified files into an existing zstash
+archive:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
+$ zstash update --hpss=&lt;path to HPSS&gt; [files]
+</pre></div>
+</div>
+<p>where</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system,</li>
+<li><code class="docutils literal"><span class="pre">--exclude</span></code> comma separated list of file patterns to exclude,</li>
+<li><code class="docutils literal"><span class="pre">--dry-run</span></code> dry run, only list files to be updated in archive.</li>
+</ul>
+</div>
 <div class="section" id="list-content">
 <h2>List content<a class="headerlink" href="#list-content" title="Permalink to this headline">¶</a></h2>
 <p>Zstash does not yet include a built-in functionality to list content of archives.
@@ -248,35 +265,6 @@ $ sqlite3 zstash/index.db &quot;select * from files;&quot;
 </pre></div>
 </div>
 </div>
-<div class="section" id="example">
-<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
-<p>Simple illustration how to <strong>archive</strong> output from an ACME simulation located
-under <cite>$CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison</cite>:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
-$ zstash create --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison .
-</pre></div>
-</div>
-<p>Once dome, you should see the archive files on hsi:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ hsi
-&gt; cd test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
-&gt; ls
-000000.tar   index.db
-</pre></div>
-</div>
-<p>The data from this test simulation is small, so in this case there is only a single tar
-file (000000.tar) and the index database (index.db).</p>
-<p>To <strong>extract all</strong> the files</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/test
-$ zstash extract --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
-</pre></div>
-</div>
-<p>or to <strong>extract selected files</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/test
-$ zstash extract --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
-  *.cam.h0*.nc *.clm2.h0*.nc
-</pre></div>
-</div>
-</div>
 </div>
 
 
@@ -289,7 +277,7 @@ $ zstash extract --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="design.html" class="btn btn-neutral float-right" title="Design considerations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="examples.html" class="btn btn-neutral float-right" title="Examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="index.html" class="btn btn-neutral" title="Zstash documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -301,7 +289,7 @@ $ zstash extract --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017, ACME.
+        &copy; Copyright 2018, E3SM.
 
     </p>
   </div>
