@@ -46,10 +46,10 @@ Additional optional arguments:
 * ``--keep`` to keep a copy of the tar files on the local file system after 
   they have been transferred to HPSS. Normally, they are deleted after 
   successful transfer.
-* ``--maxsize MAXSIZE`` specifies the maximum size (in GB) for tar files. Zstash
-  will create tar files that are smaller than MAXSIZE except when individual
-  input files exceed MAXSIZE (as individual files are never split up between 
-  different tar files).
+* ``--maxsize MAXSIZE`` specifies the maximum size (in GB) for tar files. 
+  The default is 256 GB. Zstash will create tar files that are smaller 
+  than MAXSIZE except when individual input files exceed MAXSIZE (as 
+  individual files are never split up between different tar files).
 
 Local tar files as well as the sqlite3 index database (index.db) will be stored
 under ``<local path>/zstash``.

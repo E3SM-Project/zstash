@@ -206,10 +206,10 @@ $ ln -s &lt;myInstallDir&gt;/zstash/zstash zstash
 <li><code class="docutils literal"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
 they have been transferred to HPSS. Normally, they are deleted after
 successful transfer.</li>
-<li><code class="docutils literal"><span class="pre">--maxsize</span> <span class="pre">MAXSIZE</span></code> specifies the maximum size (in GB) for tar files. Zstash
-will create tar files that are smaller than MAXSIZE except when individual
-input files exceed MAXSIZE (as individual files are never split up between
-different tar files).</li>
+<li><code class="docutils literal"><span class="pre">--maxsize</span> <span class="pre">MAXSIZE</span></code> specifies the maximum size (in GB) for tar files.
+The default is 256 GB. Zstash will create tar files that are smaller
+than MAXSIZE except when individual input files exceed MAXSIZE (as
+individual files are never split up between different tar files).</li>
 </ul>
 <p>Local tar files as well as the sqlite3 index database (index.db) will be stored
 under <code class="docutils literal"><span class="pre">&lt;local</span> <span class="pre">path&gt;/zstash</span></code>.</p>
