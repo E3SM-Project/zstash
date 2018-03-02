@@ -16,6 +16,14 @@ def excludeFiles(exclude, files):
     #  https://codereview.stackexchange.com/questions/33624/
     #  filtering-a-long-list-of-files-through-a-set-of-ignore-patterns-using-iterators
     exclude_patterns = exclude.split(',')
+
+    # If exclude pattern ends with a trailing '/', the user intends to exclude
+    # the entire subdirectory content, therefore replace '/' with '/*'
+    for i in range(len(exclude_patterns)):
+        if exclude_patterns[i][-1] == "/":
+            exclude_patterns[i] += '*'
+
+    # Actual files to exclude
     exclude_files = []
     for file in files:
         if any(fnmatch(file, pattern) for pattern in exclude_patterns):
