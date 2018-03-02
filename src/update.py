@@ -9,7 +9,7 @@ from datetime import datetime
 
 from hpss import hpss_get, hpss_put
 from utils import addfiles, excludeFiles
-from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
+from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL
 
 
 def update():
@@ -113,8 +113,9 @@ def update():
                 break
             size = match[2]
             mdtime = match[3]
-            if (size_new == size) and (mdtime_new == mdtime):
-                # File exists with same size and modification time
+            if (size_new == size) \
+              and (abs((mdtime_new-mdtime).total_seconds()) <= TIME_TOL):
+                # File exists with same size and modification time within tolerance
                 new = False
                 break
             # print(file,size_new,size,mdtime_new,mdtime)

@@ -18,5 +18,8 @@ CACHE = 'zstash'
 # Database filename
 DB_FILENAME = os.path.join(CACHE, 'index.db')
 
+# Time tolerance (in seconds) for file modification time
+TIME_TOL = 1.0
+
 # Initialize config
 config = Config()
