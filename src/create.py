@@ -52,6 +52,7 @@ def create():
     logging.debug('Local path : %s' % (config.path))
     logging.debug('HPSS path  : %s' % (config.hpss))
     logging.debug('Max size  : %i' % (config.maxsize))
+    logging.debug('Keep local tar files  : %s' % (config.keep))
 
     # Make sure input path exists and is a directory
     logging.debug('Making sure input path exists and is a directory')

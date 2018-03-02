@@ -28,6 +28,10 @@ def update():
         '--dry-run',
         help='dry run, only list files to be updated in archive',
         action="store_true")
+    optional.add_argument(
+        '--keep',
+        help='keep files in local cache (default from create)',
+        action="store_const", const=True)
     args = parser.parse_args(sys.argv[2:])
 
     # Open database
@@ -53,9 +57,18 @@ def update():
             value = cur.fetchone()[0]
             setattr(config, attr, value)
     config.maxsize = int(config.maxsize)
+    config.keep = bool(int(config.keep))
+
+    # Override keep if specified on the command line
+    if args.keep is not None:
+        config.keep = args.keep
 
     # Start doing actual work
     logging.debug('Running zstash update')
+    logging.debug('Local path : %s' % (config.path))
+    logging.debug('HPSS path  : %s' % (config.hpss))
+    logging.debug('Max size  : %i' % (config.maxsize))
+    logging.debug('Keep local tar files  : %s' % (config.keep))
 
     # List of files
     logging.info('Gathering list of files to archive')

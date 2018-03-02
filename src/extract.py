@@ -45,6 +45,14 @@ def extract():
             value = cur.fetchone()[0]
             setattr(config, attr, value)
     config.maxsize = int(config.maxsize)
+    config.keep = bool(int(config.keep))
+
+    # Start doing actual work
+    logging.debug('Running zstash extract')
+    logging.debug('Local path : %s' % (config.path))
+    logging.debug('HPSS path  : %s' % (config.hpss))
+    logging.debug('Max size  : %i' % (config.maxsize))
+    logging.debug('Keep local tar files  : %s' % (config.keep))
 
     # Find matching files
     matches = []
