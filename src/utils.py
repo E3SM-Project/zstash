@@ -50,6 +50,7 @@ def addfiles(cur, con, itar, files):
         # New tar archive in the local cache
         if newtar:
             newtar = False
+            archived = []
             tarsize = 0
             itar += 1
             tname = "{0:0{1}x}".format(itar, 6)
@@ -62,9 +63,7 @@ def addfiles(cur, con, itar, files):
         logging.info('Archiving %s' % (file[0]))
         try:
             offset, size, mtime, md5 = addfile(tar, file[0])
-            cur.execute(u"insert into files values (NULL,?,?,?,?,?,?)",
-                        (file[0], size, mtime, md5, tfname, offset))
-            con.commit()
+            archived.append((file[0], size, mtime, md5, tfname, offset))
             tarsize += file[1]
         except:
             logging.error('Archiving %s' % (file[0]))
@@ -80,6 +79,11 @@ def addfiles(cur, con, itar, files):
 
             # Transfer tar archive to HPSS
             hpss_put(config.hpss, os.path.join(CACHE, tfname), config.keep)
+
+            # Update database with files that have been archived
+            cur.executemany(u"insert into files values (NULL,?,?,?,?,?,?)",
+                            archived)
+            con.commit()
 
             # Open new archive next time
             newtar = True
