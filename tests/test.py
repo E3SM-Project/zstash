@@ -21,9 +21,9 @@ def run_cmd(cmd):
     print(err)
     return output, err
 
-def str_in(output, msg):
+def str_not_in(output, msg):
     """
-    If the error is in the output string, then there's a failure.
+    If the msg is not in the output string, then everything is fine.
     """
     if msg in output:
         print('*'*40)
@@ -31,9 +31,9 @@ def str_in(output, msg):
         print('*'*40)
         exit()
 
-def str_not_in(output, msg):
+def str_in(output, msg):
     """
-    If the error is not in the output string, then there's a failure.
+    If the msg is in the output string, then the everything is fine.
     """
     if not msg in output:
         print('*'*40)
@@ -85,6 +85,7 @@ if not os.path.lexists('zstash_test/file0_hard.txt'):
 print('Adding files to HPSS')
 cmd = 'zstash create --hpss={} zstash_test'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
+str_in(output+err, 'Transferring file to HPSS')
 
 # TODO: Nothing should happen, but stuff does happen
 print('Running update on the newly created directory')
@@ -93,7 +94,7 @@ os.chdir('zstash_test')
 cmd = 'zstash update --hpss={}'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
 os.chdir('../')
-str_not_in(output+err, 'Nothing to update')
+str_in(output+err, 'Nothing to update')
 
 
 cleanup()
