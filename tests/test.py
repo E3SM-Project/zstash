@@ -75,9 +75,10 @@ write_file('zstash_test/file0.txt', 'file0 stuff')
 write_file('zstash_test/file_empty.txt', '')
 write_file('zstash_test/dir/file1.txt', 'file1 stuff')
 
-# TODO: symlinks don't seem to work
-#if not os.path.lexists('zstash_test/file0_soft.txt'):
-#    os.symlink('zstash_test/file0.txt', 'zstash_test/file0_soft.txt')
+if not os.path.lexists('zstash_test/file0_soft.txt'):
+    # If we symlink zstash_test/file0_soft.txt to zstash_test/file0.txt
+    # zstash_test/file0_soft.txt links to zstash_test/zstash_test/file0.txt
+    os.symlink('file0.txt', 'zstash_test/file0_soft.txt')
 
 if not os.path.lexists('zstash_test/file0_hard.txt'):
     os.link('zstash_test/file0.txt', 'zstash_test/file0_hard.txt')
@@ -87,7 +88,6 @@ cmd = 'zstash create --hpss={} zstash_test'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
 str_in(output+err, 'Transferring file to HPSS')
 
-# TODO: Nothing should happen, but stuff does happen
 print('Running update on the newly created directory')
 print('Nothing should happen')
 os.chdir('zstash_test')
