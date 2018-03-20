@@ -15,7 +15,9 @@ def run_cmd(cmd):
     Run a command while printing and returning the stdout and stderr
     """
     print('+ {}'.format(cmd))
-    p = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if isinstance(cmd, str):
+        cmd = cmd.split()
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, err = p.communicate()
     print(output)
     print(err)
@@ -46,7 +48,10 @@ def cleanup():
     After this script is ran, remove all created files, even those on the HPSS repo.
     """
     print('Removing test files, both locally and at the HPSS repo')
-    shutil.rmtree('zstash_test')
+    if os.path.exists('zstash_test'):
+        shutil.rmtree('zstash_test')
+    if os.path.exists('zstash_test_backup'):
+        shutil.rmtree('zstash_test_backup')
     cmd = 'hsi rm -R {}'.format(HPSS_PATH)
     run_cmd(cmd)
 
@@ -88,8 +93,7 @@ cmd = 'zstash create --hpss={} zstash_test'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
 str_in(output+err, 'Transferring file to HPSS')
 
-print('Running update on the newly created directory')
-print('Nothing should happen')
+print('Running update on the newly created directory, nothing should happen')
 os.chdir('zstash_test')
 cmd = 'zstash update --hpss={}'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
@@ -97,54 +101,76 @@ os.chdir('../')
 str_in(output+err, 'Nothing to update')
 
 
+print('Testing update with an actual change')
+if not os.path.exists('zstash_test/dir2'):
+    os.mkdir('zstash_test/dir2')
+write_file('zstash_test/dir2/file2.txt', 'file2 stuff')
+
+os.chdir('zstash_test')
+cmd = 'zstash update --hpss={}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+os.chdir('../')
+str_in(output+err, 'Transferring file to HPSS')
+# Make sure none of the old files are moved
+str_not_in(output+err, 'file0')
+str_not_in(output+err, 'file1')
+str_not_in(output+err, 'file_empty')
+str_not_in(output+err, 'empty_dir')
+
+print('Testing the extract functionality')
+os.rename('zstash_test', 'zstash_test_backup')
+os.mkdir('zstash_test')
+os.chdir('zstash_test')
+cmd = 'zstash extract --hpss={}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+os.chdir('../')
+str_in(output+err, 'Transferring from HPSS')
+str_in(output+err, 'Extracting file0.txt')
+str_in(output+err, 'Extracting file0_hard.txt')
+str_in(output+err, 'Extracting file0_soft.txt')
+str_in(output+err, 'Extracting file_empty.txt')
+str_in(output+err, 'Extracting dir/file1.txt')
+str_in(output+err, 'Extracting empty_dir')
+str_in(output+err, 'Extracting dir2/file2.txt')
+
+print('Running update on the newly extracted directory, nothing should happen')
+os.chdir('zstash_test')
+cmd = 'zstash update --hpss={}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+os.chdir('../')
+str_in(output+err, 'Nothing to update')
+
+print('Verifying the data from database with the actual files')
+# Checksums from HPSS
+cmd = ['sqlite3', 'zstash_test/zstash/index.db', 'select md5, name from files;']
+output_hpss, err_hpss = run_cmd(cmd)
+hpss_dict = {}
+
+for l in output_hpss.split('\n'):
+    l = l.split('|')
+    if len(l) >= 2:
+        f_name = l[1]
+        f_hash = l[0]
+        hpss_dict[f_name] = f_hash
+
+# Checksums from local files
+cmd = '''find zstash_test_backup -regex .*\.txt.* -exec md5sum {} + '''
+output_local, err_local = run_cmd(cmd)
+local_dict = {}
+
+for l in output_local.split('\n'):
+    l = l.split('  ')
+    if len(l) >= 2:
+        f_name = l[1].split('/')  # remove the 'zstash_test_backup'
+        f_name = '/'.join(f_name[1:])
+        f_hash = l[0]
+        local_dict[f_name] = f_hash
+print('filename|HPSS hash|local file hash')
+for k in local_dict:
+    print('{}|{}|{}'.format(k, hpss_dict[k], local_dict[k]))
+
 cleanup()
+print('*'*40)
+print('All of the tests passed! :)')
+print('*'*40)
 
-'''
-# Adding the files and directory to HPSS
-zstash create --hpss=$HPSS_PATH zstash_test
-
-# Nothing should happen
-# ERROR: STUFF ACTUALLY DOES HAPPEN
-# It archives file0_hard.txt  again
-echo "Nothing should happen"
-cd zstash_test
-zstash update --hpss=$HPSS_PATH
-cd ../
-
-# Testing update with an actual change
-mkdir zstash_test/dir2
-echo "file2 stuff" >> zstash_test/dir2/file2.txt
-# zstash update --hpss=/home/z/zshaheen/zstash_test zstash_test/dir2
-cd zstash_test
-zstash update --hpss=$HPSS_PATH
-cd ../
-
-# Testing extract functionality
-mv zstash_test zstash_test_backup
-mkdir zstash_test
-cd zstash_test
-zstash extract --hpss=$HPSS_PATH
-cd ../
-
-# Testing update, nothing should happen
-# And nothing does happen, this is good
-echo "Nothing should happen"
-cd zstash_test
-zstash update --hpss=$HPSS_PATH
-cd ../
-
-
-echo "Verifying the data from database with the actual files"
-# Check that zstash_test/index.db matches the stuff from zstash_backup/*
-echo "Checksums from HPSS"
-sqlite3 zstash_test/zstash/index.db "select md5, name from files;" | sort -n
-echo "Checksums from local files"
-find zstash_test_backup/* -regex ".*\.txt.*" -exec md5sum {} + | sort -n
-
-# Cleanup
-#rm -r zstash_test
-#rm -r zstash_test_backup
-# TODO: This should be removed soon, not good
-# rm -r zstash
-hsi "rm -R $HPSS_PATH"
-'''
