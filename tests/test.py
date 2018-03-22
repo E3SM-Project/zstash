@@ -105,6 +105,7 @@ print('Testing update with an actual change')
 if not os.path.exists('zstash_test/dir2'):
     os.mkdir('zstash_test/dir2')
 write_file('zstash_test/dir2/file2.txt', 'file2 stuff')
+write_file('zstash_test/dir/file1.txt', 'file1 stuff with changes')
 
 os.chdir('zstash_test')
 cmd = 'zstash update --hpss={}'.format(HPSS_PATH)
@@ -113,7 +114,6 @@ os.chdir('../')
 str_in(output+err, 'Transferring file to HPSS')
 # Make sure none of the old files are moved
 str_not_in(output+err, 'file0')
-str_not_in(output+err, 'file1')
 str_not_in(output+err, 'file_empty')
 str_not_in(output+err, 'empty_dir')
 

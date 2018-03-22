@@ -2,6 +2,7 @@ import hashlib
 import logging
 import os.path
 import tarfile
+import traceback
 
 from datetime import datetime
 from fnmatch import fnmatch
@@ -38,9 +39,6 @@ def excludeFiles(exclude, files):
 
 def addfiles(cur, con, itar, files):
 
-    # File size
-    files = [(x, os.path.getsize(x)) for x in files]
-
     # Now, perform the actual archiving
     failures = []
     newtar = True
@@ -60,18 +58,20 @@ def addfiles(cur, con, itar, files):
 
         # Add current file to tar archive
         file = files[i]
-        logging.info('Archiving %s' % (file[0]))
+        logging.info('Archiving %s' % (file))
         try:
-            offset, size, mtime, md5 = addfile(tar, file[0])
-            archived.append((file[0], size, mtime, md5, tfname, offset))
-            tarsize += file[1]
+            offset, size, mtime, md5 = addfile(tar, file)
+            archived.append((file, size, mtime, md5, tfname, offset))
+            tarsize += size
         except:
-            logging.error('Archiving %s' % (file[0]))
-            failures.append(file[0])
+            traceback.print_exc()
+            logging.error('Archiving %s' % (file))
+            failures.append(file)
 
         # Close tar archive if current file is the last one or adding one more
         # would push us over the limit.
-        if (i == nfiles-1 or tarsize+files[i+1][1] > config.maxsize):
+        next_file_size = tar.gettarinfo(file).size
+        if (i == nfiles-1 or tarsize+next_file_size > config.maxsize):
 
             # Close current temporary file
             logging.debug('Closing tar archive %s' % (tfname))
@@ -96,8 +96,14 @@ def addfiles(cur, con, itar, files):
 def addfile(tar, file):
     offset = tar.offset
     tarinfo = tar.gettarinfo(file)
+    # Change the size of any hardlinks from 0 to the size of the actual file
+    if tarinfo.islnk():
+        tarinfo.size = os.path.getsize(file)
     tar.addfile(tarinfo)
-    if tarinfo.isfile():
+
+    # Only add files or hardlinks.
+    # So don't add directories or softlinks.
+    if tarinfo.isfile() or tarinfo.islnk():
         f = open(file, "rb")
         hash_md5 = hashlib.md5()
         while True:
