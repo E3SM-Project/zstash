@@ -85,6 +85,11 @@ if not os.path.lexists('zstash_test/file0_soft.txt'):
     # zstash_test/file0_soft.txt links to zstash_test/zstash_test/file0.txt
     os.symlink('file0.txt', 'zstash_test/file0_soft.txt')
 
+if not os.path.lexists('zstash_test/file0_soft_bad.txt'):
+    # If we symlink zstash_test/file0_soft.txt to zstash_test/file0.txt
+    # zstash_test/file0_soft.txt links to zstash_test/zstash_test/file0.txt
+    os.symlink('file0_that_doesnt_exist.txt', 'zstash_test/file0_soft_bad.txt')
+
 if not os.path.lexists('zstash_test/file0_hard.txt'):
     os.link('zstash_test/file0.txt', 'zstash_test/file0_hard.txt')
 
