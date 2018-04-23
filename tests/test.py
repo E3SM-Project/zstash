@@ -66,7 +66,6 @@ def exit():
 # TODO: Change the hpss directory to a dir that's accessable to everyone
 HPSS_PATH='/home/z/zshaheen/zstash_test'
 
-
 # Create files and directories
 print('Creating files.')
 if not os.path.exists('zstash_test'):
@@ -97,6 +96,20 @@ print('Adding files to HPSS')
 cmd = 'zstash create --hpss={} zstash_test'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
 str_in(output+err, 'Transferring file to HPSS')
+
+print('Testing chgrp')
+GROUP = 'acme'
+print('First, make sure that the files are not already in the {} group'.format(GROUP))
+cmd = 'hsi ls -l {}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+str_not_in(output+err, GROUP)
+print('Running zstash chgrp')
+cmd = 'zstash chgrp -R {} {}'.format(GROUP, HPSS_PATH)
+output, err = run_cmd(cmd)
+print('Now check that the files are in the {} group'.format(GROUP))
+cmd = 'hsi ls -l {}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+str_in(output+err, 'acme')
 
 print('Running update on the newly created directory, nothing should happen')
 os.chdir('zstash_test')
@@ -178,4 +191,3 @@ cleanup()
 print('*'*40)
 print('All of the tests passed! :)')
 print('*'*40)
-

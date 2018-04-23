@@ -9,6 +9,7 @@ import settings
 from create import create
 from update import update
 from extract import extract
+from chgrp import chgrp
 
 
 # -----------------------------------------------------------------------------
@@ -39,6 +40,8 @@ For help with a specific command
         update()
     elif args.command == 'extract':
         extract()
+    elif args.command == 'chgrp':
+        chgrp()
     else:
         print 'Unrecognized command'
         parser.print_help()
