@@ -1,6 +1,6 @@
 # zstash
 
-**zstash** is a prototype long-term archiving tool for ACME.
+**zstash** is a prototype long-term archiving tool for E3SM.
 
-See [documentation](https://acme-climate.github.io/zstash) for more details.
+See [documentation](https://e3sm-project.github.io/zstash) for more details.
 
