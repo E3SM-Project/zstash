@@ -113,6 +113,7 @@ def update():
                 break
             size = match[2]
             mdtime = match[3]
+
             if (size_new == size) \
               and (abs((mdtime_new-mdtime).total_seconds()) <= TIME_TOL):
                 # File exists with same size and modification time within tolerance
