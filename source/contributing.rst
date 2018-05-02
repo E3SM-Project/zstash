@@ -37,7 +37,7 @@ serve static web pages (see `GitHub Pages <https://pages.github.com/>`_).
 Clone the repository and checkout the 'gh-pages' branch: ::
 
    $ cd <myDir>
-   $ git clone git@github.com:ACME-Climate/zstash.git zstash
+   $ git clone git@github.com:E3SM-Project/zstash.git zstash
    $ cd zstash
    $ git checkout gh-pages
 
@@ -77,7 +77,7 @@ the repository: ::
    $ git push origin gh-pages
    
 Your changes will then be available on the 
-`zstash documentation page <https://acme-climate.github.io/zstash/>`_.
+`zstash documentation page <https://e3sm-project.github.io/zstash/>`_.
 
 Initial setup (for reference only)
 ==================================

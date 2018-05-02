@@ -12,20 +12,14 @@ machines: ::
 
    $ module load python/2.7-anaconda-4.4
 
-Clone the github repository in your preferred location ::
+Create a new Anaconda environment with zstash installed and activate it ::
 
-   $ cd <myInstallDir>
-   $ git clone git@github.com:ACME-Climate/zstash.git zstash
+   $ conda create -n zstash_env -c e3sm -c conda-forge zstash
+   $ source activate zstash_env
 
-Optionally, create a symbolic link to the executable in your
-`~/bin` directory: ::
+Or you can install zstash in an exisiting environment ::
 
-   $ cd ~/bin
-   $ ln -s <myInstallDir>/zstash/zstash zstash
-
-If `~/bin` is not already in you PATH, you can add it using ::
-
-   $ export PATH=$HOME/bin:$PATH
+   $ conda install zstash -c e3sm -c conda-forge 
 
 
 Archive
