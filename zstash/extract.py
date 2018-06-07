@@ -46,6 +46,9 @@ def extract():
             setattr(config, attr, value)
     config.maxsize = int(config.maxsize)
     config.keep = bool(int(config.keep))
+    # The command line arg should always have precedence
+    if args.hpss is not None:
+        config.hpss = args.hpss
 
     # Start doing actual work
     logging.debug('Running zstash extract')
