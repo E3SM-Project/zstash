@@ -5,9 +5,8 @@ import os.path
 import sqlite3
 import sys
 import tarfile
-
+import traceback
 from datetime import datetime
-
 from hpss import hpss_get
 from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
 
@@ -154,6 +153,7 @@ def extractFiles(files):
                     os.system('touch -h -t %s %s' % (tmp3, tarinfo.name))
 
         except:
+            traceback.print_exc()
             logging.error('Retrieving %s' % (file[1]))
 
         # Close current archive?
