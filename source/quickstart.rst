@@ -12,14 +12,39 @@ machines: ::
 
    $ module load python/2.7-anaconda-4.4
 
-Create a new Anaconda environment with zstash installed and activate it ::
+Create a new Anaconda environment with zstash installed and activate it. ::
 
    $ conda create -n zstash_env -c e3sm -c conda-forge zstash
    $ source activate zstash_env
 
-Or you can install zstash in an exisiting environment ::
+Or you can install zstash in an existing environment. ::
 
    $ conda install zstash -c e3sm -c conda-forge 
+
+
+Installation from source
+========================
+
+If you want to get the latest code of zstash from the master branch, do the following.
+
+First, follow the instructions in the previous section ("Installation") to create an
+Anaconda environment with zstash.
+Make sure you're in the zstash environment before executing the below instructions.
+
+Then, use the command below to remove just zstash, keeping all of the dependencies
+in the environment.
+We'll be manually installing the latest zstash from master soon. ::
+
+   $ conda remove zstash --force
+
+Clone the zstash repository. ::
+
+   $ git clone https://github.com/E3SM-Project/zstash.git
+
+Install the latest zstash. ::
+
+   $ cd zstash/
+   $ python setup.py install
 
 
 Archive
