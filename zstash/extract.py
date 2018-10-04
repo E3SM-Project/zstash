@@ -69,14 +69,19 @@ def extract():
     matches = sorted(matches, key=lambda x: (x[5], x[6]))
 
     # Retrieve from tapes
-    extractFiles(matches)
+    failures = extractFiles(matches)
 
     # Close database
     logging.debug('Closing index database')
     con.close()
 
+    if failures:
+        logging.warning('Some files could not be extracted:')
+        for fail in failures:
+            logging.error(fail)
 
-def extractFiles(files):
+
+def extractFiles(files, keep_files=True):
 
     failures = []
     tfname = None
@@ -108,23 +113,28 @@ def extractFiles(files):
 
             if tarinfo.isfile():
                 # fileobj to extract
-                fin = tar.extractfile(tarinfo)
-                fname = tarinfo.name
-                path, name = os.path.split(fname)
-                if path != '':
-                    if not os.path.isdir(path):
-                        os.makedirs(path)
-                fout = open(fname, 'w')
-                hash_md5 = hashlib.md5()
-                while True:
-                    s = fin.read(BLOCK_SIZE)
-                    if len(s) > 0:
-                        fout.write(s)
-                        hash_md5.update(s)
-                    if len(s) < BLOCK_SIZE:
-                        break
-                fin.close()
-                fout.close()
+                with tar.extractfile(tarinfo) as fin:
+                    fname = tarinfo.name
+                    path, name = os.path.split(fname)
+                    if path != '':
+                        if not os.path.isdir(path):
+                            os.makedirs(path)
+                    if keep_files:
+                        fout = open(fname, 'w')
+
+                    hash_md5 = hashlib.md5()
+                    while True:
+                        s = fin.read(BLOCK_SIZE)
+                        if len(s) > 0:
+                            hash_md5.update(s)
+                            if keep_files:
+                                fout.write(s)
+                        if len(s) < BLOCK_SIZE:
+                            break
+
+                    if keep_files:
+                        fout.close()
+
                 md5 = hash_md5.hexdigest()
                 tar.chown(tarinfo, fname)
                 tar.chmod(tarinfo, fname)
@@ -155,6 +165,7 @@ def extractFiles(files):
         except:
             traceback.print_exc()
             logging.error('Retrieving %s' % (file[1]))
+            failures.append(file[1])
 
         # Close current archive?
         if (i == nfiles-1 or files[i][5] != files[i+1][5]):
@@ -165,3 +176,6 @@ def extractFiles(files):
 
             # Open new archive next time
             newtar = True
+
+    return failures
+

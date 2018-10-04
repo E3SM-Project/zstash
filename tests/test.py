@@ -12,7 +12,7 @@ def write_file(name, contents):
 
 def run_cmd(cmd):
     """
-    Run a command while printing and returning the stdout and stderr
+    Run a command while printing and returning the stdout and stderr.
     """
     print('+ {}'.format(cmd))
     if isinstance(cmd, str):
@@ -63,7 +63,7 @@ def exit():
     sys.exit()
 
 
-# TODO: Change the hpss directory to a dir that's accessable to everyone
+# TODO: Change the hpss directory to a dir that's accessable to everyone.
 HPSS_PATH='/home/z/zshaheen/zstash_test'
 
 # Create files and directories
