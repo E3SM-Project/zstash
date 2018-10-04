@@ -123,7 +123,8 @@ def extractFiles(files, keep_files):
 
             if tarinfo.isfile():
                 # fileobj to extract
-                with tar.extractfile(tarinfo) as fin:
+                try:
+                    fin = tar.extractfile(tarinfo)
                     fname = tarinfo.name
                     path, name = os.path.split(fname)
                     if path != '':
@@ -141,17 +142,19 @@ def extractFiles(files, keep_files):
                                 fout.write(s)
                         if len(s) < BLOCK_SIZE:
                             break
-
+                finally:
+                    fin.close()
                     if keep_files:
                         fout.close()
 
                 md5 = hash_md5.hexdigest()
-                tar.chown(tarinfo, fname)
-                tar.chmod(tarinfo, fname)
-                tar.utime(tarinfo, fname)
-                # Verify size
-                if os.path.getsize(fname) != file[2]:
-                    logging.error('size mismatch for: %s' % (fname))
+                if keep_files:
+                    tar.chown(tarinfo, fname)
+                    tar.chmod(tarinfo, fname)
+                    tar.utime(tarinfo, fname)
+                    # Verify size
+                    if os.path.getsize(fname) != file[2]:
+                        logging.error('size mismatch for: %s' % (fname))
                 # Verify md5 checksum
                 if md5 != file[4]:
                     logging.error('md5 mismatch for: %s' % (fname))
@@ -160,7 +163,7 @@ def extractFiles(files, keep_files):
                 else:
                     logging.debug('Valid md5: %s %s' % (md5, fname))
 
-            else:
+            elif keep_files:
                 tar.extract(tarinfo)
                 # Note: tar.extract() will not restore time stamps of symbolic
                 # links. Could not find a Python-way to restore it either, so
