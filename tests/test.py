@@ -31,7 +31,7 @@ def str_not_in(output, msg):
         print('*'*40)
         print('This was not supposed to be found: {}',format(msg))
         print('*'*40)
-        exit()
+        stop()
 
 def str_in(output, msg):
     """
@@ -41,7 +41,7 @@ def str_in(output, msg):
         print('*'*40)
         print('This was supposed to be found, but was not: {}'.format(msg))
         print('*'*40)
-        exit()
+        stop()
 
 def cleanup():
     """
@@ -55,9 +55,9 @@ def cleanup():
     cmd = 'hsi rm -R {}'.format(HPSS_PATH)
     run_cmd(cmd)
 
-def exit():
+def stop():
     """
-    Cleanup and stop running this script
+    Cleanup and stop running this script.
     """
     cleanup()
     sys.exit()

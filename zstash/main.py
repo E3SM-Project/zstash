@@ -10,6 +10,7 @@ from create import create
 from update import update
 from extract import extract
 from chgrp import chgrp
+from check import check
 
 
 # -----------------------------------------------------------------------------
@@ -24,6 +25,8 @@ Available zstash commands:
   create     create new archive
   update     update existing archive
   extract    extract files from archive
+  chgrp      change the group of an archive
+  check      check the integrity of the files in the archive
 
 For help with a specific command
   zstash command --help
@@ -42,10 +45,12 @@ For help with a specific command
         extract()
     elif args.command == 'chgrp':
         chgrp()
+    elif args.command == 'check':
+        check()
     else:
         print 'Unrecognized command'
         parser.print_help()
-        exit(1)
+        sys.exit(1)
 
 
 # -----------------------------------------------------------------------------

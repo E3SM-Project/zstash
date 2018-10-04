@@ -11,11 +11,14 @@ from hpss import hpss_get
 from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
 
 
-def extract():
+def extract(keep_files=True):
+    """
+    Given an HPSS path in the zstash database or passed via the command line,
+    extract the archived data based on the file pattern (if given).
+    """
     parser = argparse.ArgumentParser(
         usage='zstash extract [<args>] [files]',
         description='Extract files from existing archive')
-    required = parser.add_argument_group('required named arguments')
     optional = parser.add_argument_group('optional named arguments')
     optional.add_argument('--hpss', type=str, help='path to HPSS storage')
     parser.add_argument('files', nargs='*', default=['*'])
@@ -69,7 +72,7 @@ def extract():
     matches = sorted(matches, key=lambda x: (x[5], x[6]))
 
     # Retrieve from tapes
-    failures = extractFiles(matches)
+    failures = extractFiles(matches, keep_files)
 
     # Close database
     logging.debug('Closing index database')
@@ -81,8 +84,15 @@ def extract():
             logging.error(fail)
 
 
-def extractFiles(files, keep_files=True):
+def extractFiles(files, keep_files):
+    """
+    Given a list of database rows, extract the files from the
+    tar archives to the current location on disk.
 
+    If keep_files is False, the files are not extracted.
+    This is used for when checking if the files in an HPSS
+    repository are valid.
+    """
     failures = []
     tfname = None
     newtar = True
@@ -178,4 +188,3 @@ def extractFiles(files, keep_files=True):
             newtar = True
 
     return failures
-
