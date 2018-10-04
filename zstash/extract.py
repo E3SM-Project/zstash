@@ -62,7 +62,7 @@ def extract(keep_files=True):
     # Find matching files
     matches = []
     for file in args.files:
-        cur.execute(u"select * from files where name GLOB ?", (file,))
+        cur.execute(u"select * from files where name GLOB ? or tar GLOB ?", (file, file))
         matches = matches + cur.fetchall()
 
     # Remove duplicates
