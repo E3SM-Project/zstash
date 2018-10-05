@@ -53,7 +53,8 @@ def extract(keep_files=True):
         config.hpss = args.hpss
 
     # Start doing actual work
-    logging.debug('Running zstash extract')
+    cmd = 'extract' if keep_files else 'check'
+    logging.debug('Running zstash ' + cmd)
     logging.debug('Local path : %s' % (config.path))
     logging.debug('HPSS path  : %s' % (config.hpss))
     logging.debug('Max size  : %i' % (config.maxsize))
@@ -79,9 +80,14 @@ def extract(keep_files=True):
     con.close()
 
     if failures:
-        logging.warning('Some files could not be extracted:')
+        logging.error('Encountered an error for files:')
         for fail in failures:
-            logging.error(fail)
+            logging.error('{} in {}'.format(fail[1], fail[5]))
+
+        broken_tars = set(sorted([f[5] for f in failures]))
+        logging.error('The following tar archives had errors:')
+        for tar in broken_tars:
+            logging.error(tar)
 
 
 def extractFiles(files, keep_files):
@@ -112,7 +118,8 @@ def extractFiles(files, keep_files):
             tar = tarfile.open(tfname, "r")
 
         # Extract file
-        logging.info('Extracting %s' % (file[1]))
+        cmd = 'Extracting' if keep_files else 'Checking'
+        logging.info(cmd + ' %s' % (file[1]))
         try:
 
             # Seek file position
@@ -160,6 +167,7 @@ def extractFiles(files, keep_files):
                     logging.error('md5 mismatch for: %s' % (fname))
                     logging.error('md5 of extracted file: %s' % (md5))
                     logging.error('md5 of original file:  %s' % (file[4]))
+                    failures.append(file)
                 else:
                     logging.debug('Valid md5: %s %s' % (md5, fname))
 
@@ -178,7 +186,7 @@ def extractFiles(files, keep_files):
         except:
             traceback.print_exc()
             logging.error('Retrieving %s' % (file[1]))
-            failures.append(file[1])
+            failures.append(file)
 
         # Close current archive?
         if (i == nfiles-1 or files[i][5] != files[i+1][5]):
