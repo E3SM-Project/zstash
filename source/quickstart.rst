@@ -7,8 +7,12 @@ Quickstart guide
 Installation
 ============
 
-First, make sure that Python 2.7 is loaded in your environment. On NERSC 
-machines: ::
+First, make sure that you're using ``bash``. ::
+
+   $ bash
+
+You must have Anaconda installed as well. On NERSC machines,
+you can load the Anaconda module instead of installing it yourself. ::
 
    $ module load python/2.7-anaconda-4.4
 
