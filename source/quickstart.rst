@@ -77,6 +77,27 @@ Additional optional arguments:
 Local tar files as well as the sqlite3 index database (index.db) will be stored
 under ``<local path>/zstash``.
 
+**After you run** ``zstash create`` **it's highly recommended that you
+run** ``zstash check``, **detailed in the section below.**
+
+Check
+=====
+
+To verify that your files were uploaded on HPSS successfully,
+go to a **new, empty directory** and run: ::
+
+   $ zstash check --hpss=<path to HPSS> [files]
+
+where
+
+* ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system.
+* ``[files]`` is a list of files to check (standard wildcards supported).
+
+  * Leave empty to check all the files.
+  * You can even pass in the name of a specific tar archive to check
+    all files from that tar archive.
+
+
 Extract
 =======
 
@@ -87,9 +108,11 @@ To extract files from an existing zstash archive into current <mydir>: ::
 
 where
 
-* ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system,
-* and ``[files]`` is a list of files to extract (standard wildcards supported). Leave empty 
-  to extract all the files.
+* ``[files]`` is a list of files to extract (standard wildcards supported).
+
+  * Leave empty to extract all the files.
+  * You can even pass in the name of a specific tar archive to extract
+    all files from that tar archive.
 
 Update
 ======

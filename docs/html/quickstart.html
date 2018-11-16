@@ -93,6 +93,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#installation-from-source">Installation from source</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#archive">Archive</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#check">Check</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#extract">Extract</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#update">Update</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#list-content">List content</a></li>
@@ -234,6 +235,26 @@ individual files are never split up between different tar files).</li>
 </ul>
 <p>Local tar files as well as the sqlite3 index database (index.db) will be stored
 under <code class="docutils literal notranslate"><span class="pre">&lt;local</span> <span class="pre">path&gt;/zstash</span></code>.</p>
+<p><strong>After you run</strong> <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">create</span></code> <strong>it’s highly recommended that you
+run</strong> <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code>, <strong>detailed in the section below.</strong></p>
+</div>
+<div class="section" id="check">
+<h2>Check<a class="headerlink" href="#check" title="Permalink to this headline">¶</a></h2>
+<p>To verify that your files were uploaded on HPSS successfully,
+go to a <strong>new, empty directory</strong> and run:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash check --hpss=&lt;path to HPSS&gt; [files]
+</pre></div>
+</div>
+<p>where</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system.</li>
+<li><code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to check (standard wildcards supported).<ul>
+<li>Leave empty to check all the files.</li>
+<li>You can even pass in the name of a specific tar archive to check
+all files from that tar archive.</li>
+</ul>
+</li>
+</ul>
 </div>
 <div class="section" id="extract">
 <h2>Extract<a class="headerlink" href="#extract" title="Permalink to this headline">¶</a></h2>
@@ -244,9 +265,12 @@ $ zstash extract --hpss=&lt;path to HPSS&gt; [files]
 </div>
 <p>where</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system,</li>
-<li>and <code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to extract (standard wildcards supported). Leave empty
-to extract all the files.</li>
+<li><code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to extract (standard wildcards supported).<ul>
+<li>Leave empty to extract all the files.</li>
+<li>You can even pass in the name of a specific tar archive to extract
+all files from that tar archive.</li>
+</ul>
+</li>
 </ul>
 </div>
 <div class="section" id="update">
