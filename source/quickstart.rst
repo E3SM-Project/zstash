@@ -97,6 +97,32 @@ where
   * You can even pass in the name of a specific tar archive to check
     all files from that tar archive.
 
+The tar archives are downloaded and each file in it is checked.
+
+After the checking is done, a list of all corrupted files in the HPSS archive,
+along with what tar archive they belong in is listed. Below is an example:  ::
+
+    INFO: Opening tar archive zstash/000000.tar
+    INFO: Checking archive/atm/hist/20180129.DECKv1b_piControl.ne30_oEC.edison.cam.h0.0001-01.nc
+    DEBUG: Valid md5: cfb388d9c4ffe3bf45985fa470855801 archive/atm/hist/20180129.DECKv1b_piControl.ne30_oEC.edison.cam.h0.0001-01.nc
+    INFO: Checking archive/atm/hist/20180129.DECKv1b_piControl.ne30_oEC.edison.cam.h0.0001-02.nc
+    DEBUG: Valid md5: ce9bb79fb60fdef2ca4c2c29afc54776 archive/atm/hist/20180129.DECKv1b_piControl.ne30_oEC.edison.cam.h0.0001-02.nc
+    ...
+    ERROR: Encountered an error for files:
+    ERROR: archive/atm/hist/20180129.DECKv1b_piControl.ne30_oEC.edison.cam.h0.0214-06.nc in 00000a.tar
+    ERROR: archive/atm/hist/20180129.DECKv1b_piControl.ne30_oEC.edison.cam.h0.0214-07.nc in 00000a.tar
+    ERROR: archive/atm/hist/20180129.DECKv1b_piControl.ne30_oEC.edison.cam.h0.0214-08.nc in 00000a.tar
+    ...
+    ERROR: archive/ocn/hist/mpaso.hist.am.timeSeriesStatsMonthly.0085-08-01.nc in 000029.tar
+    ERROR: archive/ocn/hist/mpaso.hist.am.timeSeriesStatsMonthly.0085-09-01.nc in 000029.tar
+    ERROR: The following tar archives had errors:
+    ERROR: 00000a.tar
+    ERROR: 000029.tar
+
+If you encounter an error, **save your original data**.
+You may need to reupload it via ``zstash create``.
+Please contact the zstash development team, we're working on
+identifying what causes these issues.
 
 Extract
 =======
