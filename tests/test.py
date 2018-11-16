@@ -12,7 +12,7 @@ def write_file(name, contents):
 
 def run_cmd(cmd):
     """
-    Run a command while printing and returning the stdout and stderr
+    Run a command while printing and returning the stdout and stderr.
     """
     print('+ {}'.format(cmd))
     if isinstance(cmd, str):
@@ -29,9 +29,9 @@ def str_not_in(output, msg):
     """
     if msg in output:
         print('*'*40)
-        print('This was not supposed to be found: {}',format(msg))
+        print('This was not supposed to be found: {}'.format(msg))
         print('*'*40)
-        exit()
+        stop()
 
 def str_in(output, msg):
     """
@@ -41,7 +41,7 @@ def str_in(output, msg):
         print('*'*40)
         print('This was supposed to be found, but was not: {}'.format(msg))
         print('*'*40)
-        exit()
+        stop()
 
 def cleanup():
     """
@@ -55,15 +55,15 @@ def cleanup():
     cmd = 'hsi rm -R {}'.format(HPSS_PATH)
     run_cmd(cmd)
 
-def exit():
+def stop():
     """
-    Cleanup and stop running this script
+    Cleanup and stop running this script.
     """
     cleanup()
     sys.exit()
 
 
-# TODO: Change the hpss directory to a dir that's accessable to everyone
+# TODO: Change the hpss directory to a dir that's accessable to everyone.
 HPSS_PATH='/home/z/zshaheen/zstash_test'
 
 # Create files and directories
@@ -96,6 +96,7 @@ print('Adding files to HPSS')
 cmd = 'zstash create --hpss={} zstash_test'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
 str_in(output+err, 'Transferring file to HPSS')
+str_not_in(output+err, 'ERROR')
 
 print('Testing chgrp')
 GROUP = 'acme'
@@ -103,13 +104,16 @@ print('First, make sure that the files are not already in the {} group'.format(G
 cmd = 'hsi ls -l {}'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
 str_not_in(output+err, GROUP)
+str_not_in(output+err, 'ERROR')
 print('Running zstash chgrp')
 cmd = 'zstash chgrp -R {} {}'.format(GROUP, HPSS_PATH)
 output, err = run_cmd(cmd)
+str_not_in(output+err, 'ERROR')
 print('Now check that the files are in the {} group'.format(GROUP))
 cmd = 'hsi ls -l {}'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
 str_in(output+err, 'acme')
+str_not_in(output+err, 'ERROR')
 
 print('Running update on the newly created directory, nothing should happen')
 os.chdir('zstash_test')
@@ -117,7 +121,7 @@ cmd = 'zstash update --hpss={}'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
 os.chdir('../')
 str_in(output+err, 'Nothing to update')
-
+str_not_in(output+err, 'ERROR')
 
 print('Testing update with an actual change')
 if not os.path.exists('zstash_test/dir2'):
@@ -130,10 +134,17 @@ cmd = 'zstash update --hpss={}'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
 os.chdir('../')
 str_in(output+err, 'Transferring file to HPSS')
+str_not_in(output+err, 'ERROR')
 # Make sure none of the old files are moved
 str_not_in(output+err, 'file0')
 str_not_in(output+err, 'file_empty')
 str_not_in(output+err, 'empty_dir')
+str_not_in(output+err, 'ERROR')
+
+print('Testing the checking functionality')
+cmd = 'zstash check --hpss={}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+str_not_in(output+err, 'ERROR')
 
 print('Testing the extract functionality')
 os.rename('zstash_test', 'zstash_test_backup')
@@ -150,6 +161,7 @@ str_in(output+err, 'Extracting file_empty.txt')
 str_in(output+err, 'Extracting dir/file1.txt')
 str_in(output+err, 'Extracting empty_dir')
 str_in(output+err, 'Extracting dir2/file2.txt')
+str_not_in(output+err, 'ERROR')
 
 print('Running update on the newly extracted directory, nothing should happen')
 os.chdir('zstash_test')
@@ -157,6 +169,7 @@ cmd = 'zstash update --hpss={}'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
 os.chdir('../')
 str_in(output+err, 'Nothing to update')
+str_not_in(output+err, 'ERROR')
 
 print('Verifying the data from database with the actual files')
 # Checksums from HPSS

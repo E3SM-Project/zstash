@@ -11,11 +11,14 @@ from hpss import hpss_get
 from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
 
 
-def extract():
+def extract(keep_files=True):
+    """
+    Given an HPSS path in the zstash database or passed via the command line,
+    extract the archived data based on the file pattern (if given).
+    """
     parser = argparse.ArgumentParser(
         usage='zstash extract [<args>] [files]',
         description='Extract files from existing archive')
-    required = parser.add_argument_group('required named arguments')
     optional = parser.add_argument_group('optional named arguments')
     optional.add_argument('--hpss', type=str, help='path to HPSS storage')
     parser.add_argument('files', nargs='*', default=['*'])
@@ -50,7 +53,8 @@ def extract():
         config.hpss = args.hpss
 
     # Start doing actual work
-    logging.debug('Running zstash extract')
+    cmd = 'extract' if keep_files else 'check'
+    logging.debug('Running zstash ' + cmd)
     logging.debug('Local path : %s' % (config.path))
     logging.debug('HPSS path  : %s' % (config.hpss))
     logging.debug('Max size  : %i' % (config.maxsize))
@@ -59,7 +63,7 @@ def extract():
     # Find matching files
     matches = []
     for file in args.files:
-        cur.execute(u"select * from files where name GLOB ?", (file,))
+        cur.execute(u"select * from files where name GLOB ? or tar GLOB ?", (file, file))
         matches = matches + cur.fetchall()
 
     # Remove duplicates
@@ -69,15 +73,32 @@ def extract():
     matches = sorted(matches, key=lambda x: (x[5], x[6]))
 
     # Retrieve from tapes
-    extractFiles(matches)
+    failures = extractFiles(matches, keep_files)
 
     # Close database
     logging.debug('Closing index database')
     con.close()
 
+    if failures:
+        logging.error('Encountered an error for files:')
+        for fail in failures:
+            logging.error('{} in {}'.format(fail[1], fail[5]))
 
-def extractFiles(files):
+        broken_tars = set(sorted([f[5] for f in failures]))
+        logging.error('The following tar archives had errors:')
+        for tar in broken_tars:
+            logging.error(tar)
 
+
+def extractFiles(files, keep_files):
+    """
+    Given a list of database rows, extract the files from the
+    tar archives to the current location on disk.
+
+    If keep_files is False, the files are not extracted.
+    This is used for when checking if the files in an HPSS
+    repository are valid.
+    """
     failures = []
     tfname = None
     newtar = True
@@ -97,7 +118,8 @@ def extractFiles(files):
             tar = tarfile.open(tfname, "r")
 
         # Extract file
-        logging.info('Extracting %s' % (file[1]))
+        cmd = 'Extracting' if keep_files else 'Checking'
+        logging.info(cmd + ' %s' % (file[1]))
         try:
 
             # Seek file position
@@ -108,39 +130,48 @@ def extractFiles(files):
 
             if tarinfo.isfile():
                 # fileobj to extract
-                fin = tar.extractfile(tarinfo)
-                fname = tarinfo.name
-                path, name = os.path.split(fname)
-                if path != '':
-                    if not os.path.isdir(path):
-                        os.makedirs(path)
-                fout = open(fname, 'w')
-                hash_md5 = hashlib.md5()
-                while True:
-                    s = fin.read(BLOCK_SIZE)
-                    if len(s) > 0:
-                        fout.write(s)
-                        hash_md5.update(s)
-                    if len(s) < BLOCK_SIZE:
-                        break
-                fin.close()
-                fout.close()
+                try:
+                    fin = tar.extractfile(tarinfo)
+                    fname = tarinfo.name
+                    path, name = os.path.split(fname)
+                    if path != '':
+                        if not os.path.isdir(path):
+                            os.makedirs(path)
+                    if keep_files:
+                        fout = open(fname, 'w')
+
+                    hash_md5 = hashlib.md5()
+                    while True:
+                        s = fin.read(BLOCK_SIZE)
+                        if len(s) > 0:
+                            hash_md5.update(s)
+                            if keep_files:
+                                fout.write(s)
+                        if len(s) < BLOCK_SIZE:
+                            break
+                finally:
+                    fin.close()
+                    if keep_files:
+                        fout.close()
+
                 md5 = hash_md5.hexdigest()
-                tar.chown(tarinfo, fname)
-                tar.chmod(tarinfo, fname)
-                tar.utime(tarinfo, fname)
-                # Verify size
-                if os.path.getsize(fname) != file[2]:
-                    logging.error('size mismatch for: %s' % (fname))
+                if keep_files:
+                    tar.chown(tarinfo, fname)
+                    tar.chmod(tarinfo, fname)
+                    tar.utime(tarinfo, fname)
+                    # Verify size
+                    if os.path.getsize(fname) != file[2]:
+                        logging.error('size mismatch for: %s' % (fname))
                 # Verify md5 checksum
                 if md5 != file[4]:
                     logging.error('md5 mismatch for: %s' % (fname))
                     logging.error('md5 of extracted file: %s' % (md5))
                     logging.error('md5 of original file:  %s' % (file[4]))
+                    failures.append(file)
                 else:
                     logging.debug('Valid md5: %s %s' % (md5, fname))
 
-            else:
+            elif keep_files:
                 tar.extract(tarinfo)
                 # Note: tar.extract() will not restore time stamps of symbolic
                 # links. Could not find a Python-way to restore it either, so
@@ -155,6 +186,7 @@ def extractFiles(files):
         except:
             traceback.print_exc()
             logging.error('Retrieving %s' % (file[1]))
+            failures.append(file)
 
         # Close current archive?
         if (i == nfiles-1 or files[i][5] != files[i+1][5]):
@@ -165,3 +197,5 @@ def extractFiles(files):
 
             # Open new archive next time
             newtar = True
+
+    return failures
