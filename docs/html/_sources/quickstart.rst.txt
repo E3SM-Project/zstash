@@ -11,7 +11,7 @@ First, make sure that you're using ``bash``. ::
 
    $ bash
 
-You must have Anaconda installed as well. On NERSC machines,
+You must have Anaconda installed as well. On NERSC Edison and Cori machines,
 you can load the Anaconda module instead of installing it yourself. ::
 
    $ module load python/2.7-anaconda-4.4
@@ -25,6 +25,12 @@ Or you can install zstash in an existing environment. ::
 
    $ conda install zstash -c e3sm -c conda-forge 
 
+On NERSC, after installing on Edison or Cori, you may see improved performance 
+running zstash on the data transfer nodes (dtn{01..15}.nersc.gov). However, modules are
+not directly available there, so you will need to manually activate Anaconda: ::
+
+   $ . /global/common/edison/software/python/2.7-anaconda-4.4/etc/profile.d/conda.sh
+   $ export PATH="/global/common/edison/software/python/2.7-anaconda-4.4/bin:$PATH"
 
 Installation from source
 ========================

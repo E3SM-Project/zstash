@@ -167,12 +167,12 @@
 <h2>Basic<a class="headerlink" href="#basic" title="Permalink to this headline">¶</a></h2>
 <p>Simple illustration how to <strong>archive</strong> output from an ACME simulation located
 under <cite>$CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison</cite>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
 $ zstash create --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison .
 </pre></div>
 </div>
 <p>Once done, you should see the archive files on hsi:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ hsi
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ hsi
 &gt; cd test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
 &gt; ls
 000000.tar   index.db
@@ -181,25 +181,25 @@ $ zstash create --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison .
 <p>The data from this test simulation is small, so in this case there is only a single tar
 file (000000.tar) and the index database (index.db).</p>
 <p>We now run again with the ‘<strong>update</strong>’ functionality:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
 $ zstash update --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
 </pre></div>
 </div>
 <p>Since nothing has changed, zstash simply returns</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Nothing</span> <span class="n">to</span> <span class="n">update</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Nothing</span> <span class="n">to</span> <span class="n">update</span>
 </pre></div>
 </div>
 <p>Now, let’s add a new file</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ mkdir new
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ mkdir new
 $ echo &quot;This is a new file...&quot; &gt; new/file.txt
 </pre></div>
 </div>
 <p>and rerun zstash update</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ zstash update --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ zstash update --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
 </pre></div>
 </div>
 <p>Zstash recognizes the presence of a new file and adds it to the archive:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Gathering</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">files</span> <span class="n">to</span> <span class="n">archive</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Gathering</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">files</span> <span class="n">to</span> <span class="n">archive</span>
 <span class="n">INFO</span><span class="p">:</span> <span class="n">Creating</span> <span class="n">new</span> <span class="n">tar</span> <span class="n">archive</span> <span class="mf">000001.</span><span class="n">tar</span>
 <span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">new</span><span class="o">/</span><span class="n">file</span><span class="o">.</span><span class="n">txt</span>
 <span class="n">DEBUG</span><span class="p">:</span> <span class="n">Closing</span> <span class="n">tar</span> <span class="n">archive</span> <span class="mf">000001.</span><span class="n">tar</span>
@@ -213,12 +213,12 @@ and therefore could potentially hold more data. This is a design choice that
 was made out of caution to avoid the risk of damaging an existing tar file by
 appending to it.</p>
 <p>To <strong>extract all</strong> the files</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/test
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/test
 $ zstash extract --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
 </pre></div>
 </div>
 <p>or to <strong>extract selected files</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/test
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/test
 $ zstash extract --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
   *.cam.h0*.nc *.clm2.h0*.nc
 </pre></div>
@@ -229,14 +229,14 @@ $ zstash extract --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
 <p>You may decide that there are certain type of files that do not need archiving.
 For example, if you want to skip archiving *.o and *.mod files under the build
 subdirectory:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
 $ zstash create --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
   --exclude=&quot;build/*/*.o&quot;,&quot;build/*/*.mod&quot; .
 </pre></div>
 </div>
 <p>Running update with the same exclude patterns will also ignore these files
 rather than r=treating them as new:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ zstash update --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ zstash update --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
   --exclude=&quot;build/*/*.o&quot;,&quot;build/*/*.mod&quot;
 
 [...]
