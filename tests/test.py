@@ -98,6 +98,16 @@ output, err = run_cmd(cmd)
 str_in(output+err, 'Transferring file to HPSS')
 str_not_in(output+err, 'ERROR')
 
+print('Testing ls')
+cmd = 'zstash ls --hpss={}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+str_in(output+err, 'file0.txt')
+str_not_in(output+err, 'ERROR')
+cmd = 'zstash ls -l --hpss={}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+str_in(output+err, 'tar')
+str_not_in(output+err, 'ERROR')
+
 print('Testing chgrp')
 GROUP = 'acme'
 print('First, make sure that the files are not already in the {} group'.format(GROUP))

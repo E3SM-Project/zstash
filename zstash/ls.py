@@ -69,6 +69,12 @@ def ls():
     # Sort by tape and order within tapes (offset)
     matches = sorted(matches, key=lambda x: (x[5], x[6]))
 
+    if args.long:
+        # Get the names of the cols
+        cur.execute(u"PRAGMA table_info(files);")
+        cols = [str(col_info[1]) for col_info in cur.fetchall()]
+        print('\t'.join(cols))
+
     # Print the results
     for match in matches:
         if args.long:
