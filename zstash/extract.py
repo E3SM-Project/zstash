@@ -27,7 +27,7 @@ def extract(keep_files=True):
     # Open database
     logging.debug('Opening index database')
     if not os.path.exists(DB_FILENAME):
-        # will need to retrieve from HPSS
+        # Will need to retrieve from HPSS
         if args.hpss is not None:
             config.hpss = args.hpss
             hpss_get(config.hpss, DB_FILENAME)

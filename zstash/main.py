@@ -11,6 +11,7 @@ from update import update
 from extract import extract
 from chgrp import chgrp
 from check import check
+from ls import ls
 
 
 # -----------------------------------------------------------------------------
@@ -27,6 +28,7 @@ Available zstash commands:
   extract    extract files from archive
   chgrp      change the group of an archive
   check      check the integrity of the files in the archive
+  ls         list the files in an archive
 
 For help with a specific command
   zstash command --help
@@ -47,6 +49,8 @@ For help with a specific command
         chgrp()
     elif args.command == 'check':
         check()
+    elif args.command == 'ls':
+        ls()
     else:
         print 'Unrecognized command'
         parser.print_help()
