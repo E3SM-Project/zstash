@@ -89,6 +89,8 @@ run** ``zstash check``, **detailed in the section below.**
 Check
 =====
 
+Note: Most of the commands for this are the same for ``zstash extract`` and ``zstash ls``.
+
 To verify that your files were uploaded on HPSS successfully,
 go to a **new, empty directory** and run: ::
 
@@ -133,6 +135,8 @@ identifying what causes these issues.
 Extract
 =======
 
+Note: Most of the commands for this are the same for ``zstash check`` and ``zstash ls``.
+
 To extract files from an existing zstash archive into current <mydir>: ::
 
    $ cd <mydir>
@@ -145,6 +149,60 @@ where
   * Leave empty to extract all the files.
   * You can even pass in the name of a specific tar archive to extract
     all files from that tar archive.
+
+You must pass in the **full path** for the file(s).
+
+  * For help finding the full paths, you can use ``zstash ls``.
+    Please see below for the documentation on this.
+  * Ex: Downloading ``archive/logs/atm.log.8229335.180130-143234.gz`` ::
+
+      $ zstash extract --hpss=/home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison archive/logs/atm.log.8229335.180130-143234.gz
+      DEBUG: Opening index database
+      DEBUG: Running zstash extract
+      DEBUG: Local path : /global/cscratch1/sd/golaz/ACME_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+      DEBUG: HPSS path  : /home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+      DEBUG: Max size  : 274877906944
+      DEBUG: Keep local tar files  : False
+      INFO: Opening tar archive zstash/000018.tar
+      INFO: Extracting archive/logs/atm.log.8229335.180130-143234.gz
+      DEBUG: Valid md5: e8161bba53500848dc917258d1d8f56a archive/logs/atm.log.8229335.180130-143234.gz
+      DEBUG: Closing tar archive zstash/000018.tar
+      DEBUG: Closing index database
+
+However, recall that wildcards are supported, so this full path isn't needed when using them.
+
+  * As in the example below, when compared to the example above, you might also
+    inadvertently download more files than you wanted.
+  * Ex: Downloading ``*atm.log.8229335.180130-143234.gz*`` ::
+  
+      $ zstash extract --hpss=/home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison *atm.log.8229335.180130-143234.gz*
+      DEBUG: Opening index database
+      DEBUG: Running zstash extract
+      DEBUG: Local path : /global/cscratch1/sd/golaz/ACME_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+      DEBUG: HPSS path  : /home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+      DEBUG: Max size  : 274877906944
+      DEBUG: Keep local tar files  : False
+      INFO: Opening tar archive zstash/000018.tar
+      INFO: Extracting archive/logs/atm.log.8229335.180130-143234.gz
+      DEBUG: Valid md5: e8161bba53500848dc917258d1d8f56a archive/logs/atm.log.8229335.180130-143234.gz
+      DEBUG: Closing tar archive zstash/000018.tar
+      INFO: Opening tar archive zstash/000047.tar
+      INFO: Extracting case_scripts/logs/atm.log.8229335.180130-143234.gz
+      DEBUG: Valid md5: e8161bba53500848dc917258d1d8f56a case_scripts/logs/atm.log.8229335.180130-143234.gz
+      DEBUG: Closing tar archive zstash/000047.tar
+      DEBUG: Closing index database
+
+All of the files are grouped into 256GB tar archives by default.
+Look at the ``--maxsize`` argument for ``zstash create`` for more information.
+So even if your file is a few MB in size, the entire tar archive your file is in needs to be downloaded.
+
+  * Downloading a 256GB file on Cori/Edison takes about 30 mins.
+  * Using the data transfer nodes (DTN) will be about 3x faster, according to some users.
+  * Again, to see which of your files are in what tar archives, use ``zstash ls -l``.
+
+    * Note the ``-l`` argument.
+    * The sixth column is the tar archive that the file is in.
+    * Please see the List documentation below for more information.
 
 Update
 ======
@@ -164,23 +222,23 @@ where
 List content
 ============
 
-Zstash does not yet include a built-in functionality to list content of archives.
-However, the content can be obtained by directly querying the index database.
+Note: Most of the commands for this are the same for ``zstash extract`` and ``zstash check``.
 
-To list **all the files** in an archive: ::
+You can view the files in an existing zstash archive:  ::
 
-   $ cd <mydir>
-   $ sqlite3 zstash/index.db "select * from files;"
+   $ zstash ls --hpss=<path to HPSS> [files]
 
-For each file, the following information will be printed ::
+where
 
-   file # | path | size | modification time |md5 checksum |tar archive | offset (within tar)
+* ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system,
+* ``-l`` an optional argument to display more information.
 
-To list **files matching a specified pattern** (for example \*/run/\*.nc): ::
+Below is an example. Note the names of the columns:  ::
 
-   $ sqlite3 zstash/index.db "select * from files where name glob '*/run/*.nc';"
-
-To list **all the files in a specific tar fole** (for example 000000.tar): ::
-
-   $ sqlite3 zstash/index.db "select * from files where tar is '000000.tar';"
-
+   $ zstash ls -l --hpss=/home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison *atm.log.8229335.180130-143234.gz*
+   DEBUG: Opening index database
+   DEBUG: Running zstash ls
+   DEBUG: HPSS path  : /home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+   id	name	size	mtime	md5	tar	offset
+   30482	archive/logs/atm.log.8229335.180130-143234.gz	20156521	2018-02-01 10:02:35	e8161bba53500848dc917258d1d8f56a	000018.tar	131697281536	
+   51608	case_scripts/logs/atm.log.8229335.180130-143234.gz	20156521	2018-02-01 10:02:52	e8161bba53500848dc917258d1d8f56a	000047.tar	202381473280	

@@ -170,28 +170,28 @@
 <h1>Quickstart guide<a class="headerlink" href="#quickstart-guide" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
-<p>First, make sure that you’re using <code class="docutils literal"><span class="pre">bash</span></code>.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ bash
+<p>First, make sure that you’re using <code class="docutils literal notranslate"><span class="pre">bash</span></code>.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ bash
 </pre></div>
 </div>
 <p>You must have Anaconda installed as well. On NERSC Edison and Cori machines,
 you can load the Anaconda module instead of installing it yourself.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ module load python/2.7-anaconda-4.4
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ module load python/2.7-anaconda-4.4
 </pre></div>
 </div>
 <p>Create a new Anaconda environment with zstash installed and activate it.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ conda create -n zstash_env -c e3sm -c conda-forge zstash
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda create -n zstash_env -c e3sm -c conda-forge zstash
 $ source activate zstash_env
 </pre></div>
 </div>
 <p>Or you can install zstash in an existing environment.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ conda install zstash -c e3sm -c conda-forge
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda install zstash -c e3sm -c conda-forge
 </pre></div>
 </div>
 <p>On NERSC, after installing on Edison or Cori, you may see improved performance
 running zstash on the data transfer nodes (dtn{01..15}.nersc.gov). However, modules are
 not directly available there, so you will need to manually activate Anaconda:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ . /global/common/edison/software/python/2.7-anaconda-4.4/etc/profile.d/conda.sh
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ . /global/common/edison/software/python/2.7-anaconda-4.4/etc/profile.d/conda.sh
 $ export PATH=&quot;/global/common/edison/software/python/2.7-anaconda-4.4/bin:$PATH&quot;
 </pre></div>
 </div>
@@ -205,15 +205,15 @@ Make sure you’re in the zstash environment before executing the below instruct
 <p>Then, use the command below to remove just zstash, keeping all of the dependencies
 in the environment.
 We’ll be manually installing the latest zstash from master soon.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ conda remove zstash --force
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda remove zstash --force
 </pre></div>
 </div>
 <p>Clone the zstash repository.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ git clone https://github.com/E3SM-Project/zstash.git
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ git clone https://github.com/E3SM-Project/zstash.git
 </pre></div>
 </div>
 <p>Install the latest zstash.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd zstash/
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ cd zstash/
 $ python setup.py install
 </pre></div>
 </div>
@@ -221,41 +221,42 @@ $ python setup.py install
 <div class="section" id="archive">
 <h2>Archive<a class="headerlink" href="#archive" title="Permalink to this headline">¶</a></h2>
 <p>To create a new zstash archive:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ zstash create --hpss=&lt;path to HPSS&gt; &lt;local path&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash create --hpss=&lt;path to HPSS&gt; &lt;local path&gt;
 </pre></div>
 </div>
 <p>where</p>
 <ul class="simple">
-<li><code class="docutils literal"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system,</li>
-<li>and <code class="docutils literal"><span class="pre">&lt;local</span> <span class="pre">path&gt;</span></code> specifies the path to the local directory that should be archived.</li>
+<li><code class="docutils literal notranslate"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system,</li>
+<li>and <code class="docutils literal notranslate"><span class="pre">&lt;local</span> <span class="pre">path&gt;</span></code> specifies the path to the local directory that should be archived.</li>
 </ul>
 <p>Additional optional arguments:</p>
 <ul class="simple">
-<li><code class="docutils literal"><span class="pre">--exclude</span></code> comma separated list of file patterns to exclude</li>
-<li><code class="docutils literal"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
+<li><code class="docutils literal notranslate"><span class="pre">--exclude</span></code> comma separated list of file patterns to exclude</li>
+<li><code class="docutils literal notranslate"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
 they have been transferred to HPSS. Normally, they are deleted after
 successful transfer.</li>
-<li><code class="docutils literal"><span class="pre">--maxsize</span> <span class="pre">MAXSIZE</span></code> specifies the maximum size (in GB) for tar files.
+<li><code class="docutils literal notranslate"><span class="pre">--maxsize</span> <span class="pre">MAXSIZE</span></code> specifies the maximum size (in GB) for tar files.
 The default is 256 GB. Zstash will create tar files that are smaller
 than MAXSIZE except when individual input files exceed MAXSIZE (as
 individual files are never split up between different tar files).</li>
 </ul>
 <p>Local tar files as well as the sqlite3 index database (index.db) will be stored
-under <code class="docutils literal"><span class="pre">&lt;local</span> <span class="pre">path&gt;/zstash</span></code>.</p>
-<p><strong>After you run</strong> <code class="docutils literal"><span class="pre">zstash</span> <span class="pre">create</span></code> <strong>it’s highly recommended that you
-run</strong> <code class="docutils literal"><span class="pre">zstash</span> <span class="pre">check</span></code>, <strong>detailed in the section below.</strong></p>
+under <code class="docutils literal notranslate"><span class="pre">&lt;local</span> <span class="pre">path&gt;/zstash</span></code>.</p>
+<p><strong>After you run</strong> <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">create</span></code> <strong>it’s highly recommended that you
+run</strong> <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code>, <strong>detailed in the section below.</strong></p>
 </div>
 <div class="section" id="check">
 <h2>Check<a class="headerlink" href="#check" title="Permalink to this headline">¶</a></h2>
+<p>Note: Most of the commands for this are the same for <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">extract</span></code> and <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">ls</span></code>.</p>
 <p>To verify that your files were uploaded on HPSS successfully,
 go to a <strong>new, empty directory</strong> and run:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ zstash check --hpss=&lt;path to HPSS&gt; [files]
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash check --hpss=&lt;path to HPSS&gt; [files]
 </pre></div>
 </div>
 <p>where</p>
 <ul class="simple">
-<li><code class="docutils literal"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system.</li>
-<li><code class="docutils literal"><span class="pre">[files]</span></code> is a list of files to check (standard wildcards supported).<ul>
+<li><code class="docutils literal notranslate"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system.</li>
+<li><code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to check (standard wildcards supported).<ul>
 <li>Leave empty to check all the files.</li>
 <li>You can even pass in the name of a specific tar archive to check
 all files from that tar archive.</li>
@@ -265,7 +266,7 @@ all files from that tar archive.</li>
 <p>The tar archives are downloaded and each file in it is checked.</p>
 <p>After the checking is done, a list of all corrupted files in the HPSS archive,
 along with what tar archive they belong in is listed. Below is an example:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>INFO: Opening tar archive zstash/000000.tar
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>INFO: Opening tar archive zstash/000000.tar
 INFO: Checking archive/atm/hist/20180129.DECKv1b_piControl.ne30_oEC.edison.cam.h0.0001-01.nc
 DEBUG: Valid md5: cfb388d9c4ffe3bf45985fa470855801 archive/atm/hist/20180129.DECKv1b_piControl.ne30_oEC.edison.cam.h0.0001-01.nc
 INFO: Checking archive/atm/hist/20180129.DECKv1b_piControl.ne30_oEC.edison.cam.h0.0001-02.nc
@@ -284,61 +285,130 @@ ERROR: 000029.tar
 </pre></div>
 </div>
 <p>If you encounter an error, <strong>save your original data</strong>.
-You may need to reupload it via <code class="docutils literal"><span class="pre">zstash</span> <span class="pre">create</span></code>.
+You may need to reupload it via <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">create</span></code>.
 Please contact the zstash development team, we’re working on
 identifying what causes these issues.</p>
 </div>
 <div class="section" id="extract">
 <h2>Extract<a class="headerlink" href="#extract" title="Permalink to this headline">¶</a></h2>
+<p>Note: Most of the commands for this are the same for <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> and <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">ls</span></code>.</p>
 <p>To extract files from an existing zstash archive into current &lt;mydir&gt;:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
 $ zstash extract --hpss=&lt;path to HPSS&gt; [files]
 </pre></div>
 </div>
 <p>where</p>
 <ul class="simple">
-<li><code class="docutils literal"><span class="pre">[files]</span></code> is a list of files to extract (standard wildcards supported).<ul>
+<li><code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to extract (standard wildcards supported).<ul>
 <li>Leave empty to extract all the files.</li>
 <li>You can even pass in the name of a specific tar archive to extract
 all files from that tar archive.</li>
 </ul>
 </li>
 </ul>
+<p>You must pass in the <strong>full path</strong> for the file(s).</p>
+<blockquote>
+<div><ul>
+<li><p class="first">For help finding the full paths, you can use <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">ls</span></code>.
+Please see below for the documentation on this.</p>
+</li>
+<li><p class="first">Ex: Downloading <code class="docutils literal notranslate"><span class="pre">archive/logs/atm.log.8229335.180130-143234.gz</span></code></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash extract --hpss=/home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison archive/logs/atm.log.8229335.180130-143234.gz
+DEBUG: Opening index database
+DEBUG: Running zstash extract
+DEBUG: Local path : /global/cscratch1/sd/golaz/ACME_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+DEBUG: HPSS path  : /home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+DEBUG: Max size  : 274877906944
+DEBUG: Keep local tar files  : False
+INFO: Opening tar archive zstash/000018.tar
+INFO: Extracting archive/logs/atm.log.8229335.180130-143234.gz
+DEBUG: Valid md5: e8161bba53500848dc917258d1d8f56a archive/logs/atm.log.8229335.180130-143234.gz
+DEBUG: Closing tar archive zstash/000018.tar
+DEBUG: Closing index database
+</pre></div>
+</div>
+</li>
+</ul>
+</div></blockquote>
+<p>However, recall that wildcards are supported, so this full path isn’t needed when using them.</p>
+<blockquote>
+<div><ul>
+<li><p class="first">As in the example below, when compared to the example above, you might also
+inadvertently download more files than you wanted.</p>
+</li>
+<li><p class="first">Ex: Downloading <code class="docutils literal notranslate"><span class="pre">*atm.log.8229335.180130-143234.gz*</span></code></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash extract --hpss=/home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison *atm.log.8229335.180130-143234.gz*
+DEBUG: Opening index database
+DEBUG: Running zstash extract
+DEBUG: Local path : /global/cscratch1/sd/golaz/ACME_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+DEBUG: HPSS path  : /home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+DEBUG: Max size  : 274877906944
+DEBUG: Keep local tar files  : False
+INFO: Opening tar archive zstash/000018.tar
+INFO: Extracting archive/logs/atm.log.8229335.180130-143234.gz
+DEBUG: Valid md5: e8161bba53500848dc917258d1d8f56a archive/logs/atm.log.8229335.180130-143234.gz
+DEBUG: Closing tar archive zstash/000018.tar
+INFO: Opening tar archive zstash/000047.tar
+INFO: Extracting case_scripts/logs/atm.log.8229335.180130-143234.gz
+DEBUG: Valid md5: e8161bba53500848dc917258d1d8f56a case_scripts/logs/atm.log.8229335.180130-143234.gz
+DEBUG: Closing tar archive zstash/000047.tar
+DEBUG: Closing index database
+</pre></div>
+</div>
+</li>
+</ul>
+</div></blockquote>
+<p>All of the files are grouped into 256GB tar archives by default.
+Look at the <code class="docutils literal notranslate"><span class="pre">--maxsize</span></code> argument for <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">create</span></code> for more information.
+So even if your file is a few MB in size, the entire tar archive your file is in needs to be downloaded.</p>
+<blockquote>
+<div><ul class="simple">
+<li>Downloading a 256GB file on Cori/Edison takes about 30 mins.</li>
+<li>Using the data transfer nodes (DTN) will be about 3x faster, according to some users.</li>
+<li>Again, to see which of your files are in what tar archives, use <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">ls</span> <span class="pre">-l</span></code>.<ul>
+<li>Note the <code class="docutils literal notranslate"><span class="pre">-l</span></code> argument.</li>
+<li>The sixth column is the tar archive that the file is in.</li>
+<li>Please see the List documentation below for more information.</li>
+</ul>
+</li>
+</ul>
+</div></blockquote>
 </div>
 <div class="section" id="update">
 <h2>Update<a class="headerlink" href="#update" title="Permalink to this headline">¶</a></h2>
 <p>An existing archive can be updated to add new or modified files into an existing zstash
 archive:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
 $ zstash update --hpss=&lt;path to HPSS&gt; [files]
 </pre></div>
 </div>
 <p>where</p>
 <ul class="simple">
-<li><code class="docutils literal"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system,</li>
-<li><code class="docutils literal"><span class="pre">--exclude</span></code> comma separated list of file patterns to exclude,</li>
-<li><code class="docutils literal"><span class="pre">--dry-run</span></code> dry run, only list files to be updated in archive.</li>
+<li><code class="docutils literal notranslate"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--exclude</span></code> comma separated list of file patterns to exclude,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> dry run, only list files to be updated in archive.</li>
 </ul>
 </div>
 <div class="section" id="list-content">
 <h2>List content<a class="headerlink" href="#list-content" title="Permalink to this headline">¶</a></h2>
-<p>Zstash does not yet include a built-in functionality to list content of archives.
-However, the content can be obtained by directly querying the index database.</p>
-<p>To list <strong>all the files</strong> in an archive:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
-$ sqlite3 zstash/index.db &quot;select * from files;&quot;
+<p>Note: Most of the commands for this are the same for <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">extract</span></code> and <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code>.</p>
+<p>You can view the files in an existing zstash archive:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash ls --hpss=&lt;path to HPSS&gt; [files]
 </pre></div>
 </div>
-<p>For each file, the following information will be printed</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>file # | path | size | modification time |md5 checksum |tar archive | offset (within tar)
-</pre></div>
-</div>
-<p>To list <strong>files matching a specified pattern</strong> (for example */run/*.nc):</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db &quot;select * from files where name glob &#39;*/run/*.nc&#39;;&quot;
-</pre></div>
-</div>
-<p>To list <strong>all the files in a specific tar fole</strong> (for example 000000.tar):</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db &quot;select * from files where tar is &#39;000000.tar&#39;;&quot;
+<p>where</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system,</li>
+<li><code class="docutils literal notranslate"><span class="pre">-l</span></code> an optional argument to display more information.</li>
+</ul>
+<p>Below is an example. Note the names of the columns:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash ls -l --hpss=/home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison *atm.log.8229335.180130-143234.gz*
+DEBUG: Opening index database
+DEBUG: Running zstash ls
+DEBUG: HPSS path  : /home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+id   name    size    mtime   md5     tar     offset
+30482        archive/logs/atm.log.8229335.180130-143234.gz   20156521        2018-02-01 10:02:35     e8161bba53500848dc917258d1d8f56a        000018.tar      131697281536
+51608        case_scripts/logs/atm.log.8229335.180130-143234.gz      20156521        2018-02-01 10:02:52     e8161bba53500848dc917258d1d8f56a        000047.tar      202381473280
 </pre></div>
 </div>
 </div>
