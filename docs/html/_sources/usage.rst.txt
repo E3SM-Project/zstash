@@ -4,8 +4,8 @@ Usage
 
 .. highlight:: none
 
-Archive (create)
-================
+Create
+======
 
 To create a new zstash archive: ::
 
@@ -70,7 +70,7 @@ to conserve storage space: ::
   $ zstash create --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
     --exclude="archive/rest/???[!05]-*/" .
 
-This exclude pattern will skip all restart subdirectories under the shrot-term archive,
+This exclude pattern will skip all restart subdirectories under the short-term archive,
 except for those with years ending in '0' or '5'.
 
 Check
@@ -93,8 +93,8 @@ where
     all files within that tar archive.
 
 ``zstash check`` will download the tar archives to the local disk cache (under 
-the ``zstash/`` subdirectory) and verify the md5 checksum aginst the checksum 
-stored in the index database (index.db).
+the `zstash/` subdirectory) and verify the md5 checksum against the checksum 
+stored in the index database (`index.db`).
 
 After the check is complete, a list of all corrupted files in the HPSS archive,
 along with the tar archive they belong is listed. Below is an example:  ::
@@ -190,7 +190,7 @@ where
   * Leave empty to extract all the files.
   * List of files with support for wildcards. Please note that any expression
     containing **wildcards should be enclosed in double quotes ("...")** 
-    to avoid shell subsitution.
+    to avoid shell substitution.
   * Name of a specific tar archive to extract all files within this tar archive.
 
 You must pass in the **path relative to the top level** for the file(s). For help 

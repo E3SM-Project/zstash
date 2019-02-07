@@ -91,7 +91,8 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="todo.html">To do: possible future enhancements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="support.html">Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="todo.html">Future enhancements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a></li>
 </ul>
 
@@ -160,7 +161,7 @@
 <h1>Zstash documentation<a class="headerlink" href="#zstash-documentation" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="what-is-zstash">
 <h2>What is zstash?<a class="headerlink" href="#what-is-zstash" title="Permalink to this headline">¶</a></h2>
-<p>Zstash is a prototype <strong>HPSS long-term archiving</strong> solution for E3SM.</p>
+<p>Zstash is an <strong>HPSS long-term archiving</strong> solution for E3SM.</p>
 <p>Zstash is written entirely in Python (2.7) using standard libraries.
 Its design is intentionally minimalistic to provide an effective
 long-term HPSS archiving solution without creating an overly complicated
@@ -180,11 +181,7 @@ tar file.</li>
 <li><strong>File integrity</strong> is verified by computing checksums on-the-fly while <strong>extracting</strong>
 files.</li>
 </ul>
-<p>To date, zstash has only been tested on NERSC, but should easily be portable
-to other computing centers. E3SM users are welcome to try it
-out, while keeping in mind that zstash is currently under development. As such,
-its design and functionality may change, or it may be replaced with a better
-tool, should one emerge.</p>
+<p>Source code is available on Github: <a class="reference external" href="https://github.com/E3SM-Project/zstash">https://github.com/E3SM-Project/zstash</a>.</p>
 <div class="toctree-wrapper compound">
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
@@ -196,7 +193,7 @@ tool, should one emerge.</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#archive-create">Archive (create)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#create">Create</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#check">Check</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#update">Update</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#extract">Extract</a></li>
@@ -204,16 +201,13 @@ tool, should one emerge.</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="design.html#how-does-zstash-work">How does zstash work?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design.html#why-zstash">Why zstash?</a></li>
 <li class="toctree-l2"><a class="reference internal" href="design.html#why-not-use-htar">Why not use ‘htar’?</a></li>
 <li class="toctree-l2"><a class="reference internal" href="design.html#why-not-just-use-cput-r">Why not just use ‘cput -R’?</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="todo.html">To do: possible future enhancements</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="todo.html#improvements">Improvements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="todo.html#new-functionality">New functionality</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="support.html">Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="todo.html">Future enhancements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="contributing.html#create-a-conda-environment">Create a conda environment</a></li>
 <li class="toctree-l2"><a class="reference internal" href="contributing.html#checkout-and-edit-documentation">Checkout and edit documentation</a></li>

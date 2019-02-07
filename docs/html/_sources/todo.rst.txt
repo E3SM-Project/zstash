@@ -1,30 +1,19 @@
-***********************************
-To do: possible future enhancements
-***********************************
+*******************
+Future enhancements
+*******************
 
 Possible future enhancements depending on project priorities.
 
-Improvements
-============
-
-* Test and modify for **other computing centers** available to E3SM.
+* Test and document usage for **other computing centers** available to E3SM.
 
 * Implement **verbosity** level option.
 
-* ...
+* Improve performance of zstash extract by performing hsi get in parallel and in the background.
 
-New functionality
-=================
-
-* **zstash list**
-
-  * Support wildcards.
-  * List from all or selected tar files.
-
-* **zsstash verify** 
-
-  * Similar to 'zstash extract'. Read and compute
-    checksums of all input files, without actually extracting them.
+* New 'add' functionality to add only specified files.
 
 * ...
+
+Feel free to suggest other enhancements by opening a new
+`issue on Github <https://github.com/E3SM-Project/zstash/issues>`_.
 
