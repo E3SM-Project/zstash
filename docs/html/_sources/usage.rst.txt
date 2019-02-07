@@ -1,64 +1,11 @@
-****************
-Quickstart guide
-****************
+*****
+Usage
+*****
 
 .. highlight:: none
 
-Installation
-============
-
-First, make sure that you're using ``bash``. ::
-
-   $ bash
-
-You must have Anaconda installed as well. On NERSC Edison and Cori machines,
-you can load the Anaconda module instead of installing it yourself. ::
-
-   $ module load python/2.7-anaconda-4.4
-
-Create a new Anaconda environment with zstash installed and activate it. ::
-
-   $ conda create -n zstash_env -c e3sm -c conda-forge zstash
-   $ source activate zstash_env
-
-Or you can install zstash in an existing environment. ::
-
-   $ conda install zstash -c e3sm -c conda-forge 
-
-On NERSC, after installing on Edison or Cori, you may see improved performance 
-running zstash on the data transfer nodes (dtn{01..15}.nersc.gov). However, modules are
-not directly available there, so you will need to manually activate Anaconda: ::
-
-   $ . /global/common/edison/software/python/2.7-anaconda-4.4/etc/profile.d/conda.sh
-   $ export PATH="/global/common/edison/software/python/2.7-anaconda-4.4/bin:$PATH"
-
-Installation from source
-========================
-
-If you want to get the latest code of zstash from the master branch, do the following.
-
-First, follow the instructions in the previous section ("Installation") to create an
-Anaconda environment with zstash.
-Make sure you're in the zstash environment before executing the below instructions.
-
-Then, use the command below to remove just zstash, keeping all of the dependencies
-in the environment.
-We'll be manually installing the latest zstash from master soon. ::
-
-   $ conda remove zstash --force
-
-Clone the zstash repository. ::
-
-   $ git clone https://github.com/E3SM-Project/zstash.git
-
-Install the latest zstash. ::
-
-   $ cd zstash/
-   $ python setup.py install
-
-
-Archive
-=======
+Archive (create)
+================
 
 To create a new zstash archive: ::
 
@@ -108,7 +55,7 @@ file (000000.tar) and the index database (index.db).
 Examples excluding some files
 -----------------------------
 
-You may decide that there are certain type of files that do not need to archive.
+You may decide that certain files do not need to be archived.
 For example, if you want to **exclude \*.o and \*.mod files** under the build
 subdirectory: ::
 
@@ -123,8 +70,8 @@ to conserve storage space: ::
   $ zstash create --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
     --exclude="archive/rest/???[!05]-*/" .
 
-The exclude pattern will skip all restart subdirectory under the shrt-term archive,
-except for those whose year end with '0' or '5'.
+This exclude pattern will skip all restart subdirectories under the shrot-term archive,
+except for those with years ending in '0' or '5'.
 
 Check
 =====
@@ -145,9 +92,9 @@ where
   * You can pass the name of a specific tar archive to check
     all files within that tar archive.
 
-``zstash check`` will downd the tar archives to the local disk cache (under 
-the zstash/ subdirectory) and verify the md5 checksum aginst the checksum 
-computed during creation and stored in the inex database.
+``zstash check`` will download the tar archives to the local disk cache (under 
+the ``zstash/`` subdirectory) and verify the md5 checksum aginst the checksum 
+stored in the index database (index.db).
 
 After the check is complete, a list of all corrupted files in the HPSS archive,
 along with the tar archive they belong is listed. Below is an example:  ::
@@ -191,7 +138,7 @@ where
 Example
 -------
 
-Following the 'zstash create' example above, we now run again with the 
+Following the '**zstash create**' example above, we now run zstash again with the 
 '**update**' functionality: ::
 
   $ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
@@ -242,15 +189,32 @@ where
 
   * Leave empty to extract all the files.
   * List of files with support for wildcards. Please note that any expression
-    containing **wildcards should be enclosed in double quotes (")** 
+    containing **wildcards should be enclosed in double quotes ("...")** 
     to avoid shell subsitution.
   * Name of a specific tar archive to extract all files within this tar archive.
 
-You must pass in the **path relative to the top level** for the file(s).
+You must pass in the **path relative to the top level** for the file(s). For help 
+finding path names, you can use ``zstash ls`` as documented below.
 
-  * For help finding paths, you can use ``zstash ls``.
-    Please see below for the documentation on this.
-  * Ex: Downloading ``archive/logs/atm.log.8229335.180130-143234.gz`` ::
+A few words about performance. All of the files are grouped into 256GB tar archives by default.
+(See the ``--maxsize`` argument for ``zstash create`` for more information).
+If the tar file is not already present in the local disk cache (under 
+the ``zstash/`` sub-directory), it must first be downloaded from HPSS before
+the desired file can be extracted.
+
+  * Downloading a 256GB file on Cori/Edison takes about 30 mins (or more depending on load).
+  * Using NERSC data transfer nodes (DTN) may be about 3x faster, according to some users.
+  * Again, to see which of your files are in what tar archives, use ``zstash ls -l``.
+
+    * Note the ``-l`` argument.
+    * The sixth column is the tar archive that the file is in.
+    * Please see the List documentation below for more information.
+
+
+Examples
+--------
+
+Extracting a single file by its full path ``archive/logs/atm.log.8229335.180130-143234.gz`` ::
 
       $ zstash extract --hpss=/home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison archive/logs/atm.log.8229335.180130-143234.gz
       DEBUG: Opening index database
@@ -271,10 +235,8 @@ path. For example: ::
       $ zstash extract archive/logs/atm.log.8229335.180130-143234.gz
 
 However, recall that wildcards are supported, so this full path isn't needed when using them.
-
-  * As in the example below, when compared to the example above, you might also
-    inadvertently download more files than you wanted.
-  * Ex: Downloading ``"*atm.log.8229335.180130-143234.gz*"`` ::
+Instead, you could download files matching ``"*atm.log.8229335.180130-143234.gz*"``. Note
+the use of double quotes (") to avoid shell level substitution. ::
   
       $ zstash extract --hpss=/home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison "*atm.log.8229335.180130-143234.gz*"
       DEBUG: Opening index database
@@ -293,22 +255,18 @@ However, recall that wildcards are supported, so this full path isn't needed whe
       DEBUG: Closing tar archive zstash/000047.tar
       DEBUG: Closing index database
 
-All of the files are grouped into 256GB tar archives by default.
-Look at the ``--maxsize`` argument for ``zstash create`` for more information.
-So even if your file is a few MB in size, the entire tar archive must be first downloaded 
-from HPSS into the local disk cache (under the zstash/ sub-directory) befor ethe file
-can be extracted.
+In this particular example, the pattern matches two specific files, one under `archive/logs/`
+and another one under `case_scripts/logs/`. If you didn't intend to retrieve both of them, a
+more efficient approach would have been to first identify the desired files with 'zstash ls'.
 
-  * Downloading a 256GB file on Cori/Edison takes about 30 mins.
-  * Using NERSC data transfer nodes (DTN) will be about 3x faster, according to some users.
-  * Again, to see which of your files are in what tar archives, use ``zstash ls -l``.
+Another example of wildcards would be to retrieve all **cam.h0** (monthly atmosphere output files) 
+between **years 0030 and 0069** for the DECKv1 piControl simulation. The zstash command would be: ::
 
-    * Note the ``-l`` argument.
-    * The sixth column is the tar archive that the file is in.
-    * Please see the List documentation below for more information.
+   $ zstash extract --hpss=/home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
+            "*.cam.h0.00[3-6]?-??.nc"
 
-List content
-============
+List
+====
 
 Note: Most of the commands for this are the same for ``zstash extract`` and ``zstash check``.
 

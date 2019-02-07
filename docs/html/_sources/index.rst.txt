@@ -44,8 +44,8 @@ tool, should one emerge.
    :caption: Contents:
 
    self
-   quickstart
-   examples
+   installation
+   usage
    design
    todo
    contributing
