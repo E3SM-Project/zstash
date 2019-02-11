@@ -185,7 +185,7 @@ To extract files from an existing zstash archive into current <mydir>: ::
 
 where
 
-* ``[files]`` pecifies files to be extracted, for example:
+* ``[files]`` specifies files to be extracted, for example:
 
   * Leave empty to extract all the files.
   * List of files with support for wildcards. Please note that any expression
