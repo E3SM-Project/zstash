@@ -1,6 +1,6 @@
-************
-Installation
-************
+*************************
+Installation and Updating
+*************************
 
 .. highlight:: none
 
@@ -75,3 +75,12 @@ Install the latest zstash. ::
    $ python setup.py install
 
 
+Updating
+========
+
+To update zstash, if you **installed via Anaconda**, do the following:  ::
+
+    conda update zstash -c e3sm -c conda-forge
+
+Otherwise, if you've installed from source, checkout the
+tag of the version you want and install from that.
