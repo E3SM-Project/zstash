@@ -41,7 +41,9 @@ Source code is available on Github: `<https://github.com/E3SM-Project/zstash>`_.
    self
    installation_and_updating
    usage
+   best_practices
    design
+   database
    support
    todo
    contributing

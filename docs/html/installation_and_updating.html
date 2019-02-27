@@ -100,6 +100,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="todo.html">Future enhancements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a></li>
@@ -170,45 +171,45 @@
 <h1>Installation and Updating<a class="headerlink" href="#installation-and-updating" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="installation-using-conda">
 <h2>Installation using conda<a class="headerlink" href="#installation-using-conda" title="Permalink to this headline">¶</a></h2>
-<p>First, make sure that you’re using <code class="docutils literal notranslate"><span class="pre">bash</span></code>.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ bash
+<p>First, make sure that you’re using <code class="docutils literal"><span class="pre">bash</span></code>.</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ bash
 </pre></div>
 </div>
 <p>You must have Anaconda installed as well. Create a new Anaconda environment
 with zstash installed and activate it.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda create -n zstash_env -c e3sm -c conda-forge zstash
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ conda create -n zstash_env -c e3sm -c conda-forge zstash
 $ source activate zstash_env
 </pre></div>
 </div>
 <p>Or you can install zstash in an existing environment.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda install zstash -c e3sm -c conda-forge
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ conda install zstash -c e3sm -c conda-forge
 </pre></div>
 </div>
 </div>
 <div class="section" id="installation-on-nersc">
 <h2>Installation on NERSC<a class="headerlink" href="#installation-on-nersc" title="Permalink to this headline">¶</a></h2>
-<p>First, make sure that you’re using <code class="docutils literal notranslate"><span class="pre">bash</span></code>.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ bash
+<p>First, make sure that you’re using <code class="docutils literal"><span class="pre">bash</span></code>.</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ bash
 </pre></div>
 </div>
 <p>On NERSC Edison and Cori machines, load the Anaconda module instead of
 installing it yourself.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ module load python/2.7-anaconda-4.4
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ module load python/2.7-anaconda-4.4
 </pre></div>
 </div>
 <p>Create a new Anaconda environment with zstash installed and activate it.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda create -n zstash_env -c e3sm -c conda-forge zstash
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ conda create -n zstash_env -c e3sm -c conda-forge zstash
 $ source activate zstash_env
 </pre></div>
 </div>
 <p>Or you can install zstash in an existing environment.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda install zstash -c e3sm -c conda-forge
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ conda install zstash -c e3sm -c conda-forge
 </pre></div>
 </div>
 <p>After installing on Edison or Cori, you may see improved performance
 running <strong>zstash on the data transfer nodes</strong> (dtn{01..15}.nersc.gov). However, modules are
 not directly available there, so you will need to manually activate Anaconda:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ . /global/common/edison/software/python/2.7-anaconda-4.4/etc/profile.d/conda.sh
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ . /global/common/edison/software/python/2.7-anaconda-4.4/etc/profile.d/conda.sh
 $ export PATH=&quot;/global/common/edison/software/python/2.7-anaconda-4.4/bin:$PATH&quot;
 </pre></div>
 </div>
@@ -222,15 +223,15 @@ Make sure you’re in the zstash environment before executing the below instruct
 <p>Then, use the command below to remove just zstash, keeping all of the dependencies
 in the environment.
 We’ll be manually installing the latest zstash from master soon.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda remove zstash --force
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ conda remove zstash --force
 </pre></div>
 </div>
 <p>Clone the zstash repository.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ git clone https://github.com/E3SM-Project/zstash.git
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ git clone https://github.com/E3SM-Project/zstash.git
 </pre></div>
 </div>
 <p>Install the latest zstash.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ cd zstash/
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd zstash/
 $ python setup.py install
 </pre></div>
 </div>
@@ -238,7 +239,7 @@ $ python setup.py install
 <div class="section" id="updating">
 <h2>Updating<a class="headerlink" href="#updating" title="Permalink to this headline">¶</a></h2>
 <p>To update zstash, if you <strong>installed via Anaconda</strong>, do the following:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>conda update zstash -c e3sm -c conda-forge
+<div class="highlight-none"><div class="highlight"><pre><span></span>conda update zstash -c e3sm -c conda-forge
 </pre></div>
 </div>
 <p>Otherwise, if you’ve installed from source, checkout the
