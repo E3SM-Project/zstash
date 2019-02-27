@@ -265,6 +265,9 @@ between **years 0030 and 0069** for the DECKv1 piControl simulation. The zstash 
    $ zstash extract --hpss=/home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
             "*.cam.h0.00[3-6]?-??.nc"
 
+
+.. _zstash-list:
+
 List
 ====
 

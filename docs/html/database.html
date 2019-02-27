@@ -93,6 +93,7 @@
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation_and_updating.html">Installation and Updating</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best practices for E3SM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Database</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#structure">Structure</a></li>
@@ -214,7 +215,7 @@ sqlite&gt; .quit
 <div class="section" id="exploring-content">
 <h2>Exploring content<a class="headerlink" href="#exploring-content" title="Permalink to this headline">¶</a></h2>
 <p>Direct interaction with the database can be useful to explore content
-of an archive, beyond what might be available with <a class="reference internal" href="usage.html#list"><span class="std std-ref">zstash list</span></a>.</p>
+of an archive, beyond what might be available with <a class="reference internal" href="usage.html#zstash-list"><span class="std std-ref">zstash list</span></a>.</p>
 <p>To list <strong>all the files</strong> in an archive:</p>
 <div class="highlight-none"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
 $ sqlite3 zstash/index.db &quot;select * from files;&quot;
@@ -257,7 +258,7 @@ $ sqlite3 zstash/index.db &quot;select * from files;&quot;
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2018, E3SM.
+        &copy; Copyright 2019, E3SM.
 
     </p>
   </div>

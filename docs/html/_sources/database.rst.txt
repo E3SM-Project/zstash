@@ -53,7 +53,7 @@ Exploring content
 =================
 
 Direct interaction with the database can be useful to explore content
-of an archive, beyond what might be available with :ref:`zstash list<List>`.
+of an archive, beyond what might be available with :ref:`zstash list<zstash-list>`.
 
 To list **all the files** in an archive: ::
 
