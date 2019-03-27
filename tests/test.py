@@ -52,6 +52,8 @@ def cleanup():
         shutil.rmtree('zstash_test')
     if os.path.exists('zstash_test_backup'):
         shutil.rmtree('zstash_test_backup')
+    if os.path.exists('zstash'):
+        shutil.rmtree('zstash')
     cmd = 'hsi rm -R {}'.format(HPSS_PATH)
     run_cmd(cmd)
 
@@ -145,7 +147,7 @@ output, err = run_cmd(cmd)
 os.chdir('../')
 str_in(output+err, 'Transferring file to HPSS')
 str_not_in(output+err, 'ERROR')
-# Make sure none of the old files are moved
+# Make sure none of the old files are moved.
 str_not_in(output+err, 'file0')
 str_not_in(output+err, 'file_empty')
 str_not_in(output+err, 'empty_dir')
@@ -171,6 +173,24 @@ str_in(output+err, 'Extracting file_empty.txt')
 str_in(output+err, 'Extracting dir/file1.txt')
 str_in(output+err, 'Extracting empty_dir')
 str_in(output+err, 'Extracting dir2/file2.txt')
+str_not_in(output+err, 'ERROR')
+str_not_in(output+err, 'Not extracting')
+
+
+print('Testing the extract functionality again, nothing should happen')
+os.chdir('zstash_test')
+cmd = 'zstash extract --hpss={}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+os.chdir('../')
+str_in(output+err, 'Not extracting file0.txt')
+str_in(output+err, 'Not extracting file0_hard.txt')
+# It's okay to extract the symlinks.
+str_not_in(output+err, 'Not extracting file0_soft.txt')
+str_in(output+err, 'Not extracting file_empty.txt')
+str_in(output+err, 'Not extracting dir/file1.txt')
+# It's okay to extract empty dirs.
+str_not_in(output+err, 'Not extracting empty_dir')
+str_in(output+err, 'Not extracting dir2/file2.txt')
 str_not_in(output+err, 'ERROR')
 
 print('Running update on the newly extracted directory, nothing should happen')
