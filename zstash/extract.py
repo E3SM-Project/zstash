@@ -66,11 +66,27 @@ def extract(keep_files=True):
         cur.execute(u"select * from files where name GLOB ? or tar GLOB ?", (file, file))
         matches = matches + cur.fetchall()
 
-    # Remove duplicates
-    matches = list(set(matches))
+    # Sort by the filename, tape (so the tar archive),
+    # and order within tapes (offset).
+    matches.sort(key=lambda x: (x[1], x[5], x[6]))
 
-    # Sort by tape and order within tapes (offset)
-    matches = sorted(matches, key=lambda x: (x[5], x[6]))
+    # Based off the filenames, keep only the last instance of a file.
+    # This is because we may have different versions of the
+    # same file across many tars.
+    insert_idx, iter_idx = 0, 1
+    for iter_idx in range(1, len(matches)):
+        # If the filenames are unique, just increment insert_idx. 
+        # iter_idx will increment after this iteration.
+        if matches[insert_idx][1] != matches[iter_idx][1]:
+            insert_idx += 1
+        # Always copy over the value at the correct location. 
+        matches[insert_idx] = matches[iter_idx] 
+
+    matches = matches[:insert_idx+1]
+
+    # Sort by tape and offset, so that we make sure
+    # that extract the files by tape order.
+    matches.sort(key=lambda x: (x[5], x[6]))
 
     # Retrieve from tapes
     failures = extractFiles(matches, keep_files)
@@ -96,13 +112,12 @@ def should_extract_file(db_row):
     timestamp and size, don't extract the file.
     """
     file_name, size, mod_date = db_row[1], db_row[2], db_row[3]
-    '''
-    print(file_name, size, mod_date)
+
+    print(db_row)
     if os.path.exists(file_name):
         print('size on disk/size in db: {}/{}'.format(os.path.getsize(file_name), size))
         print('mod date on disk/size in db: {}/{}'.format(datetime.utcfromtimestamp(os.path.getmtime(file_name)), mod_date.replace(microsecond=0)))
         # print('mod date on disk/size in db: {}/{}'.format(datetime.utcfromtimestamp(os.stat(file_name).st_mtime_ns), mod_date.replace(microsecond=0)))
-    '''
 
     # Compare the timestamps.
     is_same_time = os.path.exists(file_name) and datetime.utcfromtimestamp(os.path.getmtime(file_name)) == mod_date.replace(microsecond=0)
