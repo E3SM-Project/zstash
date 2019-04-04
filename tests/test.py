@@ -2,7 +2,6 @@ import os
 import sys
 import subprocess
 import shutil
-import sqlite3
 
 def write_file(name, contents):
     """
@@ -33,30 +32,6 @@ def str_not_in(output, msg):
         print('This was not supposed to be found: {}'.format(msg))
         print('*'*40)
         stop()
-
-def check_file_hash_matches_db(file_name, db_path):
-    """
-    Check that the hash of file_name matches
-    what's recorded in the database.
-    """
-    if not os.path.exists(file_name):
-        raise RuntimeError('{} doesn\'t exist.'.format(file_name))
-    if not os.path.exists(db_path):
-        raise RuntimeError('Database {} doesn\'t exist.'.format(db_path))
-
-    # Get the hash of the file from disk.
-    cmd = 'md5sum {}'.format(file_name)
-    output, err = run_cmd(cmd)
-    disk_md5 = output.split(' ')[0]
-    print(disk_md5)
-
-    # Get the hash of the file from the db.
-    sql_cmd = 'select md5 from files where name glob ?' 
-    con = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES)
-    cur = con.cursor()
-    cur.execute('select md5 from files where name like "{}"'.format(file_name))
-    value = cur.fetchone()[0]
-    print(value)
 
 def str_in(output, msg):
     """
@@ -176,7 +151,6 @@ str_not_in(output+err, 'file0')
 str_not_in(output+err, 'file_empty')
 str_not_in(output+err, 'empty_dir')
 str_not_in(output+err, 'ERROR')
-#check_file_hash_matches_db('zstash_test/dir/file1.txt', 'zstash_test/zstash/index.db')
 
 print('Testing the checking functionality')
 cmd = 'zstash check --hpss={}'.format(HPSS_PATH)
@@ -200,7 +174,6 @@ str_in(output+err, 'Extracting empty_dir')
 str_in(output+err, 'Extracting dir2/file2.txt')
 str_not_in(output+err, 'ERROR')
 str_not_in(output+err, 'Not extracting')
-
 
 print('Testing the extract functionality again, nothing should happen')
 os.chdir('zstash_test')

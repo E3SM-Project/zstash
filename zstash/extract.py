@@ -8,7 +8,7 @@ import tarfile
 import traceback
 from datetime import datetime
 from hpss import hpss_get
-from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
+from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL
 
 
 def extract(keep_files=True):
@@ -111,23 +111,18 @@ def should_extract_file(db_row):
     If a file is on disk already with the correct
     timestamp and size, don't extract the file.
     """
-    file_name, size, mod_date = db_row[1], db_row[2], db_row[3]
+    file_name, size_db, mod_time_db = db_row[1], db_row[2], db_row[3]
 
-    print(db_row)
-    if os.path.exists(file_name):
-        print('size on disk/size in db: {}/{}'.format(os.path.getsize(file_name), size))
-        print('mod date on disk/size in db: {}/{}'.format(datetime.utcfromtimestamp(os.path.getmtime(file_name)), mod_date.replace(microsecond=0)))
-        # print('mod date on disk/size in db: {}/{}'.format(datetime.utcfromtimestamp(os.stat(file_name).st_mtime_ns), mod_date.replace(microsecond=0)))
+    if not os.path.exists(file_name):
+        # We must get files that are not on disk.
+        return True
+    
+    size_disk = os.path.getsize(file_name)
+    mod_time_disk = datetime.utcfromtimestamp(os.path.getmtime(file_name))
 
-    # Compare the timestamps.
-    is_same_time = os.path.exists(file_name) and datetime.utcfromtimestamp(os.path.getmtime(file_name)) == mod_date.replace(microsecond=0)
-    # Compare the sizes.
-    # The index.db stores the size of symlinks and dirs as 0, but os.path.getsize() gets them as 11 and 512.
-    # So when we have a symlink or dir, don't bother checking for the size.
-    # is_same_size = os.path.exists(file_name) and (os.path.islink(file_name) or os.path.isdir(file_name) or os.path.getsize(file_name) == size)
-    is_same_size = os.path.exists(file_name) and os.path.getsize(file_name) == size
-
-    return not(is_same_time and is_same_size)
+    # Only extract when the times and sizes are not the same. 
+    # We have a TIME_TOL because mod_time_disk doesn't have the microseconds.
+    return not(size_disk == size_db and abs(mod_time_disk - mod_time_db).total_seconds() < TIME_TOL)
 
 
 def extractFiles(files, keep_files):
