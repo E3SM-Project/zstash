@@ -6,10 +6,54 @@ import sqlite3
 import sys
 import tarfile
 import traceback
+import collections
 from datetime import datetime
 from hpss import hpss_get
 from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL
 
+
+def multiprocess_extract(num_workers, matches, *args):
+    """
+    Extract the files from the matches in parallel.
+
+    A single unit of work is a tar and all of
+    the files in it to extract.
+    """
+    # A dict of tar -> size of files in it.
+    # This is because we're trying to balance the load between
+    # the processes.
+    tar_to_size = collections.defaultdict(float)
+    for db_row in matches:
+        tar, size = db_row[5], db_row[2]
+        tar_to_size[tar] += size
+    # Sort by the size.
+    tar_to_size = collections.OrderedDict(sorted(tar_to_size.items(), key=lambda x: x[1]))
+
+    # We don't want to instantiate more processes than we need to.
+    num_workers = min(num_workers, len(tar_to_size))
+
+    # For worker i, workers_to_tars[i] is a set of tars
+    # that worker i will work on.
+    workers_to_tars = [set() for _ in range(num_workers)]
+    # Using a greedy approach, populate workers_to_tars.
+    for tar_num, tar in enumerate(tar_to_size):
+        worker_idx = tar_num % num_workers
+        workers_to_tars[worker_idx].add(tar)
+        # If we reach the end of workers_to_tar and still have tars to add, we should reverse workers_to_tar.
+        # This is because of the greedy approach to balance the load.
+        if worker_idx == len(workers_to_tars)-1:
+            workers_to_tars.reverse()
+
+    # For worker i, workers_to_matches[i] is a list of 
+    # matches from the database for it to process.
+    workers_to_matches = [[] for _ in range(num_workers)]
+    for db_row in matches:
+        tar = db_row[5]
+        for worker_idx in range(len(workers_to_tars)):
+            if tar in workers_to_tars[worker_idx]:
+                # This worker gets this db_row.
+                workers_to_matches[worker_idx].append(db_row)
+    print(workers_to_matches)
 
 def extract(keep_files=True):
     """
@@ -89,6 +133,8 @@ def extract(keep_files=True):
     matches.sort(key=lambda x: (x[5], x[6]))
 
     # Retrieve from tapes
+    num_workers = 3
+    failures = multiprocess_extract(num_workers, matches, keep_files)
     failures = extractFiles(matches, keep_files)
 
     # Close database
