@@ -7,6 +7,7 @@ import sys
 import tarfile
 import traceback
 import collections
+import heapq
 from datetime import datetime
 from hpss import hpss_get
 from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL
@@ -35,14 +36,19 @@ def multiprocess_extract(num_workers, matches, *args):
     # For worker i, workers_to_tars[i] is a set of tars
     # that worker i will work on.
     workers_to_tars = [set() for _ in range(num_workers)]
+    # A min heap, of (work, worker_idx) tuples, work is the size of data
+    # that worker_idx needs to work on.
+    # We can efficiently get the worker with the least amount of work.
+    work_to_workers = [(0, i) for i in range(num_workers)]
+    heapq.heapify(workers_to_tars)
+
     # Using a greedy approach, populate workers_to_tars.
     for tar_num, tar in enumerate(tar_to_size):
-        worker_idx = tar_num % num_workers
+        # The worker with the least work should get the current largest amount of work.
+        workers_work, worker_idx = heapq.heappop(work_to_workers)
         workers_to_tars[worker_idx].add(tar)
-        # If we reach the end of workers_to_tar and still have tars to add, we should reverse workers_to_tar.
-        # This is because of the greedy approach to balance the load.
-        if worker_idx == len(workers_to_tars)-1:
-            workers_to_tars.reverse()
+        # Add this worker back to the heap, with the new amount of work.
+        heapq.heappush(work_to_workers, (workers_work+tar_to_size[tar], worker_idx))
 
     # For worker i, workers_to_matches[i] is a list of 
     # matches from the database for it to process.
@@ -54,6 +60,7 @@ def multiprocess_extract(num_workers, matches, *args):
                 # This worker gets this db_row.
                 workers_to_matches[worker_idx].append(db_row)
     print(workers_to_matches)
+    print(work_to_workers)
 
 def extract(keep_files=True):
     """
