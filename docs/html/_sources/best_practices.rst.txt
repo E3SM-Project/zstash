@@ -81,8 +81,41 @@ checksum stored in the index database (index.db).
 
 ``zstash check`` can also be run in the original location. But if tar files
 are present in the local cache (zstash/ sub-directory), the check will only
-be performed agains the local disk copy, not the one on HPSS.
+be performed against the local disk copy, not the one on HPSS.
 
 If any corrupted file is found during the check, zstash will print a list of corrupted 
 files in the archive, along with the tar archive they belong to.
 
+There are currently two kinds of errors:
+
+1. Checksum mismatch error: The file was extracted but the checksum doesn't
+   match the original one computed when the files was uploaded.
+2. General extraction error: The file can't be extracted due to another error.
+
+To see what kind of error you have, search the output for your filename
+and you should be able to see what happened.
+
+Regarding the first error, this seems to be caused by something on the HPSS end of this process.
+If you have the original model data, please try uploading it again.
+
+With the second error, you might see something like: ::
+
+  INFO: Checking archive/ocn/hist/mpaso.hist.am.timeSeriesStatsMonthly.1855-10-01.nc
+  Traceback (most recent call last):
+    File "build/bdist.linux-x86_64/egg/zstash/extract.py", line 145, in extractFiles
+      s = fin.read(BLOCK_SIZE)
+    File "/global/homes/z/zshaheen/anaconda2/envs/zstash_env_v0.2.0/lib/python2.7/tarfile.py", line 831, in read
+      buf += self.fileobj.read(size - len(buf))
+    File "/global/homes/z/zshaheen/anaconda2/envs/zstash_env_v0.2.0/lib/python2.7/tarfile.py", line 743, in read
+      return self.readnormal(size)
+    File "/global/homes/z/zshaheen/anaconda2/envs/zstash_env_v0.2.0/lib/python2.7/tarfile.py", line 758, in readnormal
+      return self.__read(size)
+    File "/global/homes/z/zshaheen/anaconda2/envs/zstash_env_v0.2.0/lib/python2.7/tarfile.py", line 750, in __read
+      raise ReadError("unexpected end of data")
+  ReadError: unexpected end of data
+
+This seems to be caused by the filesystem. Simply run ``zstash check`` again.
+To save time, like ``zstash extract``, you can check for specific files or tar archives: ::
+
+  $ zstash check --hpss=/path/to/hpss/archive "archive/ocn/hist/mpaso.hist.am.timeSeriesStatsMonthly.1892-04-01.nc"
+  $ zstash check --hpss=/path/to/hpss/archive "000012.tar"

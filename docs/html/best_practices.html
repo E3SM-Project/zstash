@@ -17,44 +17,38 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="zstash  documentation" href="index.html"/>
-        <link rel="next" title="Design considerations" href="design.html"/>
-        <link rel="prev" title="Usage" href="usage.html"/>
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Design considerations" href="design.html" />
+    <link rel="prev" title="Usage" href="usage.html" />
     <link href="_static/style.css" rel="stylesheet" type="text/css">
-
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -116,7 +110,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">zstash</a>
@@ -124,9 +118,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -179,14 +174,14 @@ of the data transfer nodes (dtn&lt;01..15&gt;.nersc.gov). Also, because
 archiving large amount of data with zstash can take several days,
 it is recommended to invoke zstash within a UNIX <cite>screen</cite> session
 to which you can detach and re-attach without killing zstash.</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
 $ screen
 </pre></div>
 </div>
 <p>To detach from the screen session, use CTRL-A followed by D (for detach).
 You can then safely close your window. To re-attach to an existing session
 later:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
 $ screen -r
 </pre></div>
 </div>
@@ -194,9 +189,9 @@ $ screen -r
 <div class="section" id="archiving">
 <h2>Archiving<a class="headerlink" href="#archiving" title="Permalink to this headline">¶</a></h2>
 <p>Typically, you should consider archiving the entire directory structure
-of a simulation. The first time, this is accomplished with <code class="docutils literal"><span class="pre">zstash</span> <span class="pre">create</span></code>.
+of a simulation. The first time, this is accomplished with <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">create</span></code>.
 For example:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
 $ screen -r
 $ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
 $ zstash create --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
@@ -211,7 +206,7 @@ recommends file size between 100 and 500 GB for best performance.</p>
 <p>If your model output has been reorganized using the CIME short-term archive utility, you can easily
 archive only a subset of the restart files to conserve space. For example, to <strong>archive
 restart files every 5 years</strong> only:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
 $ screen -r
 $ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
 $ zstash create --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
@@ -223,8 +218,8 @@ $ zstash create --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC
 <div class="section" id="updating">
 <h2>Updating<a class="headerlink" href="#updating" title="Permalink to this headline">¶</a></h2>
 <p>You can also add newly created files to an existing archive, or restart archiving after a
-failure using the <code class="docutils literal"><span class="pre">zstash</span> <span class="pre">update</span></code> functionality:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
+failure using the <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">update</span></code> functionality:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
 $ screen -r
 $ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
 $ zstash update --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
@@ -237,25 +232,55 @@ $ zstash update --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC
 <h2>Checking<a class="headerlink" href="#checking" title="Permalink to this headline">¶</a></h2>
 <p>After archiving or updating, it is <strong>highly recommended</strong> that you verify the integrity
 of the tar files. The safest way to do so is go to a new, empty directory and run:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>$ zstash check --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ zstash check --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
 </pre></div>
 </div>
-<p><code class="docutils literal"><span class="pre">zstash</span> <span class="pre">check</span></code> will download the tar archives to the local disk cache (under
+<p><code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> will download the tar archives to the local disk cache (under
 the zstash/ subdirectory) and verify the md5 checksum of every file against the
 checksum stored in the index database (index.db).</p>
-<p><code class="docutils literal"><span class="pre">zstash</span> <span class="pre">check</span></code> can also be run in the original location. But if tar files
+<p><code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> can also be run in the original location. But if tar files
 are present in the local cache (zstash/ sub-directory), the check will only
-be performed agains the local disk copy, not the one on HPSS.</p>
+be performed against the local disk copy, not the one on HPSS.</p>
 <p>If any corrupted file is found during the check, zstash will print a list of corrupted
 files in the archive, along with the tar archive they belong to.</p>
+<p>There are currently two kinds of errors:</p>
+<ol class="arabic simple">
+<li>Checksum mismatch error: The file was extracted but the checksum doesn’t
+match the original one computed when the files was uploaded.</li>
+<li>General extraction error: The file can’t be extracted due to another error.</li>
+</ol>
+<p>To see what kind of error you have, search the output for your filename
+and you should be able to see what happened.</p>
+<p>Regarding the first error, this seems to be caused by something on the HPSS end of this process.
+If you have the original model data, please try uploading it again.</p>
+<p>With the second error, you might see something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Checking</span> <span class="n">archive</span><span class="o">/</span><span class="n">ocn</span><span class="o">/</span><span class="n">hist</span><span class="o">/</span><span class="n">mpaso</span><span class="o">.</span><span class="n">hist</span><span class="o">.</span><span class="n">am</span><span class="o">.</span><span class="n">timeSeriesStatsMonthly</span><span class="o">.</span><span class="mi">1855</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mf">01.</span><span class="n">nc</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+  <span class="n">File</span> <span class="s2">&quot;build/bdist.linux-x86_64/egg/zstash/extract.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">145</span><span class="p">,</span> <span class="ow">in</span> <span class="n">extractFiles</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">fin</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">BLOCK_SIZE</span><span class="p">)</span>
+  <span class="n">File</span> <span class="s2">&quot;/global/homes/z/zshaheen/anaconda2/envs/zstash_env_v0.2.0/lib/python2.7/tarfile.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">831</span><span class="p">,</span> <span class="ow">in</span> <span class="n">read</span>
+    <span class="n">buf</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fileobj</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">size</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">buf</span><span class="p">))</span>
+  <span class="n">File</span> <span class="s2">&quot;/global/homes/z/zshaheen/anaconda2/envs/zstash_env_v0.2.0/lib/python2.7/tarfile.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">743</span><span class="p">,</span> <span class="ow">in</span> <span class="n">read</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">readnormal</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+  <span class="n">File</span> <span class="s2">&quot;/global/homes/z/zshaheen/anaconda2/envs/zstash_env_v0.2.0/lib/python2.7/tarfile.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">758</span><span class="p">,</span> <span class="ow">in</span> <span class="n">readnormal</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__read</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+  <span class="n">File</span> <span class="s2">&quot;/global/homes/z/zshaheen/anaconda2/envs/zstash_env_v0.2.0/lib/python2.7/tarfile.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">750</span><span class="p">,</span> <span class="ow">in</span> <span class="n">__read</span>
+    <span class="k">raise</span> <span class="n">ReadError</span><span class="p">(</span><span class="s2">&quot;unexpected end of data&quot;</span><span class="p">)</span>
+<span class="n">ReadError</span><span class="p">:</span> <span class="n">unexpected</span> <span class="n">end</span> <span class="n">of</span> <span class="n">data</span>
+</pre></div>
+</div>
+<p>This seems to be caused by the filesystem. Simply run <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> again.
+To save time, like <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">extract</span></code>, you can check for specific files or tar archives:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ zstash check --hpss=/path/to/hpss/archive &quot;archive/ocn/hist/mpaso.hist.am.timeSeriesStatsMonthly.1892-04-01.nc&quot;
+$ zstash check --hpss=/path/to/hpss/archive &quot;000012.tar&quot;
+</pre></div>
+</div>
 </div>
 </div>
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
@@ -264,7 +289,7 @@ files in the archive, along with the tar archive they belong to.</p>
         <a href="design.html" class="btn btn-neutral float-right" title="Design considerations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="usage.html" class="btn btn-neutral" title="Usage" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="usage.html" class="btn btn-neutral float-left" title="Usage" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -273,11 +298,11 @@ files in the archive, along with the tar archive they belong to.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, E3SM.
+        &copy; Copyright 2019, E3SM
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -290,36 +315,15 @@ files in the archive, along with the tar archive they belong to.</p>
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>
