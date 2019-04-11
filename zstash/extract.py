@@ -8,12 +8,14 @@ import tarfile
 import traceback
 import collections
 import heapq
+import multiprocessing
 from datetime import datetime
 from hpss import hpss_get
 from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL
+from . import parallel
 
 
-def multiprocess_extract(num_workers, matches, *args):
+def multiprocess_extract(num_workers, matches, keep_files):
     """
     Extract the files from the matches in parallel.
 
@@ -59,8 +61,24 @@ def multiprocess_extract(num_workers, matches, *args):
             if tar in workers_to_tars[worker_idx]:
                 # This worker gets this db_row.
                 workers_to_matches[worker_idx].append(db_row)
-    print(workers_to_matches)
-    print(work_to_workers)
+    
+    tars = [tar for tar in tar_to_size]
+    monitor = parallel.PrintMonitor(tars)
+    # The return value for extractFiles will be added here.
+    failures = multiprocessing.Queue()
+    workers = []
+    for matches in workers_to_matches:
+        tars_for_this_worker = list(set(match[5] for match in matches))
+        worker = parallel.ExtractWorker(monitor, tars_for_this_worker, failures)
+        worker._target=extractFiles
+        worker._args=(matches, keep_files, worker)
+        worker.start()
+        workers.append(worker)
+    
+    for w in workers:
+        w.join()
+
+    return list(failures)
 
 def extract(keep_files=True):
     """
@@ -142,7 +160,7 @@ def extract(keep_files=True):
     # Retrieve from tapes
     num_workers = 3
     failures = multiprocess_extract(num_workers, matches, keep_files)
-    failures = extractFiles(matches, keep_files)
+    # failures = extractFiles(matches, keep_files)
 
     # Close database
     logging.debug('Closing index database')
@@ -178,7 +196,7 @@ def should_extract_file(db_row):
     return not(size_disk == size_db and abs(mod_time_disk - mod_time_db).total_seconds() < TIME_TOL)
 
 
-def extractFiles(files, keep_files):
+def extractFiles(files, keep_files, multiprocess_worker=None):
     """
     Given a list of database rows, extract the files from the
     tar archives to the current location on disk.
@@ -186,6 +204,11 @@ def extractFiles(files, keep_files):
     If keep_files is False, the files are not extracted.
     This is used for when checking if the files in an HPSS
     repository are valid.
+
+    If running in parallel, then multiprocess_worker is the Worker
+    that called this function.
+    We need a reference to it so we can signal it to print
+    the contents of what's in it's print queue.
     """
     failures = []
     tfname = None
@@ -205,6 +228,11 @@ def extractFiles(files, keep_files):
                 hpss_get(config.hpss, tfname)
             logging.info('Opening tar archive %s' % (tfname))
             tar = tarfile.open(tfname, "r")
+            # Everytime we're extracting a new tar, if running in parallel,
+            # let the process know.
+            # This is to synchronize the print statements.
+            if multiprocess_worker:
+                multiprocess_worker.set_curr_tar(file[5])
 
         # Extract file
         cmd = 'Extracting' if keep_files else 'Checking'
@@ -290,6 +318,9 @@ def extractFiles(files, keep_files):
             logging.error('Retrieving %s' % (file[1]))
             failures.append(file)
 
+        if multiprocess_worker:
+            multiprocess_worker.print_contents()
+
         # Close current archive?
         if (i == nfiles-1 or files[i][5] != files[i+1][5]):
 
@@ -297,7 +328,17 @@ def extractFiles(files, keep_files):
             logging.debug('Closing tar archive %s' % (tfname))
             tar.close()
 
+            if multiprocess_worker:
+                multiprocess_worker.done_enqueuing_output_for_tar(tfname)
+
             # Open new archive next time
             newtar = True
 
-    return failures
+    if multiprocess_worker:
+        # If there are stuff left to print, print them.
+        multiprocess_worker.print_all_contents()
+        # Add the failures to the queue.
+        for f in failures:
+            multiprocess_worker.failure_queue.add(f)
+    else:    
+        return failures
