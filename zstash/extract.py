@@ -11,17 +11,9 @@ import heapq
 import multiprocessing
 from datetime import datetime
 from hpss import hpss_get
-from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL
+from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL, logger
 from . import parallel
 
-# This just maps stdout to the file below.
-# When we moved stdout to the parallel.PrintQueue, this file didnt have anything in it.
-logging.basicConfig(filename='something.log', level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-#fh = logging.FileHandler('something.log')
-#logger.addHandler(fh)
-#logging.basicConfig(filename='something.log')
-#print(dir(logger))
 
 def multiprocess_extract(num_workers, matches, keep_files):
     """
@@ -70,23 +62,26 @@ def multiprocess_extract(num_workers, matches, keep_files):
                 # This worker gets this db_row.
                 workers_to_matches[worker_idx].append(db_row)
     
-    tars = [tar for tar in tar_to_size]
+    tars = sorted([tar for tar in tar_to_size])
     monitor = parallel.PrintMonitor(tars)
 
     # The return value for extractFiles will be added here.
-    failures = multiprocessing.Queue()
+    failure_queue = multiprocessing.Queue()
     processes = []
     for matches in workers_to_matches:
         tars_for_this_worker = list(set(match[5] for match in matches))
-        worker = parallel.ExtractWorker(monitor, tars_for_this_worker, failures)
+        worker = parallel.ExtractWorker(monitor, tars_for_this_worker, failure_queue)
         process = multiprocessing.Process(target=extractFiles, args=(matches, keep_files, worker))
         process.start()
         processes.append(process)
-    
+   
     for p in processes:
         p.join()
+    
+    failures = []
+    while not failure_queue.empty():
+        failures.append(failure_queue.get())
 
-    # print(failures)
     return failures
 
 def extract(keep_files=True):
@@ -104,7 +99,6 @@ def extract(keep_files=True):
     args = parser.parse_args(sys.argv[2:])
 
     # Open database
-    # logging.debug('Opening index database')
     logger.debug('Opening index database')
     if not os.path.exists(DB_FILENAME):
         # Will need to retrieve from HPSS
@@ -112,8 +106,6 @@ def extract(keep_files=True):
             config.hpss = args.hpss
             hpss_get(config.hpss, DB_FILENAME)
         else:
-            # logging.error('--hpss argument is required when local copy of '
-            #               'database is unavailable')
             logger.error('--hpss argument is required when local copy of '
                           'database is unavailable')
 
@@ -137,13 +129,7 @@ def extract(keep_files=True):
 
     # Start doing actual work
     cmd = 'extract' if keep_files else 'check'
-    '''
-    logging.debug('Running zstash ' + cmd)
-    logging.debug('Local path : %s' % (config.path))
-    logging.debug('HPSS path  : %s' % (config.hpss))
-    logging.debug('Max size  : %i' % (config.maxsize))
-    logging.debug('Keep local tar files  : %s' % (config.keep))
-    '''
+
     logger.debug('Running zstash ' + cmd)
     logger.debug('Local path : %s' % (config.path))
     logger.debug('HPSS path  : %s' % (config.hpss))
@@ -156,9 +142,6 @@ def extract(keep_files=True):
         cur.execute(u"select * from files where name GLOB ? or tar GLOB ?", (file, file))
         matches = matches + cur.fetchall()
     
-    for m in matches:
-        print(m)
-
     # Sort by the filename, tape (so the tar archive),
     # and order within tapes (offset).
     matches.sort(key=lambda x: (x[1], x[5], x[6]))
@@ -183,7 +166,7 @@ def extract(keep_files=True):
 
     # Retrieve from tapes
     if args.workers > 1:
-        # logging.basicConfig(filename='something.log', level=logging.DEBUG)
+        logging.debug('Running zstash {} with multiprocessing'.format(cmd))
         failures = multiprocess_extract(args.workers, matches, keep_files)
     else:
         failures = extractFiles(matches, keep_files)
@@ -197,9 +180,6 @@ def extract(keep_files=True):
         # logging.error('Encountered an error for files:')
         logger.error('Encountered an error for files:')
 
-        # When running with multiprocessing, the failures
-        # is a Queue, which isn't iterable.
-        '''
         for fail in failures:
             # logging.error('{} in {}'.format(fail[1], fail[5]))
             logger.error('{} in {}'.format(fail[1], fail[5]))
@@ -211,7 +191,7 @@ def extract(keep_files=True):
         for tar in broken_tars:
             # logging.error(tar)
             logger.error(tar)
-        '''
+
 
 def should_extract_file(db_row):
     """
@@ -251,15 +231,15 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
     newtar = True
     nfiles = len(files)
     if multiprocess_worker:
+        # All messages to the logger will now be sent to
+        # this queue, instead of sys.stdout.
         sh = logging.StreamHandler(multiprocess_worker.print_queue)
         sh.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(levelname)s: %(message)s')
+        sh.setFormatter(formatter)
         logger.addHandler(sh)
-
-        #handler = logging.NullHandler()
-        #logging.getLogger().addHandler(handler)
-        ###logging.disabled = True
-        # logging.getLogger().disabled = True
-        # logging.basicConfig(filename='something.log', filemode='w')
+        # Don't have the logger print to the console as the message come in.
+        logger.propagate = False
 
     for i in range(nfiles):
         # The current structure of each of the db row, `file`, is:
@@ -275,18 +255,11 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
             # This is to synchronize the print statements.
             if multiprocess_worker:
                 multiprocess_worker.set_curr_tar(file[5])
-                # Commenting out the two lines below makes it work.
-                #handler = logging.StreamHandler(multiprocess_worker.print_queue)
-                #handler.setLevel(logging.DEBUG)
-                #handler = logging.MemoryHandler()
-                #handler = logging.NullHandler()
-                #logging.getLogger().addHandler(handler)
-                #logging.basicConfig(stream=multiprocess_worker.print_queue, level=logging.DEBUG)
 
             if not os.path.exists(tfname):
-                # will need to retrieve from HPSS
+                # Will need to retrieve from HPSS
                 hpss_get(config.hpss, tfname)
-            #logging.info('Opening tar archive %s' % (tfname))
+
             logger.info('Opening tar archive %s' % (tfname))
             tar = tarfile.open(tfname, "r")
 
@@ -301,7 +274,6 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
             msg = 'Not extracting {}, because it'
             msg += ' already exists on disk with the same'
             msg += ' size and modification date.'
-            # logging.info(msg.format(file[1]))
             logger.info(msg.format(file[1]))
 
         # True if we should actually extract the file from the tar
@@ -349,22 +321,16 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
                     tar.utime(tarinfo, fname)
                     # Verify size
                     if os.path.getsize(fname) != file[2]:
-                        # logging.error('size mismatch for: %s' % (fname))
                         logger.error('size mismatch for: %s' % (fname))
+
                 # Verify md5 checksum
                 if md5 != file[4]:
-                    '''
-                    logging.error('md5 mismatch for: %s' % (fname))
-                    logging.error('md5 of extracted file: %s' % (md5))
-                    logging.error('md5 of original file:  %s' % (file[4]))
-                    '''
                     logger.error('md5 mismatch for: %s' % (fname))
                     logger.error('md5 of extracted file: %s' % (md5))
                     logger.error('md5 of original file:  %s' % (file[4]))
 
                     failures.append(file)
                 else:
-                    # logging.debug('Valid md5: %s %s' % (md5, fname))
                     logger.debug('Valid md5: %s %s' % (md5, fname))
 
             elif extract_this_file:
@@ -381,7 +347,6 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
 
         except:
             traceback.print_exc()
-            # logging.error('Retrieving %s' % (file[1]))
             logger.error('Retrieving %s' % (file[1]))
             failures.append(file)
 
@@ -390,26 +355,23 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
 
         # Close current archive?
         if (i == nfiles-1 or files[i][5] != files[i+1][5]):
-
             # Close current archive file
-            # logging.debug('Closing tar archive %s' % (tfname))
             logger.debug('Closing tar archive %s' % (tfname))
             tar.close()
-            # logging.info('print queue 0 ' + str(len(multiprocess_worker.print_queue)))
-            # logger.info('print queue 0 ' + str(len(multiprocess_worker.print_queue)))
 
             if multiprocess_worker:
                 multiprocess_worker.done_enqueuing_output_for_tar(file[5])
+
             # Open new archive next time
             newtar = True
 
     if multiprocess_worker:
         # If there are stuff left to print, print them.
-        #print('trying to print ALL (ALL!!) contents of', multiprocess_worker)
         multiprocess_worker.print_all_contents()
         # Add the failures to the queue.
+        # When running with multiprocessing, the function multiprocess_extract()
+        # that calls this extractFiles() function will return the failures as a list.
         for f in failures:
             multiprocess_worker.failure_queue.add(f)
-        #print('DONE PRINTING THE CONTENTS OF', multiprocess_worker)
     else:    
         return failures

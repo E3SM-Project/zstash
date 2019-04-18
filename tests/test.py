@@ -64,8 +64,9 @@ def stop():
     cleanup()
     sys.exit()
 
-# TODO: Change the hpss directory to a dir that's accessable to everyone.
-HPSS_PATH='/home/z/zshaheen/zstash_test'
+# Makes this in the home dir of the user on HPSS.
+# Ex: /home/z/zshaheen/zstash_test
+HPSS_PATH='zstash_test'
 
 # Create files and directories
 print('Creating files.')
@@ -97,16 +98,6 @@ print('Adding files to HPSS')
 cmd = 'zstash create --hpss={} zstash_test'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
 str_in(output+err, 'Transferring file to HPSS')
-str_not_in(output+err, 'ERROR')
-
-print('Testing ls')
-cmd = 'zstash ls --hpss={}'.format(HPSS_PATH)
-output, err = run_cmd(cmd)
-str_in(output+err, 'file0.txt')
-str_not_in(output+err, 'ERROR')
-cmd = 'zstash ls -l --hpss={}'.format(HPSS_PATH)
-output, err = run_cmd(cmd)
-str_in(output+err, 'tar')
 str_not_in(output+err, 'ERROR')
 
 print('Testing chgrp')
@@ -152,9 +143,50 @@ str_not_in(output+err, 'file_empty')
 str_not_in(output+err, 'empty_dir')
 str_not_in(output+err, 'ERROR')
 
+print('Adding many more files to the HPSS archive.')
+msg = 'This is because we need many separate tar archives'
+msg += ' for testing zstash extract/check with parallel.'
+print(msg)
+write_file('zstash_test/file3.txt', 'file3 stuff')
+os.chdir('zstash_test')
+cmd = 'zstash update --hpss={}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+os.chdir('../')
+write_file('zstash_test/file4.txt', 'file4 stuff')
+os.chdir('zstash_test')
+cmd = 'zstash update --hpss={}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+os.chdir('../')
+write_file('zstash_test/file5.txt', 'file5 stuff')
+os.chdir('zstash_test')
+cmd = 'zstash update --hpss={}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+os.chdir('../')
+
+print('Testing ls')
+cmd = 'zstash ls --hpss={}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+str_in(output+err, 'file0.txt')
+str_not_in(output+err, 'ERROR')
+cmd = 'zstash ls -l --hpss={}'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+str_in(output+err, 'tar')
+str_not_in(output+err, 'ERROR')
+
 print('Testing the checking functionality')
 cmd = 'zstash check --hpss={}'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
+str_in(output+err, 'Transferring from HPSS')
+str_in(output+err, 'Checking file0.txt')
+str_in(output+err, 'Checking file0_hard.txt')
+str_in(output+err, 'Checking file0_soft.txt')
+str_in(output+err, 'Checking file_empty.txt')
+str_in(output+err, 'Checking dir/file1.txt')
+str_in(output+err, 'Checking empty_dir')
+str_in(output+err, 'Checking dir2/file2.txt')
+str_in(output+err, 'Checking file3.txt')
+str_in(output+err, 'Checking file4.txt')
+str_in(output+err, 'Checking file5.txt')
 str_not_in(output+err, 'ERROR')
 
 print('Testing the extract functionality')
@@ -172,6 +204,9 @@ str_in(output+err, 'Extracting file_empty.txt')
 str_in(output+err, 'Extracting dir/file1.txt')
 str_in(output+err, 'Extracting empty_dir')
 str_in(output+err, 'Extracting dir2/file2.txt')
+str_in(output+err, 'Extracting file3.txt')
+str_in(output+err, 'Extracting file4.txt')
+str_in(output+err, 'Extracting file5.txt')
 str_not_in(output+err, 'ERROR')
 str_not_in(output+err, 'Not extracting')
 
@@ -189,15 +224,64 @@ str_in(output+err, 'Not extracting dir/file1.txt')
 # It's okay to extract empty dirs.
 str_not_in(output+err, 'Not extracting empty_dir')
 str_in(output+err, 'Not extracting dir2/file2.txt')
+str_in(output+err, 'Not extracting file3.txt')
+str_in(output+err, 'Not extracting file4.txt')
+str_in(output+err, 'Not extracting file5.txt')
 str_not_in(output+err, 'ERROR')
 
-print('Deleting the extracted files and doing it again with multiprocessing.')
+print('Deleting the extracted files and doing it again in parallel.')
 shutil.rmtree('zstash_test')
 os.mkdir('zstash_test')
 os.chdir('zstash_test')
-cmd = 'zstash extract --hpss={} --workers=2'.format(HPSS_PATH)
+cmd = 'zstash extract --hpss={} --workers=3'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
 os.chdir('../')
+str_in(output+err, 'Transferring from HPSS')
+str_in(output+err, 'Extracting file0.txt')
+str_in(output+err, 'Extracting file0_hard.txt')
+str_in(output+err, 'Extracting file0_soft.txt')
+str_in(output+err, 'Extracting file_empty.txt')
+str_in(output+err, 'Extracting dir/file1.txt')
+str_in(output+err, 'Extracting empty_dir')
+str_in(output+err, 'Extracting dir2/file2.txt')
+str_in(output+err, 'Extracting file3.txt')
+str_in(output+err, 'Extracting file4.txt')
+str_in(output+err, 'Extracting file5.txt')
+str_not_in(output+err, 'ERROR')
+str_not_in(output+err, 'Not extracting')
+# We don't check that the printing was done in order.
+# For some reason it seems like since we redirect stdout when
+# running the process, it causes the output to not be in order.
+# When you manually do it, it's all fine.
+
+# tar_order = []
+# console_output = output+err
+# for word in console_output.replace('\n', ' ').split(' '):
+#     if '.tar' in word:
+#         tar_order.append(word)
+# if tar_order != sorted(tar_order):
+#     print('*'*40)
+#     print('The tars were printed in this order: {}'.format(tar_order))
+#     print('When it should have been in this order: {}'.format(sorted(tar_order)))
+#     print('*'*40)
+#     stop()
+
+print('Checking the files again in parallel.')
+os.chdir('zstash_test')
+cmd = 'zstash check --hpss={} --workers=3'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+os.chdir('../')
+str_in(output+err, 'Checking file0.txt')
+str_in(output+err, 'Checking file0_hard.txt')
+str_in(output+err, 'Checking file0_soft.txt')
+str_in(output+err, 'Checking file_empty.txt')
+str_in(output+err, 'Checking dir/file1.txt')
+str_in(output+err, 'Checking empty_dir')
+str_in(output+err, 'Checking dir2/file2.txt')
+str_in(output+err, 'Checking file3.txt')
+str_in(output+err, 'Checking file4.txt')
+str_in(output+err, 'Checking file5.txt')
+str_not_in(output+err, 'ERROR')
 
 print('Running update on the newly extracted directory, nothing should happen')
 os.chdir('zstash_test')

@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import sys
 import multiprocessing
 import collections
@@ -7,7 +9,7 @@ import ctypes
 class NotYourTurnError(BaseException):
     """
     An error to let a worker know it needs to wait
-    to print it's stuff.
+    to print its stuff.
     """
     pass
 
@@ -51,6 +53,9 @@ class PrintMonitor(object):
                 try:
                     self._cv.wait(*args, **kwargs)
                 except RuntimeError:
+                    # If a timeout is passed in and a process can't get
+                    # the lock within that time, a RuntimeError is given.
+                    # To be specific, we'll raise a custom exception.
                     raise NotYourTurnError()
 
     def done_dequeuing_output_for_tar(self, worker, workers_curr_tar, *args, **kwargs):
@@ -100,6 +105,7 @@ class ExtractWorker(object):
         """
         print_monitor is used to determine if it's this worker's turn to print.
         tars_to_work_on is a list of the tars that this worker will process.
+        Any failures are added to the failure_queue, to return any failed values.
         """
         self.print_monitor = print_monitor
         # Every call to print() in the original function will
@@ -155,22 +161,18 @@ class ExtractWorker(object):
         is over, a NotYourTurnError exception is raised.
         """
         while self.has_to_print():
-            # print(self.name, 'HAS to print something...')
             # Try to print the first element in the queue.
             tar_to_print = self.print_queue[0].tar
-            # print(tar_to_print)
             self.print_monitor.wait_turn(self, tar_to_print, *args, **kwargs)
-            # print('It is ', self.name, 'turn now')
 
             # Print all applicable values in the print_queue.
             while self.print_queue and self.print_queue[0].tar == tar_to_print:
                 msg = self.print_queue.popleft().msg
-                print(msg)
+                print(msg, end='')
 
             # If True, then all of the output for extracting tar_to_print was in the queue.
             # Since we just finished printing all of it, we can move onto the next one.
             if self.is_output_done_enqueuing[tar_to_print]:
                 # Let all of the other workers know that this worker is done.
-                # print(self.name, 'is letting the others know it is done.')
                 self.print_monitor.done_dequeuing_output_for_tar(self, tar_to_print)
 
