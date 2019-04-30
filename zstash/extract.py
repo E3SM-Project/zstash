@@ -171,32 +171,29 @@ def extract(keep_files=True):
 
     # Retrieve from tapes
     if args.workers > 1:
-        logging.debug('Running zstash {} with multiprocessing'.format(cmd))
+        logger.debug('Running zstash {} with multiprocessing'.format(cmd))
         failures = multiprocess_extract(args.workers, matches, keep_files)
     else:
         failures = extractFiles(matches, keep_files)
 
     # Close database
-    # logging.debug('Closing index database')
     logger.debug('Closing index database')
     con.close()
 
     if failures:
-        # logging.error('Encountered an error for files:')
         logger.error('Encountered an error for files:')
 
         for fail in failures:
-            # logging.error('{} in {}'.format(fail[1], fail[5]))
             logger.error('{} in {}'.format(fail[1], fail[5]))
 
         broken_tars = set(sorted([f[5] for f in failures]))
 
-        # logging.error('The following tar archives had errors:')
         logger.error('The following tar archives had errors:')
         for tar in broken_tars:
-            # logging.error(tar)
             logger.error(tar)
-
+    else:
+        verb = 'extracting' if keep_files else 'checking'
+        logger.info('No failures detected when {} the files.'.format(verb))
 
 def should_extract_file(db_row):
     """
@@ -270,7 +267,6 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
 
         # Extract file
         cmd = 'Extracting' if keep_files else 'Checking'
-        # logging.info(cmd + ' %s' % (file[1]))
         logger.info(cmd + ' %s' % (file[1]))
 
         if keep_files and not should_extract_file(file):
