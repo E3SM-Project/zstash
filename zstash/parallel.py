@@ -97,7 +97,7 @@ class ExtractWorker(object):
                 self.append(self.TarAndMsg(self.curr_tar, msg))
 
         def flush(self):
-            # Not needed, but it's called by some interal Python code.
+            # Not needed, but it's called by some internal Python code.
             # So we need to provide a function like this.
             pass
 

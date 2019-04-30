@@ -62,26 +62,31 @@ def multiprocess_extract(num_workers, matches, keep_files):
                 # This worker gets this db_row.
                 workers_to_matches[worker_idx].append(db_row)
     
-    tars = sorted([tar for tar in tar_to_size])
-    monitor = parallel.PrintMonitor(tars)
+    tar_ordering = sorted([tar for tar in tar_to_size])
+    monitor = parallel.PrintMonitor(tar_ordering)
 
     # The return value for extractFiles will be added here.
     failure_queue = multiprocessing.Queue()
     processes = []
+
     for matches in workers_to_matches:
         tars_for_this_worker = list(set(match[5] for match in matches))
         worker = parallel.ExtractWorker(monitor, tars_for_this_worker, failure_queue)
         process = multiprocessing.Process(target=extractFiles, args=(matches, keep_files, worker))
         process.start()
         processes.append(process)
-   
-    for p in processes:
-        p.join()
-    
-    failures = []
-    while not failure_queue.empty():
-        failures.append(failure_queue.get())
 
+    # While the processes are running, we need to empty the queue.
+    # Otherwise, it causes hanging.
+    # No need to join() each of the processes when doing this,
+    # cause we'll be in this loop until completion.
+    failures = []
+    while any(p.is_alive() for p in processes):
+        while not failure_queue.empty():
+            failures.append(failure_queue.get())
+
+    # Sort the failures, since they can come in at any order.
+    failures.sort(key=lambda x: (x[1], x[5], x[6]))
     return failures
 
 def extract(keep_files=True):
@@ -368,10 +373,11 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
     if multiprocess_worker:
         # If there are stuff left to print, print them.
         multiprocess_worker.print_all_contents()
+
         # Add the failures to the queue.
         # When running with multiprocessing, the function multiprocess_extract()
         # that calls this extractFiles() function will return the failures as a list.
         for f in failures:
-            multiprocess_worker.failure_queue.add(f)
+            multiprocess_worker.failure_queue.put(f)
     else:    
         return failures
