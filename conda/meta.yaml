@@ -1,21 +1,21 @@
 package:
     name: zstash
-    version: 0.2.0
+    version: 0.3.0
 
 source:
     git_url: https://github.com/E3SM-Project/zstash
-    git_rev: v0.2.0
+    git_rev: v0.3.0
 
 build:
     script: python setup.py install
 
 requirements:
   build:
-    - python 2
+    - python 3
     - setuptools
 
   run:
-    - python 2
+    - python 3
 
 about:
     home: https://github.com/E3SM-Project/zstash
