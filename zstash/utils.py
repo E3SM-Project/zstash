@@ -1,14 +1,14 @@
+from __future__ import print_function, absolute_import
+
 import hashlib
 import logging
 import os.path
 import tarfile
 import traceback
-
 from datetime import datetime
 from fnmatch import fnmatch
-
-from hpss import hpss_put
-from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
+from .hpss import hpss_put
+from .settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
 
 
 def excludeFiles(exclude, files):

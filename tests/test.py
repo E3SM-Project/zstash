@@ -19,6 +19,14 @@ def run_cmd(cmd):
         cmd = cmd.split()
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, err = p.communicate()
+
+    # When running in Python 3, the output of subprocess.Popen.communicate()
+    # is a bytes object. We need to convert it to a string.
+    if isinstance(output, bytes):
+        output = output.decode("utf-8")
+    if isinstance(err, bytes):
+        err = err.decode("utf-8")
+
     print(output)
     print(err)
     return output, err
@@ -217,7 +225,6 @@ str_in(output+err, 'Extracting file4.txt')
 str_in(output+err, 'Extracting file5.txt')
 str_not_in(output+err, 'ERROR')
 str_not_in(output+err, 'Not extracting')
-
 
 print('Testing the extract functionality again, nothing should happen')
 os.chdir('zstash_test')

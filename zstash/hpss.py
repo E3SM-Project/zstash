@@ -1,7 +1,9 @@
+from __future__ import print_function, absolute_import
+
 import os.path
 import shlex
 from subprocess import Popen, PIPE
-from settings import logger
+from .settings import logger
 
 
 def hpss_put(hpss, file, keep=True):

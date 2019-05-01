@@ -1,15 +1,15 @@
+from __future__ import print_function, absolute_import
+
 import argparse
 import logging
 import os.path
 import sqlite3
 import stat
 import sys
-
 from datetime import datetime
-
-from hpss import hpss_get, hpss_put
-from utils import addfiles, excludeFiles
-from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL
+from .hpss import hpss_get, hpss_put
+from .utils import addfiles, excludeFiles
+from .settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL
 
 
 def update():

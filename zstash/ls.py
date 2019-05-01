@@ -1,12 +1,12 @@
-from __future__ import print_function
+from __future__ import print_function, absolute_import
 
 import os
 import sys
 import argparse
 import logging
 import sqlite3
-from hpss import hpss_get
-from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
+from .hpss import hpss_get
+from .settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
 
 
 def ls():

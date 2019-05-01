@@ -1,17 +1,17 @@
 #!/usr/bin/env python
+from __future__ import print_function, absolute_import
 
 import argparse
 import logging
 import os.path
 import sys
-
-import settings
-from create import create
-from update import update
-from extract import extract
-from chgrp import chgrp
-from check import check
-from ls import ls
+from . import settings
+from .create import create
+from .update import update
+from .extract import extract
+from .chgrp import chgrp
+from .check import check
+from .ls import ls
 
 
 # -----------------------------------------------------------------------------
@@ -52,7 +52,7 @@ For help with a specific command
     elif args.command == 'ls':
         ls()
     else:
-        print 'Unrecognized command'
+        print('Unrecognized command')
         parser.print_help()
         sys.exit(1)
 

@@ -1,6 +1,8 @@
+from __future__ import print_function, absolute_import
+
 import sys
 import argparse
-from hpss import hpss_chgrp
+from .hpss import hpss_chgrp
 
 def chgrp():
 

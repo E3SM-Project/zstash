@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 import argparse
 import hashlib
 import logging
@@ -10,8 +12,8 @@ import collections
 import heapq
 import multiprocessing
 from datetime import datetime
-from hpss import hpss_get
-from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL, logger
+from .hpss import hpss_get
+from .settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL, logger
 from . import parallel
 
 
@@ -186,7 +188,7 @@ def extract(keep_files=True):
         for fail in failures:
             logger.error('{} in {}'.format(fail[1], fail[5]))
 
-        broken_tars = set(sorted([f[5] for f in failures]))
+        broken_tars = sorted(set([f[5] for f in failures]))
 
         logger.error('The following tar archives had errors:')
         for tar in broken_tars:
@@ -299,7 +301,7 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
                     if extract_this_file:
                         # If we're keeping the files,
                         # then have an output file
-                        fout = open(fname, 'w')
+                        fout = open(fname, 'wb')
 
                     hash_md5 = hashlib.md5()
                     while True:
@@ -317,7 +319,10 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
 
                 md5 = hash_md5.hexdigest()
                 if extract_this_file:
-                    tar.chown(tarinfo, fname)
+                    # numeric_owner is a required arg in Python 3.
+                    # If True, "only the numbers for user/group names
+                    # are used and not the names".
+                    tar.chown(tarinfo, fname, numeric_owner=False)
                     tar.chmod(tarinfo, fname)
                     tar.utime(tarinfo, fname)
                     # Verify size
