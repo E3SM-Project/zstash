@@ -81,16 +81,23 @@ Note: Most of the commands for this are the same for ``zstash extract`` and ``zs
 To verify that your files were uploaded on HPSS successfully,
 go to a **new, empty directory** and run: ::
 
-   $ zstash check --hpss=<path to HPSS> [files]
+   $ zstash check --hpss=<path to HPSS> [--workers=<num of processes>] [files]
 
 where
 
 * ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system.
+* ``--workers=<num of processes>`` an optional argument which specifies the number of
+  processes to use, resulting in checking being done in parallel.
+  **Using a high number will result in slow downloads for each of the tars since your bandwidth is limited.**
+  **User discretion is advised.**
 * ``[files]`` is a list of files to check (standard wildcards supported).
 
   * Leave empty to check all the files.
-  * You can pass the name of a specific tar archive to check
-    all files within that tar archive.
+  * List of files with support for wildcards. Please note that any expression
+    containing **wildcards should be enclosed in double quotes ("...")** 
+    to avoid shell substitution.
+  * Names of specific tar archives to check all files within these tar archives.
+
 
 ``zstash check`` will download the tar archives to the local disk cache (under 
 the `zstash/` subdirectory) and verify the md5 checksum against the checksum 
@@ -127,13 +134,13 @@ Update
 An existing zstash archive can be updated to add new or modified files: ::
 
    $ cd <mydir>
-   $ zstash update --hpss=<path to HPSS> [files]
+   $ zstash update --hpss=<path to HPSS> [--exclude] [--dry-run] [files]
 
 where
 
 * ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system,
-* ``--exclude`` comma separated list of file patterns to exclude,
-* ``--dry-run`` dry run, only list files to be updated in archive.
+* ``--exclude`` an optional argument of comma separated list of file patterns to exclude,
+* ``--dry-run`` an optional argument to specify a dry run, only lists files to be updated in archive.
 
 Example
 -------
@@ -181,17 +188,22 @@ Note: Most of the commands for this are the same for ``zstash check`` and ``zsta
 To extract files from an existing zstash archive into current <mydir>: ::
 
    $ cd <mydir>
-   $ zstash extract --hpss=<path to HPSS> [files]
+   $ zstash extract --hpss=<path to HPSS> [--workers=<num of processes>] [files]
 
 where
 
-* ``[files]`` specifies files to be extracted, for example:
+* ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system.
+* ``--workers=<num of processes>`` an optional argument which specifies the number of
+  processes to use, resulting in extracting being done in parallel.
+  **Using a high number will result in slow downloads for each of the tars since your bandwidth is limited.**
+  **User discretion is advised.**
+* ``[files]`` is a list of files to be extracted (standard wildcards supported).
 
   * Leave empty to extract all the files.
   * List of files with support for wildcards. Please note that any expression
     containing **wildcards should be enclosed in double quotes ("...")** 
     to avoid shell substitution.
-  * Name of a specific tar archive to extract all files within this tar archive.
+  * Names of specific tar archives to extract all files within these tar archives.
 
 You must pass in the **path relative to the top level** for the file(s). For help 
 finding path names, you can use ``zstash ls`` as documented below.
@@ -275,12 +287,19 @@ Note: Most of the commands for this are the same for ``zstash extract`` and ``zs
 
 You can view the files in an existing zstash archive:  ::
 
-   $ zstash ls --hpss=<path to HPSS> [files]
+   $ zstash ls --hpss=<path to HPSS> [-l] [files]
 
 where
 
 * ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system,
 * ``-l`` an optional argument to display more information.
+* ``[files]`` is a list of files to be listed (standard wildcards supported).
+
+  * Leave empty to list all the files.
+  * List of files with support for wildcards. Please note that any expression
+    containing **wildcards should be enclosed in double quotes ("...")** 
+    to avoid shell substitution.
+  * Names of specific tar archives to list all files within these tar archives.
 
 Below is an example. Note the names of the columns:  ::
 

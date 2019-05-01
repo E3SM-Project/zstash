@@ -241,6 +241,8 @@ checksum stored in the index database (index.db).</p>
 <p><code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> can also be run in the original location. But if tar files
 are present in the local cache (zstash/ sub-directory), the check will only
 be performed against the local disk copy, not the one on HPSS.</p>
+<p>To save time, you can check in parallel by passing in a number of processes with the <code class="docutils literal notranslate"><span class="pre">--workers</span></code>
+argument. Please see the full documentation for <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> for more information.</p>
 <p>If any corrupted file is found during the check, zstash will print a list of corrupted
 files in the archive, along with the tar archive they belong to.</p>
 <p>There are currently two kinds of errors:</p>

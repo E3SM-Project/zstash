@@ -83,6 +83,9 @@ checksum stored in the index database (index.db).
 are present in the local cache (zstash/ sub-directory), the check will only
 be performed against the local disk copy, not the one on HPSS.
 
+To save time, you can check in parallel by passing in a number of processes with the ``--workers``
+argument. Please see the full documentation for ``zstash check`` for more information.
+
 If any corrupted file is found during the check, zstash will print a list of corrupted 
 files in the archive, along with the tar archive they belong to.
 

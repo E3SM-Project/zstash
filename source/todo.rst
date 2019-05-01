@@ -8,8 +8,6 @@ Possible future enhancements depending on project priorities.
 
 * Implement **verbosity** level option.
 
-* Improve performance of zstash extract by performing hsi get in parallel and in the background.
-
 * New 'add' functionality to add only specified files.
 
 * ...
