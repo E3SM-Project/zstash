@@ -70,7 +70,6 @@ def multiprocess_extract(num_workers, matches, keep_files):
     # The return value for extractFiles will be added here.
     failure_queue = multiprocessing.Queue()
     processes = []
-
     for matches in workers_to_matches:
         tars_for_this_worker = list(set(match[5] for match in matches))
         worker = parallel.ExtractWorker(monitor, tars_for_this_worker, failure_queue)
@@ -270,6 +269,7 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
         # Extract file
         cmd = 'Extracting' if keep_files else 'Checking'
         logger.info(cmd + ' %s' % (file[1]))
+        print('{} is {} {} from {}'.format(multiprocess_worker, cmd, file[1], file[5]))
 
         if keep_files and not should_extract_file(file):
             # If we were going to extract, but aren't

@@ -6,7 +6,7 @@ import collections
 import ctypes
 
 
-class NotYourTurnError(BaseException):
+class NotYourTurnError(Exception):
     """
     An error to let a worker know it needs to wait
     to print its stuff.
@@ -40,23 +40,27 @@ class PrintMonitor(object):
         self._manager = multiprocessing.Manager()
         self._current_tar = self._manager.Value(ctypes.c_char_p, self._tars_to_print.get())
 
-    def wait_turn(self, worker, workers_curr_tar, *args, **kwargs):
+    def wait_turn(self, worker, workers_curr_tar, indef_wait=True, *args, **kwargs):
         """
         While a worker's current tar isn't the one
         needed to be printed, wait.
 
-        A process can pass in a timeout, and if the turn
-        isn't given within that, a NotYourTurnError is raised.
+        A timeout is passed into self._cv.wait(), and if the
+        turn isn't given within that, a NotYourTurnError is raised.
+
+        If indef_wait is True, indefinitely wait until it's
+        the worker's turn.
         """
         with self._cv:
+            attempted = False
             while self._current_tar.value != workers_curr_tar:
-                try:
-                    self._cv.wait(*args, **kwargs)
-                except RuntimeError:
-                    # If a timeout is passed in and a process can't get
-                    # the lock within that time, a RuntimeError is given.
-                    # To be specific, we'll raise a custom exception.
+                if attempted and not indef_wait:
+                    # It's not this worker's turn.
                     raise NotYourTurnError()
+
+                attempted = True
+                # Wait 0.001 to see if it's the worker's turn.
+                self._cv.wait(0.001)
 
     def done_dequeuing_output_for_tar(self, worker, workers_curr_tar, *args, **kwargs):
         """
@@ -141,8 +145,8 @@ class ExtractWorker(object):
         Try to print the contents from self.print_queue.
         """
         try:
-            # Wait for 0.001 seconds to see if it's our turn.
-            self.print_all_contents(0.001)
+            # We only wait for 0.001 seconds.
+            self.print_all_contents(indef_wait=False)
         except NotYourTurnError:
             # It's not our turn, so try again the next time this function is called.
             pass

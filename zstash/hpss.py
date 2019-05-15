@@ -82,7 +82,7 @@ def hpss_chgrp(hpss, group, recurse=False):
     (stdout, stderr) = p1.communicate()
     status = p1.returncode
     if status != 0:
-        logger.error('Changing group of HPSS archive {} to {}'.format())
+        logger.error('Changing group of HPSS archive {} to {}'.format(hpss, group))
         logger.debug('stdout:\n%s', stdout)
         logger.debug('stderr:\n%s', stderr)
         raise Exception
