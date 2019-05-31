@@ -172,7 +172,7 @@ class ExtractWorker(object):
             # Print all applicable values in the print_queue.
             while self.print_queue and self.print_queue[0].tar == tar_to_print:
                 msg = self.print_queue.popleft().msg
-                print(msg, end='')
+                print(msg, end='', flush=True)
 
             # If True, then all of the output for extracting tar_to_print was in the queue.
             # Since we just finished printing all of it, we can move onto the next one.

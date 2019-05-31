@@ -263,18 +263,18 @@ str_not_in(output+err, 'Not extracting')
 # For some reason it seems like since we redirect stdout when
 # running the process, it causes the output to not be in order.
 # When you manually do it, it's all fine.
-
-# tar_order = []
-# console_output = output+err
-# for word in console_output.replace('\n', ' ').split(' '):
-#     if '.tar' in word:
-#         tar_order.append(word)
-# if tar_order != sorted(tar_order):
-#     print('*'*40)
-#     print('The tars were printed in this order: {}'.format(tar_order))
-#     print('When it should have been in this order: {}'.format(sorted(tar_order)))
-#     print('*'*40)
-#     stop()
+tar_order = []
+console_output = output+err
+for word in console_output.replace('\n', ' ').split(' '):
+    if '.tar' in word:
+        word = word.replace('zstash/', '')
+        tar_order.append(word)
+if tar_order != sorted(tar_order):
+    print('*'*40)
+    print('The tars were printed in this order: {}'.format(tar_order))
+    print('When it should have been in this order: {}'.format(sorted(tar_order)))
+    print('*'*40)
+    stop()
 
 
 print('Checking the files again in parallel.')

@@ -269,7 +269,8 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
         # Extract file
         cmd = 'Extracting' if keep_files else 'Checking'
         logger.info(cmd + ' %s' % (file[1]))
-        print('{} is {} {} from {}'.format(multiprocess_worker, cmd, file[1], file[5]))
+        # if multiprocess_worker:
+        #     print('{} is {} {} from {}'.format(multiprocess_worker, cmd, file[1], file[5]))
 
         if keep_files and not should_extract_file(file):
             # If we were going to extract, but aren't
