@@ -259,10 +259,7 @@ str_in(output+err, 'Extracting file4.txt')
 str_in(output+err, 'Extracting file5.txt')
 str_not_in(output+err, 'ERROR')
 str_not_in(output+err, 'Not extracting')
-# We don't check that the printing was done in order.
-# For some reason it seems like since we redirect stdout when
-# running the process, it causes the output to not be in order.
-# When you manually do it, it's all fine.
+# Checking that the printing was done in order.
 tar_order = []
 console_output = output+err
 for word in console_output.replace('\n', ' ').split(' '):
