@@ -1,3 +1,10 @@
+"""
+Run the test suite like:
+    python test.py
+You'll get a statement printed
+if all of the tests pass.
+"""
+
 import os
 import sys
 import subprocess
