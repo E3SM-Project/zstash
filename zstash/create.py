@@ -1,3 +1,5 @@
+from __future__ import print_function, absolute_import
+
 import argparse
 import errno
 import logging
@@ -6,12 +8,10 @@ import shlex
 import sys
 import sqlite3
 import tarfile
-
 from subprocess import Popen, PIPE
-
-from hpss import hpss_put
-from utils import addfiles, excludeFiles
-from settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
+from .hpss import hpss_put
+from .utils import addfiles, excludeFiles
+from .settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
 
 
 def create():

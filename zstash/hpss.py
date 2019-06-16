@@ -1,8 +1,9 @@
-import logging
+from __future__ import print_function, absolute_import
+
 import os.path
 import shlex
-
 from subprocess import Popen, PIPE
+from .settings import logger
 
 
 def hpss_put(hpss, file, keep=True):
@@ -10,7 +11,7 @@ def hpss_put(hpss, file, keep=True):
     Put a file to the HPSS archive.
     """
 
-    logging.info('Transferring file to HPSS: %s' % (file))
+    logger.info('Transferring file to HPSS: %s' % (file))
     path, name = os.path.split(file)
 
     # Need to be in local directory for hsi put to work
@@ -24,9 +25,9 @@ def hpss_put(hpss, file, keep=True):
     (stdout, stderr) = p1.communicate()
     status = p1.returncode
     if status != 0:
-        logging.error('Transferring file to HPSS: %s' % (name))
-        logging.debug('stdout:\n%s', stdout)
-        logging.debug('stderr:\n%s', stderr)
+        logger.error('Transferring file to HPSS: %s' % (name))
+        logger.debug('stdout:\n%s', stdout)
+        logger.debug('stderr:\n%s', stderr)
         raise Exception
 
     # Back to original working directory
@@ -43,7 +44,7 @@ def hpss_get(hpss, file):
     Get ia file from the HPSS archive.
     """
 
-    logging.info('Transferring from HPSS: %s' % (file))
+    logger.info('Transferring from HPSS: %s' % (file))
     path, name = os.path.split(file)
 
     # Need to be in local directory for hsi get to work
@@ -59,9 +60,9 @@ def hpss_get(hpss, file):
     (stdout, stderr) = p1.communicate()
     status = p1.returncode
     if status != 0:
-        logging.error('Transferring file from HPSS: %s' % (name))
-        logging.debug('stdout:\n%s', stdout)
-        logging.debug('stderr:\n%s', stderr)
+        logger.error('Transferring file from HPSS: %s' % (name))
+        logger.debug('stdout:\n%s', stdout)
+        logger.debug('stderr:\n%s', stderr)
         raise Exception
 
     # Back to original working directory
@@ -81,8 +82,8 @@ def hpss_chgrp(hpss, group, recurse=False):
     (stdout, stderr) = p1.communicate()
     status = p1.returncode
     if status != 0:
-        logging.error('Changing group of HPSS archive {} to {}'.format())
-        logging.debug('stdout:\n%s', stdout)
-        logging.debug('stderr:\n%s', stderr)
+        logger.error('Changing group of HPSS archive {} to {}'.format(hpss, group))
+        logger.debug('stdout:\n%s', stdout)
+        logger.debug('stderr:\n%s', stderr)
         raise Exception
 

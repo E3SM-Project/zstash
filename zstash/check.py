@@ -1,5 +1,7 @@
+from __future__ import print_function, absolute_import
+
 import logging
-import extract
+from . import extract
 
 def check():
     """

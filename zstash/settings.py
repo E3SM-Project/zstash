@@ -1,5 +1,7 @@
-import os.path
+from __future__ import print_function, absolute_import
 
+import os.path
+import logging
 
 # Class to hold configuration
 class Config(object):
@@ -23,3 +25,6 @@ TIME_TOL = 1.0
 
 # Initialize config
 config = Config()
+
+logger = logging.getLogger(__name__)
+

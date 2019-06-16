@@ -1,17 +1,17 @@
 #!/usr/bin/env python
+from __future__ import print_function, absolute_import
 
 import argparse
 import logging
 import os.path
 import sys
-
-import settings
-from create import create
-from update import update
-from extract import extract
-from chgrp import chgrp
-from check import check
-from ls import ls
+from . import settings, __version__
+from .create import create
+from .update import update
+from .extract import extract
+from .chgrp import chgrp
+from .check import check
+from .ls import ls
 
 
 # -----------------------------------------------------------------------------
@@ -20,9 +20,10 @@ def main():
     logging.basicConfig(format='%(levelname)s: %(message)s',
                         level=logging.DEBUG)
     parser = argparse.ArgumentParser(
-        usage='''zstash <command> [<args>]
+        usage='''For {}, zstash <command> [<args>]
 
 Available zstash commands:
+  version    print the version of zstash
   create     create new archive
   update     update existing archive
   extract    extract files from archive
@@ -32,14 +33,16 @@ Available zstash commands:
 
 For help with a specific command
   zstash command --help
-''')
+'''.format(__version__))
     parser.add_argument('command',
                         help='command to run (create, update, extract, ...)')
     # parse_args defaults to [1:] for args, but you need to
     # exclude the rest of the args too, or validation will fail
     args = parser.parse_args(sys.argv[1:2])
 
-    if args.command == 'create':
+    if args.command == 'version':
+        print(__version__)
+    elif args.command == 'create':
         create()
     elif args.command == 'update':
         update()
@@ -52,7 +55,7 @@ For help with a specific command
     elif args.command == 'ls':
         ls()
     else:
-        print 'Unrecognized command'
+        print('Unrecognized command')
         parser.print_help()
         sys.exit(1)
 
