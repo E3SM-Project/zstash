@@ -17,38 +17,44 @@
   
 
   
-  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-    
-    <script type="text/javascript" src="_static/js/theme.js"></script>
 
+  
+  
     
 
   
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Support" href="support.html" />
-    <link rel="prev" title="Design considerations" href="design.html" />
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="zstash  documentation" href="index.html"/>
+        <link rel="next" title="Support" href="support.html"/>
+        <link rel="prev" title="Design considerations" href="design.html"/>
     <link href="_static/style.css" rel="stylesheet" type="text/css">
+
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
 
 </head>
 
-<body class="wy-body-for-nav">
+<body class="wy-body-for-nav" role="document">
 
    
   <div class="wy-grid-for-nav">
+
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search" >
+        <div class="wy-side-nav-search">
           
 
           
@@ -85,7 +91,7 @@
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="installation_and_updating.html">Installation and Updating</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best practices for E3SM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
@@ -108,7 +114,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" aria-label="top navigation">
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">zstash</a>
@@ -116,10 +122,9 @@
       </nav>
 
 
+      
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
           
 
 
@@ -172,9 +177,9 @@ unless you understand the consequences of what you are doing!</p>
 <h2>Structure<a class="headerlink" href="#structure" title="Permalink to this headline">¶</a></h2>
 <p>Metadata from zstash archives is stored in a sqlite3 database
 in <cite>zstash/index.db</cite>. The database schema consists of
-two tables, one to store configuration parameters (<code class="docutils literal notranslate"><span class="pre">config</span></code>)
-and the other one for metadata for each archived file (<code class="docutils literal notranslate"><span class="pre">files</span></code>).</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db
+two tables, one to store configuration parameters (<code class="docutils literal"><span class="pre">config</span></code>)
+and the other one for metadata for each archived file (<code class="docutils literal"><span class="pre">files</span></code>).</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db
 SQLite version 3.7.17 2013-05-20 00:56:22
 Enter &quot;.help&quot; for instructions
 Enter SQL statements terminated with a &quot;;&quot;
@@ -212,20 +217,20 @@ sqlite&gt; .quit
 <p>Direct interaction with the database can be useful to explore content
 of an archive, beyond what might be available with <a class="reference internal" href="usage.html#zstash-list"><span class="std std-ref">zstash list</span></a>.</p>
 <p>To list <strong>all the files</strong> in an archive:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
 $ sqlite3 zstash/index.db &quot;select * from files;&quot;
 </pre></div>
 </div>
 <p>For each file, the following information will be printed</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>file # | path | size | modification time |md5 checksum |tar archive | offset (within tar)
+<div class="highlight-none"><div class="highlight"><pre><span></span>file # | path | size | modification time |md5 checksum |tar archive | offset (within tar)
 </pre></div>
 </div>
 <p>To list <strong>files matching a specified pattern</strong> (for example */run/*.nc):</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db &quot;select * from files where name glob &#39;*/run/*.nc&#39;;&quot;
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db &quot;select * from files where name glob &#39;*/run/*.nc&#39;;&quot;
 </pre></div>
 </div>
 <p>To list <strong>all the files in a specific tar fole</strong> (for example 00000a.tar):</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db &quot;select * from files where tar is &#39;00000a.tar&#39;;&quot;
+<div class="highlight-none"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db &quot;select * from files where tar is &#39;00000a.tar&#39;;&quot;
 </pre></div>
 </div>
 </div>
@@ -233,7 +238,9 @@ $ sqlite3 zstash/index.db &quot;select * from files;&quot;
 
 
            </div>
-           
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
@@ -242,7 +249,7 @@ $ sqlite3 zstash/index.db &quot;select * from files;&quot;
         <a href="support.html" class="btn btn-neutral float-right" title="Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="design.html" class="btn btn-neutral float-left" title="Design considerations" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="design.html" class="btn btn-neutral" title="Design considerations" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -251,11 +258,11 @@ $ sqlite3 zstash/index.db &quot;select * from files;&quot;
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, E3SM
+        &copy; Copyright 2019, E3SM.
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -268,15 +275,36 @@ $ sqlite3 zstash/index.db &quot;select * from files;&quot;
   
 
 
-  <script type="text/javascript">
-      jQuery(function () {
-          SphinxRtdTheme.Navigation.enable(true);
-      });
-  </script>
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
 
   
   
-    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
    
 
 </body>

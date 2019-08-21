@@ -13,8 +13,10 @@ To create a new zstash archive: ::
 
 where
 
-* ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system,
-* and ``<local path>`` specifies the path to the local directory that should be archived.
+* ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file 
+  system where the archive files will be stored. This directory should be **unique** for each 
+  zstash archive.
+* ``<local path>`` specifies the path to the local directory that should be archived.
 
 Additional optional arguments:
 
@@ -310,3 +312,12 @@ Below is an example. Note the names of the columns:  ::
    id	name	size	mtime	md5	tar	offset
    30482	archive/logs/atm.log.8229335.180130-143234.gz	20156521	2018-02-01 10:02:35	e8161bba53500848dc917258d1d8f56a	000018.tar	131697281536	
    51608	case_scripts/logs/atm.log.8229335.180130-143234.gz	20156521	2018-02-01 10:02:52	e8161bba53500848dc917258d1d8f56a	000047.tar	202381473280	
+
+Version
+=======
+
+Starting with version 0.3, you can check the version of zstash from the command line: ::
+
+   $ zstash version
+   v0.3.0
+

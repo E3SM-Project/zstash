@@ -39,7 +39,7 @@ Source code is available on Github: `<https://github.com/E3SM-Project/zstash>`_.
    :caption: Contents:
 
    self
-   installation_and_updating
+   getting_started
    usage
    best_practices
    design

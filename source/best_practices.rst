@@ -12,10 +12,13 @@ For best performance on NERSC, you should login to one
 of the data transfer nodes (dtn<01..15>.nersc.gov). Also, because
 archiving large amount of data with zstash can take several days,
 it is recommended to invoke zstash within a UNIX `screen` session
-to which you can detach and re-attach without killing zstash. ::
+to which you can detach and re-attach without killing zstash. You
+can access zstash on the data transfer nodes by loading the E3SM unified environment: ::
 
    $ ssh dtn01.nersc.gov
    $ screen
+   $ bash
+   $ source /global/project/projectdirs/acme/software/anaconda_envs/load_latest_e3sm_unified.sh
 
 To detach from the screen session, use CTRL-A followed by D (for detach).
 You can then safely close your window. To re-attach to an existing session
