@@ -231,8 +231,7 @@ failure using the <code class="docutils literal"><span class="pre">zstash</span>
 $ screen -r
 $ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
 $ zstash update --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
-  --exclude=&quot;archive/rest/???[!05]-*/&quot; \
-  --maxsize 128 2&gt;&amp;1 | tee zstash_update_20190226.log
+  --exclude=&quot;archive/rest/???[!05]-*/&quot; 2&gt;&amp;1 | tee zstash_update_20190226.log
 </pre></div>
 </div>
 </div>

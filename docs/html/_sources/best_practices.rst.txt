@@ -67,8 +67,7 @@ failure using the ``zstash update`` functionality: ::
    $ screen -r
    $ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
    $ zstash update --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
-     --exclude="archive/rest/???[!05]-*/" \
-     --maxsize 128 2>&1 | tee zstash_update_20190226.log
+     --exclude="archive/rest/???[!05]-*/" 2>&1 | tee zstash_update_20190226.log
 
 Checking
 ========
