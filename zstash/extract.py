@@ -17,7 +17,7 @@ from .settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL, logger
 from . import parallel
 
 
-def multiprocess_extract(num_workers, matches, keep_files):
+def multiprocess_extract(num_workers, matches, keep_files, keep_tars):
     """
     Extract the files from the matches in parallel.
 
@@ -47,7 +47,7 @@ def multiprocess_extract(num_workers, matches, keep_files):
     heapq.heapify(workers_to_tars)
 
     # Using a greedy approach, populate workers_to_tars.
-    for tar_num, tar in enumerate(tar_to_size):
+    for _, tar in enumerate(tar_to_size):
         # The worker with the least work should get the current largest amount of work.
         workers_work, worker_idx = heapq.heappop(work_to_workers)
         workers_to_tars[worker_idx].add(tar)
@@ -73,7 +73,8 @@ def multiprocess_extract(num_workers, matches, keep_files):
     for matches in workers_to_matches:
         tars_for_this_worker = list(set(match[5] for match in matches))
         worker = parallel.ExtractWorker(monitor, tars_for_this_worker, failure_queue)
-        process = multiprocessing.Process(target=extractFiles, args=(matches, keep_files, worker))
+        process = multiprocessing.Process(target=extractFiles,
+                    args=(matches, keep_files, keep_tars, worker))
         process.start()
         processes.append(process)
 
@@ -100,7 +101,8 @@ def extract(keep_files=True):
         description='Extract files from existing archive')
     optional = parser.add_argument_group('optional named arguments')
     optional.add_argument('--hpss', type=str, help='path to HPSS storage')
-    optional.add_argument('--workers', type=int, default=1, help='num of multiprocess workers.')
+    optional.add_argument('--workers', type=int, default=1, help='num of multiprocess workers')
+    optional.add_argument('--dont_keep_tars', action='store_true', help='delete the downloaded tars after use')
     parser.add_argument('files', nargs='*', default=['*'])
     args = parser.parse_args(sys.argv[2:])
 
@@ -171,11 +173,12 @@ def extract(keep_files=True):
     matches.sort(key=lambda x: (x[5], x[6]))
 
     # Retrieve from tapes
+    keep_tars = not args.dont_keep_tars
     if args.workers > 1:
         logger.debug('Running zstash {} with multiprocessing'.format(cmd))
-        failures = multiprocess_extract(args.workers, matches, keep_files)
+        failures = multiprocess_extract(args.workers, matches, keep_files, keep_tars)
     else:
-        failures = extractFiles(matches, keep_files)
+        failures = extractFiles(matches, keep_files, keep_tars)
 
     # Close database
     logger.debug('Closing index database')
@@ -215,7 +218,7 @@ def should_extract_file(db_row):
     return not(size_disk == size_db and abs(mod_time_disk - mod_time_db).total_seconds() < TIME_TOL)
 
 
-def extractFiles(files, keep_files, multiprocess_worker=None):
+def extractFiles(files, keep_files, keep_tars, multiprocess_worker=None):
     """
     Given a list of database rows, extract the files from the
     tar archives to the current location on disk.
@@ -223,6 +226,9 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
     If keep_files is False, the files are not extracted.
     This is used for when checking if the files in an HPSS
     repository are valid.
+
+    If keep_tars is True, the tar archives that are downloaded are kept,
+    even after the program has terminated. Otherwise, they are deleted.
 
     If running in parallel, then multiprocess_worker is the Worker
     that called this function.
@@ -371,6 +377,11 @@ def extractFiles(files, keep_files, multiprocess_worker=None):
 
             # Open new archive next time
             newtar = True
+
+            # Delete this tar if the corresponding command-line arg was used.
+            if not keep_tars:
+                tar_path = os.path.join('zstash', tfname)
+                os.remove(tar_path)
 
     if multiprocess_worker:
         # If there are stuff left to print, print them.

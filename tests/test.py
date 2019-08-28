@@ -246,6 +246,38 @@ str_in(output+err, 'Not extracting file5.txt')
 str_not_in(output+err, 'ERROR')
 
 
+msg = 'Deleting the extracted files and doing it again, '
+msg += 'while making sure the tars are not saved.'
+print(msg)
+shutil.rmtree('zstash_test')
+os.mkdir('zstash_test')
+os.chdir('zstash_test')
+cmd = 'zstash extract --hpss={} --dont_keep_tars'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+# Check that the zstash/ directory is empty.
+# It should only contain an 'index.db'.
+if os.listdir('zstash') != ['index.db']:
+    print('*'*40)
+    print('The zstash directory should not have any tars.')
+    print('It has: {}'.format(os.listdir('zstash')))
+    print('*'*40)
+    stop()
+os.chdir('../')
+str_in(output+err, 'Transferring from HPSS')
+str_in(output+err, 'Extracting file0.txt')
+str_in(output+err, 'Extracting file0_hard.txt')
+str_in(output+err, 'Extracting file0_soft.txt')
+str_in(output+err, 'Extracting file_empty.txt')
+str_in(output+err, 'Extracting dir/file1.txt')
+str_in(output+err, 'Extracting empty_dir')
+str_in(output+err, 'Extracting dir2/file2.txt')
+str_in(output+err, 'Extracting file3.txt')
+str_in(output+err, 'Extracting file4.txt')
+str_in(output+err, 'Extracting file5.txt')
+str_not_in(output+err, 'ERROR')
+str_not_in(output+err, 'Not extracting')
+
+
 print('Deleting the extracted files and doing it again in parallel.')
 shutil.rmtree('zstash_test')
 os.mkdir('zstash_test')
