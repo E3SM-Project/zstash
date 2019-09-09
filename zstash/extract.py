@@ -380,8 +380,7 @@ def extractFiles(files, keep_files, keep_tars, multiprocess_worker=None):
 
             # Delete this tar if the corresponding command-line arg was used.
             if not keep_tars:
-                tar_path = os.path.join('zstash', tfname)
-                os.remove(tar_path)
+                os.remove(tfname)
 
     if multiprocess_worker:
         # If there are stuff left to print, print them.
