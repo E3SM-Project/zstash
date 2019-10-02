@@ -102,7 +102,7 @@ def extract(keep_files=True):
     optional = parser.add_argument_group('optional named arguments')
     optional.add_argument('--hpss', type=str, help='path to HPSS storage')
     optional.add_argument('--workers', type=int, default=1, help='num of multiprocess workers')
-    optional.add_argument('--dont_keep_tars', action='store_true', help='delete the downloaded tars after use')
+    optional.add_argument('--keep', action='store_true', help='keep tar files in local cache (default off)')
     parser.add_argument('files', nargs='*', default=['*'])
     args = parser.parse_args(sys.argv[2:])
 
@@ -122,7 +122,7 @@ def extract(keep_files=True):
     con = sqlite3.connect(DB_FILENAME, detect_types=sqlite3.PARSE_DECLTYPES)
     cur = con.cursor()
 
-    # Retrieve configuration from database
+    # Retrieve some configuration settings from database
     for attr in dir(config):
         value = getattr(config, attr)
         if not callable(value) and not attr.startswith("__"):
@@ -131,7 +131,9 @@ def extract(keep_files=True):
             setattr(config, attr, value)
     config.maxsize = int(config.maxsize)
     config.keep = bool(int(config.keep))
+
     # The command line arg should always have precedence
+    config.keep = args.keep
     if args.hpss is not None:
         config.hpss = args.hpss
 
@@ -173,12 +175,11 @@ def extract(keep_files=True):
     matches.sort(key=lambda x: (x[5], x[6]))
 
     # Retrieve from tapes
-    keep_tars = not args.dont_keep_tars
     if args.workers > 1:
         logger.debug('Running zstash {} with multiprocessing'.format(cmd))
-        failures = multiprocess_extract(args.workers, matches, keep_files, keep_tars)
+        failures = multiprocess_extract(args.workers, matches, keep_files, config.keep)
     else:
-        failures = extractFiles(matches, keep_files, keep_tars)
+        failures = extractFiles(matches, keep_files, config.keep)
 
     # Close database
     logger.debug('Closing index database')
