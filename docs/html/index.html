@@ -17,43 +17,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="zstash  documentation" href="#"/>
-        <link rel="next" title="Getting started" href="getting_started.html"/>
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Getting started" href="getting_started.html" />
     <link href="_static/style.css" rel="stylesheet" type="text/css">
-
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -96,7 +90,6 @@
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="todo.html">Future enhancements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a></li>
 </ul>
 
@@ -109,7 +102,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="#">zstash</a>
@@ -117,9 +110,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -166,24 +160,24 @@
 <div class="section" id="what-is-zstash">
 <h2>What is zstash?<a class="headerlink" href="#what-is-zstash" title="Permalink to this headline">¶</a></h2>
 <p>Zstash is an <strong>HPSS long-term archiving</strong> solution for E3SM.</p>
-<p>Zstash is written entirely in Python (2.7) using standard libraries.
+<p>Zstash is written entirely in Python using standard libraries.
 Its design is intentionally minimalistic to provide an effective
 long-term HPSS archiving solution without creating an overly complicated
 (and hard to maintain) tool.</p>
 <p><strong>Key features:</strong></p>
 <ul class="simple">
-<li>Files are archived into standard <strong>tar files</strong> with a user <strong>specified maximum size</strong>.</li>
-<li>Tar files are first created locally, then transferred to HPSS.</li>
-<li><strong>Checksums (md5)</strong> of input files are computed <em>on-the-fly</em> during
+<li><p>Files are archived into standard <strong>tar files</strong> with a user <strong>specified maximum size</strong>.</p></li>
+<li><p>Tar files are first created locally, then transferred to HPSS.</p></li>
+<li><p><strong>Checksums (md5)</strong> of input files are computed <em>on-the-fly</em> during
 archiving. For large files, this saves a considerable amount of
-time compared to separate checksumming and archiving steps.</li>
-<li>Checksums and additional metadata (size, modification time, tar file and offset)
-are stored in a sqlite3 <strong>index database</strong>.</li>
-<li><strong>Database enables faster retrieval</strong> of individual files by locating in which tar
+time compared to separate checksumming and archiving steps.</p></li>
+<li><p>Checksums and additional metadata (size, modification time, tar file and offset)
+are stored in a sqlite3 <strong>index database</strong>.</p></li>
+<li><p><strong>Database enables faster retrieval</strong> of individual files by locating in which tar
 file a specific file is stored, as well as its location (offset) within the
-tar file.</li>
-<li><strong>File integrity</strong> is verified by computing checksums on-the-fly while <strong>extracting</strong>
-files.</li>
+tar file.</p></li>
+<li><p><strong>File integrity</strong> is verified by computing checksums on-the-fly while <strong>extracting</strong>
+files.</p></li>
 </ul>
 <p>Source code is available on Github: <a class="reference external" href="https://github.com/E3SM-Project/zstash">https://github.com/E3SM-Project/zstash</a>.</p>
 <div class="toctree-wrapper compound">
@@ -226,7 +220,6 @@ files.</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="todo.html">Future enhancements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to this documentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="contributing.html#create-a-conda-environment">Create a conda environment</a></li>
 <li class="toctree-l2"><a class="reference internal" href="contributing.html#checkout-and-edit-documentation">Checkout and edit documentation</a></li>
@@ -240,9 +233,7 @@ files.</li>
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
@@ -258,11 +249,11 @@ files.</li>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, E3SM.
+        &copy; Copyright 2019, E3SM
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -275,36 +266,15 @@ files.</li>
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

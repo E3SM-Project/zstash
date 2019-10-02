@@ -12,7 +12,7 @@ What is zstash?
 
 Zstash is an **HPSS long-term archiving** solution for E3SM.
 
-Zstash is written entirely in Python (2.7) using standard libraries.
+Zstash is written entirely in Python using standard libraries.
 Its design is intentionally minimalistic to provide an effective
 long-term HPSS archiving solution without creating an overly complicated
 (and hard to maintain) tool.
@@ -45,6 +45,5 @@ Source code is available on Github: `<https://github.com/E3SM-Project/zstash>`_.
    design
    database
    support
-   todo
    contributing
 

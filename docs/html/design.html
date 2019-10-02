@@ -17,44 +17,38 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="zstash  documentation" href="index.html"/>
-        <link rel="next" title="Database" href="database.html"/>
-        <link rel="prev" title="Best practices for E3SM" href="best_practices.html"/>
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Database" href="database.html" />
+    <link rel="prev" title="Best practices for E3SM" href="best_practices.html" />
     <link href="_static/style.css" rel="stylesheet" type="text/css">
-
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -115,7 +109,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">zstash</a>
@@ -123,9 +117,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -183,51 +178,53 @@ suffers from limitations that make it not suitable for archiving
 E3SM model output (see below).</p>
 <p><strong>Features of zstash:</strong></p>
 <ul class="simple">
-<li>Files are bundled <strong>into standard tar files</strong> of a specified maximum size.
+<li><p>Files are bundled <strong>into standard tar files</strong> of a specified maximum size.
 The default maximum size is 256 GB, but it can be adjusted at
-creation using the <code class="docutils literal"><span class="pre">--maxsize</span></code> command line argument.</li>
-<li><strong>Individual files are never split</strong> between two separate tar
+creation using the <code class="docutils literal notranslate"><span class="pre">--maxsize</span></code> command line argument.</p></li>
+<li><p><strong>Individual files are never split</strong> between two separate tar
 files. As a result, the size of tar files varies, but will
 generally be smaller than the specified maximum size. The only
-exception would be if individual files are larger than the target size.</li>
-<li><strong>Tar files are named sequentially</strong> using a six
-digit hexadecimal number (<cite>000000.tar</cite>,  <cite>000001.tar</cite>, …).</li>
-<li><strong>Tar files are first created locally</strong> on disk (under the
+exception would be if individual files are larger than the target size.</p></li>
+<li><p><strong>Tar files are named sequentially</strong> using a six
+digit hexadecimal number (<cite>000000.tar</cite>,  <cite>000001.tar</cite>, …).</p></li>
+<li><p><strong>Tar files are first created locally</strong> on disk (under the
 <cite>zstash/</cite> subdirectory) and <strong>then uploaded to HPSS</strong>. Similarly, when
 extracting files, tar files will be first downloaded from HPSS into
-the local cache (if they are not already present).</li>
-<li>An sqlite3 <strong>index database</strong> is maintained (<cite>zstash/index.db</cite>) that contains
-information about every archived files, including:<ul>
-<li>full pathname relative to top-level archival directory.</li>
-<li>size</li>
-<li>modification time</li>
-<li>md5 checksum</li>
-<li>tar file in which the file is included</li>
-<li>offset within this tar file (for faster extraction).</li>
+the local cache (if they are not already present).</p></li>
+<li><p>An sqlite3 <strong>index database</strong> is maintained (<cite>zstash/index.db</cite>) that contains
+information about every archived files, including:</p>
+<ul>
+<li><p>full pathname relative to top-level archival directory.</p></li>
+<li><p>size</p></li>
+<li><p>modification time</p></li>
+<li><p>md5 checksum</p></li>
+<li><p>tar file in which the file is included</p></li>
+<li><p>offset within this tar file (for faster extraction).</p></li>
 </ul>
 </li>
-<li><strong>Database enables faster retrieval</strong> of individual files by locating in which tar
+<li><p><strong>Database enables faster retrieval</strong> of individual files by locating in which tar
 file a specific file is stored, as well as its location (offset) within the
-tar file.</li>
-<li><strong>Checksums (md5)</strong> of input files are computed <em>on-the-fly</em> during
+tar file.</p></li>
+<li><p><strong>Checksums (md5)</strong> of input files are computed <em>on-the-fly</em> during
 archiving. For large files, this saves a considerable amount of
-time compared to separate checksumming and archiving steps.</li>
-<li><strong>File integrity</strong> is verified by computing checksums on-the-fly while <strong>extracting</strong>
-files.</li>
+time compared to separate checksumming and archiving steps.</p></li>
+<li><p><strong>File integrity</strong> is verified by computing checksums on-the-fly while <strong>extracting</strong>
+files.</p></li>
 </ul>
 </div>
 <div class="section" id="why-not-use-htar">
 <h2>Why not use ‘htar’?<a class="headerlink" href="#why-not-use-htar" title="Permalink to this headline">¶</a></h2>
 <p>Htar is an HPSS utility with many nice features. From the NERSC <a class="reference external" href="http://docs.nersc.gov/filesystems/archive_access/#htar">htar documentation page</a>:</p>
 <blockquote>
-<div><em>HTAR is a command line utility that creates and manipulates HPSS-resident
+<div><p><em>HTAR is a command line utility that creates and manipulates HPSS-resident
 tar-format archive files. It is ideal for storing groups of files in HPSS.
 Since the tar file is created directly in HPSS, it is generally faster and
 uses less local space than creating a local tar file then storing that into
 HPSS. Furthermore, HTAR creates an index file that (by default) is stored
 along with the archive in HPSS. This allows you to list the contents of
 an archive without retrieving it to local storage first. The index file is
-only created if the HTAR bundle is successfully stored in the archive.</em></div></blockquote>
+only created if the HTAR bundle is successfully stored in the archive.</em></p>
+</div></blockquote>
 <p>This sounds great. In fact, some of these htar functionalities served as inspiration for zstash.
 However, htar also suffers from a number of limitations that were deemed to be <strong>show stoppers</strong>:</p>
 <blockquote>
@@ -252,20 +249,19 @@ transfer all your files to tape and only do so if the file isn’t already on ta
 large number of (relatively small) files. Instead, NERSC recommends to
 <a class="reference external" href="https://docs.nersc.gov/filesystems/archive/#group-small-files-together">group small files together</a> :</p>
 <blockquote>
-<div><em>HPSS is a tape system and responds differently than a typical file system.
+<div><p><em>HPSS is a tape system and responds differently than a typical file system.
 If you upload large numbers of small files they will be spread across
 dozens or hundreds of tapes, requiring multiple loads into tape drives
 and positioning the tape. Storing many small files in HPSS without
 bundling them together will result in extremely long retrieval times
-for these files and will slow down the HPSS system for all users.</em></div></blockquote>
+for these files and will slow down the HPSS system for all users.</em></p>
+</div></blockquote>
 </div>
 </div>
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
@@ -274,7 +270,7 @@ for these files and will slow down the HPSS system for all users.</em></div></bl
         <a href="database.html" class="btn btn-neutral float-right" title="Database" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="best_practices.html" class="btn btn-neutral" title="Best practices for E3SM" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="best_practices.html" class="btn btn-neutral float-left" title="Best practices for E3SM" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -283,11 +279,11 @@ for these files and will slow down the HPSS system for all users.</em></div></bl
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, E3SM.
+        &copy; Copyright 2019, E3SM
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -300,36 +296,15 @@ for these files and will slow down the HPSS system for all users.</em></div></bl
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>
