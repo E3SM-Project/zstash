@@ -30,8 +30,8 @@ def update():
         action="store_true")
     optional.add_argument(
         '--keep',
-        help='keep files in local cache (default from create)',
-        action="store_const", const=True)
+        help='keep tar files in local cache (default off)',
+        action="store_true")
     args = parser.parse_args(sys.argv[2:])
 
     # Open database
@@ -49,7 +49,7 @@ def update():
     con = sqlite3.connect(DB_FILENAME, detect_types=sqlite3.PARSE_DECLTYPES)
     cur = con.cursor()
 
-    # Retrieve configuration from database
+    # Retrieve some configuration settings from database
     for attr in dir(config):
         value = getattr(config, attr)
         if not callable(value) and not attr.startswith("__"):
@@ -59,9 +59,10 @@ def update():
     config.maxsize = int(config.maxsize)
     config.keep = bool(int(config.keep))
 
-    # Override keep if specified on the command line
-    if args.keep is not None:
-        config.keep = args.keep
+    # The command line arg should always have precedence
+    config.keep = args.keep
+    if args.hpss is not None:
+        config.hpss = args.hpss
 
     # Start doing actual work
     logging.debug('Running zstash update')

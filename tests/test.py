@@ -9,6 +9,7 @@ import os
 import sys
 import subprocess
 import shutil
+from collections import Counter
 
 def write_file(name, contents):
     """
@@ -78,6 +79,11 @@ def stop():
     """
     cleanup()
     sys.exit()
+
+# Compare content of two (unordered lists)
+# https://stackoverflow.com/questions/7828867/how-to-efficiently-compare-two-unordered-lists-not-sets-in-python
+def compare(s, t):
+    return Counter(s) == Counter(t)
 
 # Makes this in the home dir of the user on HPSS.
 # Ex: /home/z/zshaheen/zstash_test
@@ -230,6 +236,14 @@ print('Testing the extract functionality again, nothing should happen')
 os.chdir('zstash_test')
 cmd = 'zstash extract --hpss={}'.format(HPSS_PATH)
 output, err = run_cmd(cmd)
+# Check that the zstash/ directory is empty.
+# It should only contain an 'index.db'.
+if not compare(os.listdir('zstash'), ['index.db']):
+    print('*'*40)
+    print('The zstash directory should not have any tars.')
+    print('It has: {}'.format(os.listdir('zstash')))
+    print('*'*40)
+    stop()
 os.chdir('../')
 str_in(output+err, 'Not extracting file0.txt')
 str_in(output+err, 'Not extracting file0_hard.txt')
@@ -244,6 +258,37 @@ str_in(output+err, 'Not extracting file3.txt')
 str_in(output+err, 'Not extracting file4.txt')
 str_in(output+err, 'Not extracting file5.txt')
 str_not_in(output+err, 'ERROR')
+
+
+msg = 'Deleting the extracted files and doing it again, '
+msg += 'while making sure the tars are kept.'
+print(msg)
+shutil.rmtree('zstash_test')
+os.mkdir('zstash_test')
+os.chdir('zstash_test')
+cmd = 'zstash extract --hpss={} --keep'.format(HPSS_PATH)
+output, err = run_cmd(cmd)
+# Check that the zstash/ directory contains all expected files
+if not compare(os.listdir('zstash'), ['index.db', '000000.tar', '000001.tar', '000002.tar', '000003.tar', '000004.tar']):
+    print('*'*40)
+    print('The zstash directory does not contain expected files')
+    print('It has: {}'.format(os.listdir('zstash')))
+    print('*'*40)
+    stop()
+os.chdir('../')
+str_in(output+err, 'Transferring from HPSS')
+str_in(output+err, 'Extracting file0.txt')
+str_in(output+err, 'Extracting file0_hard.txt')
+str_in(output+err, 'Extracting file0_soft.txt')
+str_in(output+err, 'Extracting file_empty.txt')
+str_in(output+err, 'Extracting dir/file1.txt')
+str_in(output+err, 'Extracting empty_dir')
+str_in(output+err, 'Extracting dir2/file2.txt')
+str_in(output+err, 'Extracting file3.txt')
+str_in(output+err, 'Extracting file4.txt')
+str_in(output+err, 'Extracting file5.txt')
+str_not_in(output+err, 'ERROR')
+str_not_in(output+err, 'Not extracting')
 
 
 print('Deleting the extracted files and doing it again in parallel.')

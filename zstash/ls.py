@@ -40,7 +40,7 @@ def ls():
     con = sqlite3.connect(DB_FILENAME, detect_types=sqlite3.PARSE_DECLTYPES)
     cur = con.cursor()
 
-    # Retrieve configuration from database
+    # Retrieve some configuration settings from database
     for attr in dir(config):
         value = getattr(config, attr)
         if not callable(value) and not attr.startswith("__"):
@@ -49,6 +49,7 @@ def ls():
             setattr(config, attr, value)
     config.maxsize = int(config.maxsize)
     config.keep = bool(int(config.keep))
+
     # The command line arg should always have precedence
     if args.hpss is not None:
         config.hpss = args.hpss

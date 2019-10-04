@@ -35,7 +35,7 @@ def create():
         default=256)
     optional.add_argument(
         '--keep',
-        help='keep files in local cache (default off)',
+        help='keep tar files in local cache (default off)',
         action="store_true")
     # Now that we're inside a subcommand, ignore the first two argvs
     # (zstash create)
