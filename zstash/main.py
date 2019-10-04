@@ -2,7 +2,6 @@
 from __future__ import print_function, absolute_import
 
 import argparse
-import logging
 import os.path
 import sys
 from . import settings, __version__
@@ -17,8 +16,6 @@ from .ls import ls
 # -----------------------------------------------------------------------------
 def main():
 
-    logging.basicConfig(format='%(levelname)s: %(message)s',
-                        level=logging.DEBUG)
     parser = argparse.ArgumentParser(
         usage='''For {}, zstash <command> [<args>]
 

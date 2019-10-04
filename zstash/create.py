@@ -11,7 +11,7 @@ import tarfile
 from subprocess import Popen, PIPE
 from .hpss import hpss_put
 from .utils import addfiles, excludeFiles
-from .settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
+from .settings import config, logger, CACHE, BLOCK_SIZE, DB_FILENAME
 
 
 def create():
@@ -37,9 +37,12 @@ def create():
         '--keep',
         help='keep tar files in local cache (default off)',
         action="store_true")
+    optional.add_argument('-v', '--verbose', action="store_true", 
+                          help="increase output verbosity")
     # Now that we're inside a subcommand, ignore the first two argvs
     # (zstash create)
     args = parser.parse_args(sys.argv[2:])
+    if args.verbose: logger.setLevel(logging.DEBUG)
 
     # Copy configuration
     config.path = os.path.abspath(args.path)
@@ -48,50 +51,50 @@ def create():
     config.keep = args.keep
 
     # Start doing actual work
-    logging.debug('Running zstash create')
-    logging.debug('Local path : %s' % (config.path))
-    logging.debug('HPSS path  : %s' % (config.hpss))
-    logging.debug('Max size  : %i' % (config.maxsize))
-    logging.debug('Keep local tar files  : %s' % (config.keep))
+    logger.debug('Running zstash create')
+    logger.debug('Local path : %s' % (config.path))
+    logger.debug('HPSS path  : %s' % (config.hpss))
+    logger.debug('Max size  : %i' % (config.maxsize))
+    logger.debug('Keep local tar files  : %s' % (config.keep))
 
     # Make sure input path exists and is a directory
-    logging.debug('Making sure input path exists and is a directory')
+    logger.debug('Making sure input path exists and is a directory')
     if not os.path.isdir(config.path):
-        logging.error('Input path should be a directory: %s', config.path)
+        logger.error('Input path should be a directory: %s', config.path)
         raise Exception
 
     # Create target HPSS directory if needed
-    logging.debug('Creating target HPSS directory')
+    logger.debug('Creating target HPSS directory')
     p1 = Popen(['hsi', '-q', 'mkdir', '-p', config.hpss],
                stdout=PIPE, stderr=PIPE)
     (stdout, stderr) = p1.communicate()
     status = p1.returncode
     if status != 0:
-        logging.error('Could not create HPSS directory: %s', config.hpss)
-        logging.debug('stdout:\n%s', stdout)
-        logging.debug('stderr:\n%s', stderr)
+        logger.error('Could not create HPSS directory: %s', config.hpss)
+        logger.debug('stdout:\n%s', stdout)
+        logger.debug('stderr:\n%s', stderr)
         raise Exception
 
     # Make sure it is empty
-    logging.debug('Making sure target HPSS directory exists and is empty')
+    logger.debug('Making sure target HPSS directory exists and is empty')
     cmd = 'hsi -q "cd %s; ls -l"' % (config.hpss)
     p1 = Popen(shlex.split(cmd), stdout=PIPE, stderr=PIPE)
     (stdout, stderr) = p1.communicate()
     status = p1.returncode
     if status != 0 or len(stdout) != 0 or len(stderr) != 0:
-        logging.error('Target HPSS directory is not empty')
-        logging.debug('stdout:\n%s', stdout)
-        logging.debug('stderr:\n%s', stderr)
+        logger.error('Target HPSS directory is not empty')
+        logger.debug('stdout:\n%s', stdout)
+        logger.debug('stderr:\n%s', stderr)
         raise Exception
 
     # Create cache directory
-    logging.debug('Creating local cache directory')
+    logger.debug('Creating local cache directory')
     os.chdir(config.path)
     try:
         os.makedirs(CACHE)
     except OSError as exc:
         if exc.errno != errno.EEXIST:
-            logging.error('Cannot create local cache directory')
+            logger.error('Cannot create local cache directory')
             raise Exception
         pass
 
@@ -99,7 +102,7 @@ def create():
     # ...to do (?)
 
     # Create new database
-    logging.debug('Creating index database')
+    logger.debug('Creating index database')
     if os.path.exists(DB_FILENAME):
         os.remove(DB_FILENAME)
     global con, cur
@@ -137,7 +140,7 @@ create table files (
     con.commit()
 
     # List of files
-    logging.info('Gathering list of files to archive')
+    logger.info('Gathering list of files to archive')
     files = []
     for root, dirnames, filenames in os.walk('.'):
         # Empty directory
@@ -168,6 +171,6 @@ create table files (
 
     # List failures
     if len(failures) > 0:
-        logging.warning('Some files could not be archived')
+        logger.warning('Some files could not be archived')
         for file in failures:
-            logging.error('Archiving %s' % (file))
+            logger.error('Archiving %s' % (file))

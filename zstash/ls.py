@@ -6,7 +6,7 @@ import argparse
 import logging
 import sqlite3
 from .hpss import hpss_get
-from .settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
+from .settings import config, logger, CACHE, BLOCK_SIZE, DB_FILENAME
 
 
 def ls():
@@ -20,19 +20,23 @@ def ls():
     optional = parser.add_argument_group('optional named arguments')
     optional.add_argument('--hpss', type=str, help='path to HPSS storage')
     optional.add_argument('-l', dest='long', action='store_const', const=True,
-                            help='show more information for the files')
+                          help='show more information for the files')
+    optional.add_argument('-v', '--verbose', action="store_true", 
+                          help="increase output verbosity")
+    
     parser.add_argument('files', nargs='*', default=['*'])
     args = parser.parse_args(sys.argv[2:])
+    if args.verbose: logger.setLevel(logging.DEBUG)
 
     # Open database
-    logging.debug('Opening index database')
+    logger.debug('Opening index database')
     if not os.path.exists(DB_FILENAME):
         # Will need to retrieve from HPSS
         if args.hpss is not None:
             config.hpss = args.hpss
             hpss_get(config.hpss, DB_FILENAME)
         else:
-            logging.error('--hpss argument is required when local copy of '
+            logger.error('--hpss argument is required when local copy of '
                           'database is unavailable')
             raise Exception
 
@@ -55,8 +59,8 @@ def ls():
         config.hpss = args.hpss
 
     # Start doing actual work
-    logging.debug('Running zstash ls')
-    logging.debug('HPSS path  : %s' % (config.hpss))
+    logger.debug('Running zstash ls')
+    logger.debug('HPSS path  : %s' % (config.hpss))
 
     # Find matching files
     matches = []

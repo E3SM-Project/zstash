@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 from .hpss import hpss_get, hpss_put
 from .utils import addfiles, excludeFiles
-from .settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL
+from .settings import config, logger, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL
 
 
 def update():
@@ -32,17 +32,20 @@ def update():
         '--keep',
         help='keep tar files in local cache (default off)',
         action="store_true")
+    optional.add_argument('-v', '--verbose', action="store_true", 
+                          help="increase output verbosity")
     args = parser.parse_args(sys.argv[2:])
+    if args.verbose: logger.setLevel(logging.DEBUG)
 
     # Open database
-    logging.debug('Opening index database')
+    logger.debug('Opening index database')
     if not os.path.exists(DB_FILENAME):
         # will need to retrieve from HPSS
         if args.hpss is not None:
             config.hpss = args.hpss
             hpss_get(config.hpss, DB_FILENAME)
         else:
-            logging.error('--hpss argument is required when local copy of '
+            logger.error('--hpss argument is required when local copy of '
                           'database is unavailable')
             raise Exception
     global con, cur
@@ -65,14 +68,14 @@ def update():
         config.hpss = args.hpss
 
     # Start doing actual work
-    logging.debug('Running zstash update')
-    logging.debug('Local path : %s' % (config.path))
-    logging.debug('HPSS path  : %s' % (config.hpss))
-    logging.debug('Max size  : %i' % (config.maxsize))
-    logging.debug('Keep local tar files  : %s' % (config.keep))
+    logger.debug('Running zstash update')
+    logger.debug('Local path : %s' % (config.path))
+    logger.debug('HPSS path  : %s' % (config.hpss))
+    logger.debug('Max size  : %i' % (config.maxsize))
+    logger.debug('Keep local tar files  : %s' % (config.keep))
 
     # List of files
-    logging.info('Gathering list of files to archive')
+    logger.info('Gathering list of files to archive')
     files = []
     for root, dirnames, filenames in os.walk('.'):
         # Empty directory
@@ -126,7 +129,7 @@ def update():
 
     # Anything to do?
     if len(newfiles) == 0:
-        logging.info('Nothing to update')
+        logger.info('Nothing to update')
         return
 
     # --dry-run option
@@ -153,6 +156,6 @@ def update():
 
     # List failures
     if len(failures) > 0:
-        logging.warning('Some files could not be archived')
+        logger.warning('Some files could not be archived')
         for file in failures:
-            logging.error('Archiving %s' % (file))
+            logger.error('Archiving %s' % (file))

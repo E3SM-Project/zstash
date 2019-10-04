@@ -1,1 +1,4 @@
+build/
+dist/
+zstash.egg-info/
 *.pyc

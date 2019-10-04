@@ -103,8 +103,14 @@ def extract(keep_files=True):
     optional.add_argument('--hpss', type=str, help='path to HPSS storage')
     optional.add_argument('--workers', type=int, default=1, help='num of multiprocess workers')
     optional.add_argument('--keep', action='store_true', help='keep tar files in local cache (default off)')
+    optional.add_argument('-v', '--verbose', action="store_true", 
+                          help="increase output verbosity")
     parser.add_argument('files', nargs='*', default=['*'])
     args = parser.parse_args(sys.argv[2:])
+    # Note: setting logging level to anything other than DEBUG doesn't work with 
+    # multiple workers. This must have someting to do with the custom logger 
+    # implemented for multiple workers.
+    if args.verbose or args.workers > 1: logger.setLevel(logging.DEBUG)
 
     # Open database
     logger.debug('Opening index database')
