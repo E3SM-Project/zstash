@@ -1,14 +1,13 @@
 from __future__ import print_function, absolute_import
 
 import hashlib
-import logging
 import os.path
 import tarfile
 import traceback
 from datetime import datetime
 from fnmatch import fnmatch
 from .hpss import hpss_put
-from .settings import config, CACHE, BLOCK_SIZE, DB_FILENAME
+from .settings import config, logger, CACHE, BLOCK_SIZE, DB_FILENAME
 
 
 def excludeFiles(exclude, files):
@@ -53,19 +52,19 @@ def addfiles(cur, con, itar, files):
             itar += 1
             tname = "{0:0{1}x}".format(itar, 6)
             tfname = "%s.tar" % (tname)
-            logging.info('Creating new tar archive %s' % (tfname))
+            logger.info('Creating new tar archive %s' % (tfname))
             tar = tarfile.open(os.path.join(CACHE, tfname), "w")
 
         # Add current file to tar archive
         file = files[i]
-        logging.info('Archiving %s' % (file))
+        logger.info('Archiving %s' % (file))
         try:
             offset, size, mtime, md5 = addfile(tar, file)
             archived.append((file, size, mtime, md5, tfname, offset))
             tarsize += size
         except:
             traceback.print_exc()
-            logging.error('Archiving %s' % (file))
+            logger.error('Archiving %s' % (file))
             failures.append(file)
 
         # Close tar archive if current file is the last one or adding one more
@@ -74,7 +73,7 @@ def addfiles(cur, con, itar, files):
         if (i == nfiles-1 or tarsize+next_file_size > config.maxsize):
 
             # Close current temporary file
-            logging.debug('Closing tar archive %s' % (tfname))
+            logger.debug('Closing tar archive %s' % (tfname))
             tar.close()
 
             # Transfer tar archive to HPSS
