@@ -136,7 +136,7 @@ Update
 An existing zstash archive can be updated to add new or modified files: ::
 
    $ cd <mydir>
-   $ zstash update --hpss=<path to HPSS> [--exclude] [--dry-run] [files]
+   $ zstash update --hpss=<path to HPSS> [--exclude] [--dry-run]
 
 where
 
