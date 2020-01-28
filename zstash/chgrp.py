@@ -1,7 +1,8 @@
 from __future__ import print_function, absolute_import
 
-import sys
 import argparse
+import logging
+import sys
 from .hpss import hpss_chgrp
 from .settings import logger
 
