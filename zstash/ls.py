@@ -26,6 +26,8 @@ def ls():
     
     parser.add_argument('files', nargs='*', default=['*'])
     args = parser.parse_args(sys.argv[2:])
+    if args.hpss and args.hpss.lower() == 'none':
+        args.hpss = 'none'
     if args.verbose: logger.setLevel(logging.DEBUG)
 
     # Open database

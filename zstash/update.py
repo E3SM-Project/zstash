@@ -35,6 +35,8 @@ def update():
     optional.add_argument('-v', '--verbose', action="store_true", 
                           help="increase output verbosity")
     args = parser.parse_args(sys.argv[2:])
+    if args.hpss and args.hpss.lower() == 'none':
+        args.hpss = 'none'
     if args.verbose: logger.setLevel(logging.DEBUG)
 
     # Open database
@@ -63,7 +65,11 @@ def update():
     config.keep = bool(int(config.keep))
 
     # The command line arg should always have precedence
-    config.keep = args.keep
+    if args.hpss == 'none':
+        # If no HPSS is available, always keep the files.
+        config.keep = True
+    else:
+        config.keep = args.keep
     if args.hpss is not None:
         config.hpss = args.hpss
 

@@ -3,7 +3,7 @@ from __future__ import print_function, absolute_import
 import os.path
 import shlex
 import subprocess
-from .settings import logger
+from .settings import DB_FILENAME, logger
 
 
 def run_command(command, error_str):
@@ -18,6 +18,23 @@ def run_command(command, error_str):
 
 
 def hpss_transfer(hpss, file_path, transfer_type, keep=None):
+    if hpss == 'none':
+        logger.info('{}: HPSS is unavailable'.format(transfer_type))
+        if transfer_type == 'put' and file_path != DB_FILENAME:
+            logger.info('{}: Keeping tar files locally and removing write permissions'.format(
+                transfer_type))
+            # https://unix.stackexchange.com/questions/46915/get-the-chmod-numerical-value-for-a-file
+            display_mode = "stat --format '%a' {}".format(file_path).split()
+            output = subprocess.check_output(display_mode).strip()
+            logger.info('{} original mode={}'.format(file_path, output))
+            # https://www.washington.edu/doit/technology-tips-chmod-overview
+            # Remove write-permission from user, group, and others,
+            # without changing read or execute permissions for any.
+            change_mode = 'chmod ugo-w {}'.format(file_path).split()
+            subprocess.check_output(change_mode)
+            output = subprocess.check_output(display_mode).strip()
+            logger.info('{} new mode={}'.format(file_path, output))
+        return
     if transfer_type == 'put':
         transfer_word = 'to'
         transfer_command = 'put'
@@ -69,6 +86,9 @@ def hpss_chgrp(hpss, group, recurse=False):
     """
     Change the group of the HPSS archive.
     """
+    if hpss == 'none':
+        logger.info('chgrp: HPSS is unavailable')
+        return
     if recurse:
         recurse_str = '-R '
     else:
