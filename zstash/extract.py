@@ -107,6 +107,8 @@ def extract(keep_files=True):
                           help="increase output verbosity")
     parser.add_argument('files', nargs='*', default=['*'])
     args = parser.parse_args(sys.argv[2:])
+    if args.hpss and args.hpss.lower() == 'none':
+        args.hpss = 'none'
     # Note: setting logging level to anything other than DEBUG doesn't work with 
     # multiple workers. This must have someting to do with the custom logger 
     # implemented for multiple workers.
@@ -139,7 +141,11 @@ def extract(keep_files=True):
     config.keep = bool(int(config.keep))
 
     # The command line arg should always have precedence
-    config.keep = args.keep
+    if args.hpss == 'none':
+        # If no HPSS is available, always keep the files.
+        config.keep = True
+    else:
+        config.keep = args.keep
     if args.hpss is not None:
         config.hpss = args.hpss
 
@@ -384,7 +390,7 @@ def extractFiles(files, keep_files, keep_tars, multiprocess_worker=None):
 
             # Open new archive next time
             newtar = True
-
+            
             # Delete this tar if the corresponding command-line arg was used.
             if not keep_tars:
                 os.remove(tfname)

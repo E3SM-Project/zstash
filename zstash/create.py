@@ -42,6 +42,8 @@ def create():
     # Now that we're inside a subcommand, ignore the first two argvs
     # (zstash create)
     args = parser.parse_args(sys.argv[2:])
+    if args.hpss and args.hpss.lower() == 'none':
+        args.hpss = 'none'
     if args.verbose: logger.setLevel(logging.DEBUG)
 
     # Copy configuration
@@ -63,30 +65,32 @@ def create():
         logger.error('Input path should be a directory: %s', config.path)
         raise Exception
 
-    # Create target HPSS directory if needed
-    logger.debug('Creating target HPSS directory')
-    p1 = Popen(['hsi', '-q', 'mkdir', '-p', config.hpss],
-               stdout=PIPE, stderr=PIPE)
-    (stdout, stderr) = p1.communicate()
-    status = p1.returncode
-    if status != 0:
-        logger.error('Could not create HPSS directory: %s', config.hpss)
-        logger.debug('stdout:\n%s', stdout)
-        logger.debug('stderr:\n%s', stderr)
-        raise Exception
-
-    # Make sure it is empty
-    logger.debug('Making sure target HPSS directory exists and is empty')
-    cmd = 'hsi -q "cd %s; ls -l"' % (config.hpss)
-    p1 = Popen(shlex.split(cmd), stdout=PIPE, stderr=PIPE)
-    (stdout, stderr) = p1.communicate()
-    status = p1.returncode
-    if status != 0 or len(stdout) != 0 or len(stderr) != 0:
-        logger.error('Target HPSS directory is not empty')
-        logger.debug('stdout:\n%s', stdout)
-        logger.debug('stderr:\n%s', stderr)
-        raise Exception
-
+    if config.hpss != 'none':
+        # Create target HPSS directory if needed
+        logger.debug('Creating target HPSS directory')
+        p1 = Popen(['hsi', '-q', 'mkdir', '-p', config.hpss],
+                   stdout=PIPE, stderr=PIPE)
+        (stdout, stderr) = p1.communicate()
+        status = p1.returncode
+        if status != 0:
+            logger.error('Could not create HPSS directory: %s', config.hpss)
+            logger.debug('stdout:\n%s', stdout)
+            logger.debug('stderr:\n%s', stderr)
+            raise Exception
+        
+        # Make sure it is empty
+        logger.debug('Making sure target HPSS directory exists and is empty')
+        cmd = 'hsi -q "cd %s; ls -l"' % (config.hpss)
+        p1 = Popen(shlex.split(cmd), stdout=PIPE, stderr=PIPE)
+        (stdout, stderr) = p1.communicate()
+        status = p1.returncode
+        if status != 0 or len(stdout) != 0 or len(stderr) != 0:
+            logger.error('Target HPSS directory is not empty')
+            logger.debug('stdout:\n%s', stdout)
+            logger.debug('stderr:\n%s', stderr)
+            raise Exception
+    
+    
     # Create cache directory
     logger.debug('Creating local cache directory')
     os.chdir(config.path)

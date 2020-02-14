@@ -19,6 +19,9 @@ def chgrp():
                         help="increase output verbosity")
 
     args = parser.parse_args(sys.argv[2:])
+    if args.hpss and args.hpss.lower() == 'none':
+        args.hpss = 'none'
+    
     if args.verbose: logger.setLevel(logging.DEBUG)
     recurse = True if args.R else False
     hpss_chgrp(args.hpss, args.group, recurse)
