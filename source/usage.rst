@@ -15,7 +15,9 @@ where
 
 * ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file 
   system where the archive files will be stored. This directory should be **unique** for each 
-  zstash archive.
+  zstash archive. If ``--hpss=none``, then files will be archived locally instead of being
+  transferred to HPSS. The ``none`` option should be used when running Zstash on a machine
+  without HPSS.
 * ``<local path>`` specifies the path to the local directory that should be archived.
 
 Additional optional arguments:

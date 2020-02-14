@@ -186,7 +186,9 @@
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file
 system where the archive files will be stored. This directory should be <strong>unique</strong> for each
-zstash archive.</p></li>
+zstash archive. If <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code>, then files will be archived locally instead of being
+transferred to HPSS. The <code class="docutils literal notranslate"><span class="pre">none</span></code> option should be used when running Zstash on a machine
+without HPSS.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;local</span> <span class="pre">path&gt;</span></code> specifies the path to the local directory that should be archived.</p></li>
 </ul>
 <p>Additional optional arguments:</p>
