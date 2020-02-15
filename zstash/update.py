@@ -8,9 +8,9 @@ import stat
 import sys
 from datetime import datetime
 from .hpss import hpss_get, hpss_put
-from .utils import addfiles, excludeFiles
+from .hpss_utils import add_files
 from .settings import config, logger, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL
-
+from .utils import exclude_files
 
 def update():
 
@@ -100,13 +100,13 @@ def update():
 
     # Eliminate files based on exclude pattern
     if args.exclude is not None:
-        files = excludeFiles(args.exclude, files)
+        files = exclude_files(args.exclude, files)
 
     # Eliminate files that are already archived and up to date
     newfiles = []
-    for file in files:
+    for file_path in files:
 
-        statinfo = os.lstat(file)
+        statinfo = os.lstat(file_path)
         mdtime_new = datetime.utcfromtimestamp(statinfo.st_mtime)
         mode = statinfo.st_mode
         # For symbolic links or directories, size should be 0
@@ -115,7 +115,7 @@ def update():
         else:
             size_new = statinfo.st_size
 
-        cur.execute(u"select * from files where name = ?", (file,))
+        cur.execute(u"select * from files where name = ?", (file_path,))
         new = True
         while True:
             match = cur.fetchone()
@@ -131,7 +131,7 @@ def update():
                 break
             # print(file,size_new,size,mdtime_new,mdtime)
         if (new):
-            newfiles.append(file)
+            newfiles.append(file_path)
 
     # Anything to do?
     if len(newfiles) == 0:
@@ -141,8 +141,8 @@ def update():
     # --dry-run option
     if args.dry_run:
         print("List of files to be updated")
-        for file in newfiles:
-            print(file)
+        for file_path in newfiles:
+            print(file_path)
         return
 
     # Find last used tar archive
@@ -153,7 +153,7 @@ def update():
         itar = max(itar, int(tfile[0][0:6], 16))
 
     # Add files
-    failures = addfiles(cur, con, itar, newfiles)
+    failures = add_files(cur, con, itar, newfiles)
 
     # Close database and transfer to HPSS. Always keep local copy
     con.commit()
@@ -163,5 +163,5 @@ def update():
     # List failures
     if len(failures) > 0:
         logger.warning('Some files could not be archived')
-        for file in failures:
-            logger.error('Archiving %s' % (file))
+        for file_path in failures:
+            logger.error('Archiving %s' % (file_path))

@@ -1,16 +1,12 @@
 from __future__ import print_function, absolute_import
 
-import hashlib
-import os.path
-import tarfile
-import traceback
-from datetime import datetime
 from fnmatch import fnmatch
-from .hpss import hpss_put
-from .settings import config, logger, CACHE, BLOCK_SIZE, DB_FILENAME
+from .settings import DB_FILENAME, logger
+import shlex
+import subprocess
 
 
-def excludeFiles(exclude, files):
+def exclude_files(exclude, files):
 
     # Construct lits of files to exclude, based on
     #  https://codereview.stackexchange.com/questions/33624/
@@ -25,9 +21,9 @@ def excludeFiles(exclude, files):
 
     # Actual files to exclude
     exclude_files = []
-    for file in files:
-        if any(fnmatch(file, pattern) for pattern in exclude_patterns):
-            exclude_files.append(file)
+    for file_name in files:
+        if any(fnmatch(file_name, pattern) for pattern in exclude_patterns):
+            exclude_files.append(file_name)
             continue
 
     # Now, remove them
@@ -35,93 +31,12 @@ def excludeFiles(exclude, files):
 
     return new_files
 
-
-def addfiles(cur, con, itar, files):
-
-    # Now, perform the actual archiving
-    failures = []
-    newtar = True
-    nfiles = len(files)
-    for i in range(nfiles):
-
-        # New tar archive in the local cache
-        if newtar:
-            newtar = False
-            archived = []
-            tarsize = 0
-            itar += 1
-            tname = "{0:0{1}x}".format(itar, 6)
-            tfname = "%s.tar" % (tname)
-            logger.info('Creating new tar archive %s' % (tfname))
-            tar = tarfile.open(os.path.join(CACHE, tfname), "w")
-
-        # Add current file to tar archive
-        file = files[i]
-        logger.info('Archiving %s' % (file))
-        try:
-            offset, size, mtime, md5 = addfile(tar, file)
-            archived.append((file, size, mtime, md5, tfname, offset))
-            tarsize += size
-        except:
-            traceback.print_exc()
-            logger.error('Archiving %s' % (file))
-            failures.append(file)
-
-        # Close tar archive if current file is the last one or adding one more
-        # would push us over the limit.
-        next_file_size = tar.gettarinfo(file).size
-        if (i == nfiles-1 or tarsize+next_file_size > config.maxsize):
-
-            # Close current temporary file
-            logger.debug('Closing tar archive %s' % (tfname))
-            tar.close()
-
-            # Transfer tar archive to HPSS
-            hpss_put(config.hpss, os.path.join(CACHE, tfname), config.keep)
-
-            # Update database with files that have been archived
-            cur.executemany(u"insert into files values (NULL,?,?,?,?,?,?)",
-                            archived)
-            con.commit()
-
-            # Open new archive next time
-            newtar = True
-
-    return failures
-
-
-# Add file to tar archive while computing its hash
-# Return file offset (in tar archive), size and md5 hash
-def addfile(tar, file):
-    offset = tar.offset
-    tarinfo = tar.gettarinfo(file)
-    # Change the size of any hardlinks from 0 to the size of the actual file
-    if tarinfo.islnk():
-        tarinfo.size = os.path.getsize(file)
-    tar.addfile(tarinfo)
-
-    # Only add files or hardlinks.
-    # So don't add directories or softlinks.
-    if tarinfo.isfile() or tarinfo.islnk():
-        f = open(file, "rb")
-        hash_md5 = hashlib.md5()
-        while True:
-            s = f.read(BLOCK_SIZE)
-            if len(s) > 0:
-                tar.fileobj.write(s)
-                hash_md5.update(s)
-            if len(s) < BLOCK_SIZE:
-                blocks, remainder = divmod(tarinfo.size, tarfile.BLOCKSIZE)
-                if remainder > 0:
-                    tar.fileobj.write(tarfile.NUL *
-                                      (tarfile.BLOCKSIZE - remainder))
-                    blocks += 1
-                tar.offset += blocks * tarfile.BLOCKSIZE
-                break
-        f.close()
-        md5 = hash_md5.hexdigest()
-    else:
-        md5 = None
-    size = tarinfo.size
-    mtime = datetime.utcfromtimestamp(tarinfo.mtime)
-    return offset, size, mtime, md5
+def run_command(command, error_str):
+    p1 = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (stdout, stderr) = p1.communicate()
+    status = p1.returncode
+    if status != 0:
+        logger.error(error_str)
+        logger.debug('stdout:\n%s', stdout)
+        logger.debug('stderr:\n%s', stderr)
+        raise Exception
