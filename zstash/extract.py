@@ -160,8 +160,8 @@ def extract(keep_files=True):
 
     # Find matching files
     matches = []
-    for file in args.files:
-        cur.execute(u"select * from files where name GLOB ? or tar GLOB ?", (file, file))
+    for args_file in args.files:
+        cur.execute(u"select * from files where name GLOB ? or tar GLOB ?", (args_file, args_file))
         matches = matches + cur.fetchall()
     
     # Sort by the filename, tape (so the tar archive),
@@ -266,17 +266,17 @@ def extractFiles(files, keep_files, keep_tars, multiprocess_worker=None):
     for i in range(nfiles):
         # The current structure of each of the db row, `file`, is:
         # (id, name, size, mtime, md5, tar, offset)
-        file = files[i]
+        file_tuple = files[i]
 
         # Open new tar archive
         if newtar:
             newtar = False
-            tfname = os.path.join(CACHE, file[5])
+            tfname = os.path.join(CACHE, file_tuple[5])
             # Everytime we're extracting a new tar, if running in parallel,
             # let the process know.
             # This is to synchronize the print statements.
             if multiprocess_worker:
-                multiprocess_worker.set_curr_tar(file[5])
+                multiprocess_worker.set_curr_tar(file_tuple[5])
 
             if not os.path.exists(tfname):
                 # Will need to retrieve from HPSS
@@ -287,24 +287,24 @@ def extractFiles(files, keep_files, keep_tars, multiprocess_worker=None):
 
         # Extract file
         cmd = 'Extracting' if keep_files else 'Checking'
-        logger.info(cmd + ' %s' % (file[1]))
+        logger.info(cmd + ' %s' % (file_tuple[1]))
         # if multiprocess_worker:
         #     print('{} is {} {} from {}'.format(multiprocess_worker, cmd, file[1], file[5]))
 
-        if keep_files and not should_extract_file(file):
+        if keep_files and not should_extract_file(file_tuple):
             # If we were going to extract, but aren't
             # because a matching file is on disk
             msg = 'Not extracting {}, because it'
             msg += ' already exists on disk with the same'
             msg += ' size and modification date.'
-            logger.info(msg.format(file[1]))
+            logger.info(msg.format(file_tuple[1]))
 
         # True if we should actually extract the file from the tar
-        extract_this_file = keep_files and should_extract_file(file)
+        extract_this_file = keep_files and should_extract_file(file_tuple)
 
         try:
             # Seek file position
-            tar.fileobj.seek(file[6])
+            tar.fileobj.seek(file_tuple[6])
 
             # Get next member
             tarinfo = tar.tarinfo.fromtarfile(tar)
@@ -346,16 +346,16 @@ def extractFiles(files, keep_files, keep_tars, multiprocess_worker=None):
                     tar.chmod(tarinfo, fname)
                     tar.utime(tarinfo, fname)
                     # Verify size
-                    if os.path.getsize(fname) != file[2]:
+                    if os.path.getsize(fname) != file_tuple[2]:
                         logger.error('size mismatch for: %s' % (fname))
 
                 # Verify md5 checksum
-                if md5 != file[4]:
+                if md5 != file_tuple[4]:
                     logger.error('md5 mismatch for: %s' % (fname))
                     logger.error('md5 of extracted file: %s' % (md5))
-                    logger.error('md5 of original file:  %s' % (file[4]))
+                    logger.error('md5 of original file:  %s' % (file_tuple[4]))
 
-                    failures.append(file)
+                    failures.append(file_tuple)
                 else:
                     logger.debug('Valid md5: %s %s' % (md5, fname))
 
@@ -373,8 +373,8 @@ def extractFiles(files, keep_files, keep_tars, multiprocess_worker=None):
 
         except:
             traceback.print_exc()
-            logger.error('Retrieving %s' % (file[1]))
-            failures.append(file)
+            logger.error('Retrieving %s' % (file_tuple[1]))
+            failures.append(file_tuple)
 
         if multiprocess_worker:
             multiprocess_worker.print_contents()
@@ -386,7 +386,7 @@ def extractFiles(files, keep_files, keep_tars, multiprocess_worker=None):
             tar.close()
 
             if multiprocess_worker:
-                multiprocess_worker.done_enqueuing_output_for_tar(file[5])
+                multiprocess_worker.done_enqueuing_output_for_tar(file_tuple[5])
 
             # Open new archive next time
             newtar = True

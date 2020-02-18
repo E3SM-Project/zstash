@@ -66,8 +66,8 @@ def ls():
 
     # Find matching files
     matches = []
-    for file in args.files:
-        cur.execute(u"select * from files where name GLOB ? or tar GLOB ?", (file, file))
+    for args_file in args.files:
+        cur.execute(u"select * from files where name GLOB ? or tar GLOB ?", (args_file, args_file))
         matches = matches + cur.fetchall()
 
     # Remove duplicates

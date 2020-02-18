@@ -4,17 +4,7 @@ import os.path
 import shlex
 import subprocess
 from .settings import DB_FILENAME, logger
-
-
-def run_command(command, error_str):
-    p1 = subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    (stdout, stderr) = p1.communicate()
-    status = p1.returncode
-    if status != 0:
-        logger.error(error_str)
-        logger.debug('stdout:\n%s', stdout)
-        logger.debug('stderr:\n%s', stderr)
-        raise Exception
+from .utils import run_command
 
 
 def hpss_transfer(hpss, file_path, transfer_type, keep=None):

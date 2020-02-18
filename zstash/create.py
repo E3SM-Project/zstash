@@ -10,9 +10,9 @@ import sqlite3
 import tarfile
 from subprocess import Popen, PIPE
 from .hpss import hpss_put
-from .utils import addfiles, excludeFiles
+from .hpss_utils import add_files
 from .settings import config, logger, CACHE, BLOCK_SIZE, DB_FILENAME
-
+from .utils import exclude_files, run_command
 
 def create():
 
@@ -68,28 +68,16 @@ def create():
     if config.hpss != 'none':
         # Create target HPSS directory if needed
         logger.debug('Creating target HPSS directory')
-        p1 = Popen(['hsi', '-q', 'mkdir', '-p', config.hpss],
-                   stdout=PIPE, stderr=PIPE)
-        (stdout, stderr) = p1.communicate()
-        status = p1.returncode
-        if status != 0:
-            logger.error('Could not create HPSS directory: %s', config.hpss)
-            logger.debug('stdout:\n%s', stdout)
-            logger.debug('stderr:\n%s', stderr)
-            raise Exception
+        command = 'hsi -q mkdir -p {}'.format(config.hpss)
+        error_str = 'Could not create HPSS directory: {}'.format(config.hpss)
+        run_command(command, error_str)
         
         # Make sure it is empty
         logger.debug('Making sure target HPSS directory exists and is empty')
-        cmd = 'hsi -q "cd %s; ls -l"' % (config.hpss)
-        p1 = Popen(shlex.split(cmd), stdout=PIPE, stderr=PIPE)
-        (stdout, stderr) = p1.communicate()
-        status = p1.returncode
-        if status != 0 or len(stdout) != 0 or len(stderr) != 0:
-            logger.error('Target HPSS directory is not empty')
-            logger.debug('stdout:\n%s', stdout)
-            logger.debug('stderr:\n%s', stderr)
-            raise Exception
-    
+        
+        command = 'hsi -q "cd {}; ls -l"'.format(config.hpss)
+        error_str = 'Target HPSS directory is not empty'
+        run_command(command, error_str)    
     
     # Create cache directory
     logger.debug('Creating local cache directory')
@@ -163,10 +151,10 @@ create table files (
 
     # Eliminate files based on exclude pattern
     if args.exclude is not None:
-        files = excludeFiles(args.exclude, files)
+        files = exclude_files(args.exclude, files)
 
     # Add files to archive
-    failures = addfiles(cur, con, -1, files)
+    failures = add_files(cur, con, -1, files)
 
     # Close database and transfer to HPSS. Always keep local copy
     con.commit()
@@ -176,5 +164,5 @@ create table files (
     # List failures
     if len(failures) > 0:
         logger.warning('Some files could not be archived')
-        for file in failures:
-            logger.error('Archiving %s' % (file))
+        for file_path in failures:
+            logger.error('Archiving %s' % (file_path))
