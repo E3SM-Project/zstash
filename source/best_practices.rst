@@ -27,8 +27,8 @@ later: ::
    $ ssh dtn01.nersc.gov
    $ screen -r
 
-Archiving
-=========
+Archive
+-------
 
 Typically, you should consider archiving the entire directory structure
 of a simulation. The first time, this is accomplished with ``zstash create``.
@@ -57,8 +57,8 @@ restart files every 5 years** only: ::
      --exclude="archive/rest/???[!05]-*/" \
      --maxsize 128 . 2>&1 | tee zstash_create_20190226.log
 
-Updating
-========
+Update
+------
 
 You can also add newly created files to an existing archive, or restart archiving after a 
 failure using the ``zstash update`` functionality: ::
@@ -69,8 +69,8 @@ failure using the ``zstash update`` functionality: ::
    $ zstash update --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
      --exclude="archive/rest/???[!05]-*/" 2>&1 | tee zstash_update_20190226.log
 
-Checking
-========
+Check
+-----
 
 After archiving or updating, it is **highly recommended** that you verify the integrity
 of the tar files. The safest way to do so is go to a new, empty directory and run: ::
@@ -124,3 +124,74 @@ To save time, like ``zstash extract``, you can check for specific files or tar a
 
   $ zstash check --hpss=/path/to/hpss/archive "archive/ocn/hist/mpaso.hist.am.timeSeriesStatsMonthly.1892-04-01.nc"
   $ zstash check --hpss=/path/to/hpss/archive "000012.tar"
+
+Compy/Anvil
+===========
+
+There is no long-term HPSS storage attached to Compy or Anvil. To archive a new simulation, 
+we recommend the following:
+
+* Use zstash to create a local archive on disk.
+* Transfer files to NERSC HPSS using Globus.
+
+While the instructions below are specific for Compy, adapting them for Anvil should
+be straightforward.
+
+Archive
+-------
+
+Starting with v0.4, zstash supports the creation of local archives only (using the 
+``--hpss=none`` command line option). For example ::
+
+   $ screen
+   $ cd /compyfs/gola749/E3SM_simulations/20191216.alpha20.piControl.ne30_r05_oECv3_ICG.compy
+   $ mkdir zstash
+   $ zstash create --hpss=none  --maxsize 128 . 2>&1 | tee zstash/zstash_create_20200224.log
+   ctrl-a d # to disconnect from screen session
+
+Check
+-----
+
+Once archiving is complete, run ``zstash check`` locally to verify integrity of archive: ::
+
+   $ screen -r
+   $ cd /compyfs/gola749/E3SM_simulations/20191216.alpha20.piControl.ne30_r05_oECv3_ICG.compy
+   $ zstash check . 2>&1 | tee zstash/zstash_check_20200225.log
+
+Transfer to NERSC HPSS
+----------------------
+
+After the check completes successfully, transfer all zstash files to NERSC HPSS using 
+Globus.
+
+* Login to Globus web interface at https://www.globus.org/ using your NERSC credentials.
+* On the leftmost pane, select 'ENDPOINT'
+* Search for 'NERSC HPSS'. Click on Green power button to activate endpoint.
+
+.. image:: globus/Globus_Screenshot_1.png
+   :scale: 50%
+   :alt: Globus screenshot, NERSC HPSS endpoint
+
+* Back to the leftmost pane, select 'ENDPOINT'
+* Search for 'compy-dtn'. Click on Green power button to activate endpoint. Login
+  using your compy credentials (username, PIN+RSA).
+
+.. image:: globus/Globus_Screenshot_2.png
+   :scale: 50%
+   :alt: Globus screenshot, compy-dtn endpoint
+
+* In the file manager, navigate to your local zstash directory.
+* Click on 'Transfer or Sync...'
+
+.. image:: globus/Globus_Screenshot_3.png
+   :scale: 50%
+   :alt: Globus screenshot, file manager
+
+* Configure sync: select all source files in zstash folder, select destination endpoint 
+  and folder. Click 'Start ->'.
+
+.. image:: globus/Globus_Screenshot_4.png
+   :scale: 50%
+   :alt: Globus screenshot, sync
+
+
