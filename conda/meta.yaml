@@ -22,6 +22,12 @@ requirements:
   run:
     - python >=3.6
 
+test:
+  imports:
+    - zstash
+  commands:
+    - zstash --help
+
 about:
   home: https://github.com/E3SM-Project/zstash
 
