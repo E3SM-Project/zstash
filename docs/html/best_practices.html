@@ -340,10 +340,23 @@ using your compy credentials (username, PIN+RSA).</p></li>
 </ul>
 <a class="reference internal image-reference" href="_images/Globus_Screenshot_3.png"><img alt="Globus screenshot, file manager" src="_images/Globus_Screenshot_3.png" style="width: 685.5px; height: 425.5px;" /></a>
 <ul class="simple">
-<li><p>Configure sync: select all source files in zstash folder, select destination endpoint
-and folder. Click ‘Start -&gt;’.</p></li>
+<li><p>Configure sync</p>
+<ul>
+<li><p>Select all source files in zstash folder.</p></li>
+<li><p>Select destination endpoint and folder (the Globus web interface cannot create new
+directories, so you will have to create the destination directory on NERSC HPSS is if
+doesn’t already exist).</p></li>
+<li><p>Suggested options for sync</p>
+<ul>
+<li><p>transfer files where the modification time is newer</p></li>
+<li><p>preserve source file modification time</p></li>
 </ul>
-<a class="reference internal image-reference" href="_images/Globus_Screenshot_4.png"><img alt="Globus screenshot, sync" src="_images/Globus_Screenshot_4.png" style="width: 945.0px; height: 526.0px;" /></a>
+</li>
+</ul>
+</li>
+<li><p>Click ‘Start -&gt;’.</p></li>
+</ul>
+<a class="reference internal image-reference" href="_images/Globus_Screenshot_4.png"><img alt="Globus screenshot, sync" src="_images/Globus_Screenshot_4.png" style="width: 941.5px; height: 547.0px;" /></a>
 </div>
 </div>
 </div>

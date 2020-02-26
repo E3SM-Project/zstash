@@ -187,8 +187,18 @@ Globus.
    :scale: 50%
    :alt: Globus screenshot, file manager
 
-* Configure sync: select all source files in zstash folder, select destination endpoint 
-  and folder. Click 'Start ->'.
+* Configure sync
+  
+  - Select all source files in zstash folder.
+  - Select destination endpoint and folder (the Globus web interface cannot create new
+    directories, so you will have to create the destination directory on NERSC HPSS is if
+    doesn't already exist).
+  - Suggested options for sync
+
+    - transfer files where the modification time is newer
+    - preserve source file modification time
+
+* Click 'Start ->'.
 
 .. image:: globus/Globus_Screenshot_4.png
    :scale: 50%
