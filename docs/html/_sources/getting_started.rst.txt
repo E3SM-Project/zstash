@@ -4,6 +4,7 @@ Getting started
 
 .. highlight:: none
 
+
 Using E3SM unified environment
 ==============================
 
@@ -19,6 +20,7 @@ or for csh ::
 For more details on the E3SM unified environment, please refer to the `E3SM Diagnostics and Analysis Quickstart <https://acme-climate.atlassian.net/wiki/spaces/EIDMG/pages/780271950/Diagnostics+and+Analysis+Quickstart>`_.  
 
 For archiving E3SM simulations, we recommend following the :ref:`Best practices for E3SM`.
+
 
 Installation using conda
 ========================
@@ -37,6 +39,7 @@ Or you can install zstash in an existing environment. ::
 
    $ conda install zstash -c e3sm -c conda-forge 
 
+
 Installation on NERSC
 =====================
 
@@ -47,23 +50,51 @@ First, make sure that you're using ``bash``. ::
 On NERSC Edison and Cori machines, load the Anaconda module instead of 
 installing it yourself. :: 
 
-   $ module load python/2.7-anaconda-4.4
+   $ module load python/3.7-anaconda-2019.10
+   $ source /global/common/cori_cle7/software/python/3.7-anaconda-2019.10/etc/profile.d/conda.sh
 
 Create a new Anaconda environment with zstash installed and activate it. ::
 
    $ conda create -n zstash_env -c e3sm -c conda-forge zstash
-   $ source activate zstash_env
+   $ conda activate zstash_env
 
 Or you can install zstash in an existing environment. ::
 
    $ conda install zstash -c e3sm -c conda-forge 
 
-After installing on Edison or Cori, you may see improved performance 
+After installing on Cori, you may see improved performance 
 running **zstash on the data transfer nodes** (dtn{01..15}.nersc.gov). However, modules are
 not directly available there, so you will need to manually activate Anaconda: ::
 
-   $ . /global/common/edison/software/python/2.7-anaconda-4.4/etc/profile.d/conda.sh
-   $ export PATH="/global/common/edison/software/python/2.7-anaconda-4.4/bin:$PATH"
+   $ bash
+   $ source /global/common/cori_cle7/software/python/3.7-anaconda-2019.10/etc/profile.d/conda.sh
+   $ conda activate zstash_env
+
+
+Installation on compy
+=====================
+
+First, make sure that you're using ``bash``. ::
+
+   $ bash
+
+On compy, load the Anaconda module instead of 
+installing it yourself. :: 
+
+   $ module load anaconda3/2019.03
+
+You will be prompted to ::
+
+   $ source /share/apps/anaconda3/2019.03/etc/profile.d/conda.sh
+
+Create a new Anaconda environment with zstash installed and activate it. ::
+
+   $ conda create -n zstash_env -c e3sm -c conda-forge zstash
+   $ conda activate zstash_env
+
+Or you can install zstash in an existing environment. ::
+
+   $ conda install zstash -c e3sm -c conda-forge 
 
 
 Installation from source

@@ -89,6 +89,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#using-e3sm-unified-environment">Using E3SM unified environment</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#installation-using-conda">Installation using conda</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#installation-on-nersc">Installation on NERSC</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installation-on-compy">Installation on compy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#installation-from-source">Installation from source</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#updating">Updating</a></li>
 </ul>
@@ -204,23 +205,50 @@ $ source activate zstash_env
 </div>
 <p>On NERSC Edison and Cori machines, load the Anaconda module instead of
 installing it yourself.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ module load python/2.7-anaconda-4.4
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ module load python/3.7-anaconda-2019.10
+$ source /global/common/cori_cle7/software/python/3.7-anaconda-2019.10/etc/profile.d/conda.sh
 </pre></div>
 </div>
 <p>Create a new Anaconda environment with zstash installed and activate it.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda create -n zstash_env -c e3sm -c conda-forge zstash
-$ source activate zstash_env
+$ conda activate zstash_env
 </pre></div>
 </div>
 <p>Or you can install zstash in an existing environment.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda install zstash -c e3sm -c conda-forge
 </pre></div>
 </div>
-<p>After installing on Edison or Cori, you may see improved performance
+<p>After installing on Cori, you may see improved performance
 running <strong>zstash on the data transfer nodes</strong> (dtn{01..15}.nersc.gov). However, modules are
 not directly available there, so you will need to manually activate Anaconda:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ . /global/common/edison/software/python/2.7-anaconda-4.4/etc/profile.d/conda.sh
-$ export PATH=&quot;/global/common/edison/software/python/2.7-anaconda-4.4/bin:$PATH&quot;
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ bash
+$ source /global/common/cori_cle7/software/python/3.7-anaconda-2019.10/etc/profile.d/conda.sh
+$ conda activate zstash_env
+</pre></div>
+</div>
+</div>
+<div class="section" id="installation-on-compy">
+<h2>Installation on compy<a class="headerlink" href="#installation-on-compy" title="Permalink to this headline">¶</a></h2>
+<p>First, make sure that you’re using <code class="docutils literal notranslate"><span class="pre">bash</span></code>.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ bash
+</pre></div>
+</div>
+<p>On compy, load the Anaconda module instead of
+installing it yourself.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ module load anaconda3/2019.03
+</pre></div>
+</div>
+<p>You will be prompted to</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ source /share/apps/anaconda3/2019.03/etc/profile.d/conda.sh
+</pre></div>
+</div>
+<p>Create a new Anaconda environment with zstash installed and activate it.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda create -n zstash_env -c e3sm -c conda-forge zstash
+$ conda activate zstash_env
+</pre></div>
+</div>
+<p>Or you can install zstash in an existing environment.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda install zstash -c e3sm -c conda-forge
 </pre></div>
 </div>
 </div>
@@ -277,7 +305,7 @@ tag of the version you want and install from that.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, E3SM
+        &copy; Copyright 2020, E3SM
 
     </p>
   </div>
