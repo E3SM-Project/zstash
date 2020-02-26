@@ -50,7 +50,7 @@ master_doc = 'index'
 # General information about the project.
 project = u'zstash'
 copyright = u'2020, E3SM'
-author = u'Chris Golaz, Zeshwan Shaheen, Ryan Forsyth, Jill Zhang'
+author = u'Chris Golaz, Zeshawn Shaheen, Ryan Forsyth, Jill Zhang'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
