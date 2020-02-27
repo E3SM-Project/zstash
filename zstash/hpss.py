@@ -3,14 +3,14 @@ from __future__ import print_function, absolute_import
 import os.path
 import shlex
 import subprocess
-from .settings import DB_FILENAME, logger
+from .settings import get_db_filename, logger
 from .utils import run_command
 
 
-def hpss_transfer(hpss, file_path, transfer_type, keep=None):
+def hpss_transfer(hpss, file_path, transfer_type, cache, keep=None):
     if hpss == 'none':
         logger.info('{}: HPSS is unavailable'.format(transfer_type))
-        if transfer_type == 'put' and file_path != DB_FILENAME:
+        if transfer_type == 'put' and file_path != get_db_filename(cache):
             logger.info('{}: Keeping tar files locally and removing write permissions'.format(
                 transfer_type))
             # https://unix.stackexchange.com/questions/46915/get-the-chmod-numerical-value-for-a-file
@@ -58,18 +58,18 @@ def hpss_transfer(hpss, file_path, transfer_type, keep=None):
             os.remove(file_path)
 
 
-def hpss_put(hpss, file_path, keep=True):
+def hpss_put(hpss, file_path, cache, keep=True):
     """
     Put a file to the HPSS archive.
     """
-    hpss_transfer(hpss, file_path, 'put', keep)
+    hpss_transfer(hpss, file_path, 'put', cache, keep)
 
 
-def hpss_get(hpss, file_path):
+def hpss_get(hpss, file_path, cache):
     """
     Get a file from the HPSS archive.
     """
-    hpss_transfer(hpss, file_path, 'get', False)
+    hpss_transfer(hpss, file_path, 'get', cache, False)
 
 
 def hpss_chgrp(hpss, group, recurse=False):

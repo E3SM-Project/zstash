@@ -10,11 +10,12 @@ class TestExtract(TestZstash):
     """
     # `zstash extract` is tested in TestExtract and TestExtractParallel.
     # x = on, no mark = off, b = both on and off tested
-    # option | ExtractVerbose | ExtractKeep | ExtractParallel |
-    # --hpss    |x|x|x|
-    # --workers | | |x|
-    # --keep    | |x| |
-    # -v        |x| |b|
+    # option | ExtractVerbose | ExtractKeep | ExtractCache | ExtractParallel |
+    # --hpss    |x|x|x|x|
+    # --workers | | | |x|
+    # --cache   | | |x| |
+    # --keep    | |x| | |
+    # -v        |x| | |b|
 
     def helperExtractVerbose(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
         """
@@ -109,6 +110,27 @@ class TestExtract(TestZstash):
         expected_absent = ['ERROR', 'Not extracting']
         self.check_strings(cmd, output + err, expected_present, expected_absent)
 
+    def helperExtractCache(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
+        """
+        Test `zstash extract --cache`.
+        """
+        self.hpss_path = hpss_path
+        self.cache = 'my_cache'
+        use_hpss = self.setupDirs(test_name)
+        if not use_hpss:
+            self.copy_dir = self.cache
+        self.create(use_hpss, zstash_path, cache=self.cache)
+        self.add_files(use_hpss, zstash_path, cache=self.cache)
+        self.extract(use_hpss, zstash_path, cache=self.cache)
+        files = os.listdir('{}/{}'.format(self.test_dir, self.cache))
+        if use_hpss:
+            expected_files = ['index.db']
+        else:
+            expected_files = ['index.db', '000003.tar', '000004.tar', '000000.tar', '000001.tar', '000002.tar']
+        if not compare(files, expected_files):
+            error_message = 'The zstash cache does not contain expected files.\nIt has: {}'.format(files)
+            self.stop(error_message)
+
     def testExtractVerbose(self):
         self.helperExtractVerbose('testExtractVerbose', 'none')
 
@@ -123,5 +145,12 @@ class TestExtract(TestZstash):
         self.conditional_hpss_skip()
         self.helperExtractKeep('testExtractKeepHPSS', HPSS_ARCHIVE)
 
+    def testExtractCache(self):
+        self.helperExtractCache('testExtractCache', 'none')
+
+    def testExtractCacheHPSS(self):
+        self.conditional_hpss_skip()
+        self.helperExtractCache('testExtractCacheHPSS', HPSS_ARCHIVE)
+        
 if __name__ == '__main__':
     unittest.main()

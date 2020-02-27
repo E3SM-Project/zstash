@@ -11,7 +11,7 @@ import tarfile
 from subprocess import Popen, PIPE
 from .hpss import hpss_put
 from .hpss_utils import add_files
-from .settings import config, logger, CACHE, BLOCK_SIZE, DB_FILENAME
+from .settings import config, logger, BLOCK_SIZE, DEFAULT_CACHE, get_db_filename
 from .utils import exclude_files, run_command
 
 def create():
@@ -37,6 +37,8 @@ def create():
         '--keep',
         help='keep tar files in local cache (default off)',
         action="store_true")
+    optional.add_argument(
+        '--cache', type=str, help='path to store files')
     optional.add_argument('-v', '--verbose', action="store_true", 
                           help="increase output verbosity")
     # Now that we're inside a subcommand, ignore the first two argvs
@@ -51,6 +53,10 @@ def create():
     config.hpss = args.hpss
     config.maxsize = int(1024*1024*1024 * args.maxsize)
     config.keep = args.keep
+    if args.cache:
+        cache = args.cache
+    else:
+        cache = DEFAULT_CACHE
 
     # Start doing actual work
     logger.debug('Running zstash create')
@@ -83,7 +89,7 @@ def create():
     logger.debug('Creating local cache directory')
     os.chdir(config.path)
     try:
-        os.makedirs(CACHE)
+        os.makedirs(cache)
     except OSError as exc:
         if exc.errno != errno.EEXIST:
             logger.error('Cannot create local cache directory')
@@ -95,10 +101,10 @@ def create():
 
     # Create new database
     logger.debug('Creating index database')
-    if os.path.exists(DB_FILENAME):
-        os.remove(DB_FILENAME)
+    if os.path.exists(get_db_filename(cache)):
+        os.remove(get_db_filename(cache))
     global con, cur
-    con = sqlite3.connect(DB_FILENAME, detect_types=sqlite3.PARSE_DECLTYPES)
+    con = sqlite3.connect(get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES)
     cur = con.cursor()
 
     # Create 'config' table
@@ -147,19 +153,19 @@ create table files (
 
     # Relative file path, eliminating top level zstash directory
     files = [os.path.normpath(os.path.join(x[0], x[1]))
-             for x in files if x[0] != os.path.join('.', CACHE)]
+             for x in files if x[0] != os.path.join('.', cache)]
 
     # Eliminate files based on exclude pattern
     if args.exclude is not None:
         files = exclude_files(args.exclude, files)
 
     # Add files to archive
-    failures = add_files(cur, con, -1, files)
+    failures = add_files(cur, con, -1, files, cache)
 
     # Close database and transfer to HPSS. Always keep local copy
     con.commit()
     con.close()
-    hpss_put(config.hpss, DB_FILENAME, keep=True)
+    hpss_put(config.hpss, get_db_filename(cache), cache, keep=True)
 
     # List failures
     if len(failures) > 0:

@@ -13,6 +13,7 @@ class TestCheckParallel(TestZstash):
     # option | Check | CheckMismatch | CheckKeepTars | CheckParallel | CheckParallelVerboseMismatch | CheckParallelKeepTars |
     # --hpss    |x|x|x|x|x| |
     # --workers | | | |x|x|x|
+    # --cache   |b| | | | | |
     # --keep    | | | | | |b|
     # -v        |b|x| |b|x| |
 

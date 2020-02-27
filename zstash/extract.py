@@ -13,11 +13,11 @@ import heapq
 import multiprocessing
 from datetime import datetime
 from .hpss import hpss_get
-from .settings import config, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL, logger
+from .settings import config, BLOCK_SIZE, DEFAULT_CACHE, get_db_filename, TIME_TOL, logger
 from . import parallel
 
 
-def multiprocess_extract(num_workers, matches, keep_files, keep_tars):
+def multiprocess_extract(num_workers, matches, keep_files, keep_tars, cache):
     """
     Extract the files from the matches in parallel.
 
@@ -74,7 +74,7 @@ def multiprocess_extract(num_workers, matches, keep_files, keep_tars):
         tars_for_this_worker = list(set(match[5] for match in matches))
         worker = parallel.ExtractWorker(monitor, tars_for_this_worker, failure_queue)
         process = multiprocessing.Process(target=extractFiles,
-                    args=(matches, keep_files, keep_tars, worker))
+                    args=(matches, keep_files, keep_tars, cache, worker))
         process.start()
         processes.append(process)
 
@@ -103,12 +103,18 @@ def extract(keep_files=True):
     optional.add_argument('--hpss', type=str, help='path to HPSS storage')
     optional.add_argument('--workers', type=int, default=1, help='num of multiprocess workers')
     optional.add_argument('--keep', action='store_true', help='keep tar files in local cache (default off)')
+    optional.add_argument(
+        '--cache', type=str, help='path to store files')
     optional.add_argument('-v', '--verbose', action="store_true", 
                           help="increase output verbosity")
     parser.add_argument('files', nargs='*', default=['*'])
     args = parser.parse_args(sys.argv[2:])
     if args.hpss and args.hpss.lower() == 'none':
         args.hpss = 'none'
+    if args.cache:
+        cache = args.cache
+    else:
+        cache = DEFAULT_CACHE
     # Note: setting logging level to anything other than DEBUG doesn't work with 
     # multiple workers. This must have someting to do with the custom logger 
     # implemented for multiple workers.
@@ -116,18 +122,18 @@ def extract(keep_files=True):
 
     # Open database
     logger.debug('Opening index database')
-    if not os.path.exists(DB_FILENAME):
+    if not os.path.exists(get_db_filename(cache)):
         # Will need to retrieve from HPSS
         if args.hpss is not None:
             config.hpss = args.hpss
-            hpss_get(config.hpss, DB_FILENAME)
+            hpss_get(config.hpss, get_db_filename(cache), cache)
         else:
             logger.error('--hpss argument is required when local copy of '
                           'database is unavailable')
 
             raise Exception
     global con, cur
-    con = sqlite3.connect(DB_FILENAME, detect_types=sqlite3.PARSE_DECLTYPES)
+    con = sqlite3.connect(get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES)
     cur = con.cursor()
 
     # Retrieve some configuration settings from database
@@ -189,9 +195,9 @@ def extract(keep_files=True):
     # Retrieve from tapes
     if args.workers > 1:
         logger.debug('Running zstash {} with multiprocessing'.format(cmd))
-        failures = multiprocess_extract(args.workers, matches, keep_files, config.keep)
+        failures = multiprocess_extract(args.workers, matches, keep_files, config.keep, cache)
     else:
-        failures = extractFiles(matches, keep_files, config.keep)
+        failures = extractFiles(matches, keep_files, config.keep, cache)
 
     # Close database
     logger.debug('Closing index database')
@@ -231,7 +237,7 @@ def should_extract_file(db_row):
     return not(size_disk == size_db and abs(mod_time_disk - mod_time_db).total_seconds() < TIME_TOL)
 
 
-def extractFiles(files, keep_files, keep_tars, multiprocess_worker=None):
+def extractFiles(files, keep_files, keep_tars, cache, multiprocess_worker=None):
     """
     Given a list of database rows, extract the files from the
     tar archives to the current location on disk.
@@ -271,7 +277,7 @@ def extractFiles(files, keep_files, keep_tars, multiprocess_worker=None):
         # Open new tar archive
         if newtar:
             newtar = False
-            tfname = os.path.join(CACHE, file_tuple[5])
+            tfname = os.path.join(cache, file_tuple[5])
             # Everytime we're extracting a new tar, if running in parallel,
             # let the process know.
             # This is to synchronize the print statements.
@@ -280,7 +286,7 @@ def extractFiles(files, keep_files, keep_tars, multiprocess_worker=None):
 
             if not os.path.exists(tfname):
                 # Will need to retrieve from HPSS
-                hpss_get(config.hpss, tfname)
+                hpss_get(config.hpss, tfname, cache)
 
             logger.info('Opening tar archive %s' % (tfname))
             tar = tarfile.open(tfname, "r")

@@ -10,15 +10,15 @@ class Config(object):
     maxsize = None
     keep = None
 
+def get_db_filename(cache):
+    # Database filename 
+    return os.path.join(cache, 'index.db')
 
 # Block size
 BLOCK_SIZE = 1024*1014
 
-# Sub-directory to hold cache
-CACHE = 'zstash'
-
-# Database filename
-DB_FILENAME = os.path.join(CACHE, 'index.db')
+# Default sub-directory to hold cache
+DEFAULT_CACHE = 'zstash'
 
 # Time tolerance (in seconds) for file modification time
 TIME_TOL = 1.0

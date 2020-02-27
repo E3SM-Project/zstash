@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 from .hpss import hpss_get, hpss_put
 from .hpss_utils import add_files
-from .settings import config, logger, CACHE, BLOCK_SIZE, DB_FILENAME, TIME_TOL
+from .settings import config, logger, BLOCK_SIZE, DEFAULT_CACHE, get_db_filename, TIME_TOL
 from .utils import exclude_files
 
 def update():
@@ -32,26 +32,32 @@ def update():
         '--keep',
         help='keep tar files in local cache (default off)',
         action="store_true")
+    optional.add_argument(
+        '--cache', type=str, help='path to store files')
     optional.add_argument('-v', '--verbose', action="store_true", 
                           help="increase output verbosity")
     args = parser.parse_args(sys.argv[2:])
     if args.hpss and args.hpss.lower() == 'none':
         args.hpss = 'none'
+    if args.cache:
+        cache = args.cache
+    else:
+        cache = DEFAULT_CACHE
     if args.verbose: logger.setLevel(logging.DEBUG)
 
     # Open database
     logger.debug('Opening index database')
-    if not os.path.exists(DB_FILENAME):
+    if not os.path.exists(get_db_filename(cache)):
         # will need to retrieve from HPSS
         if args.hpss is not None:
             config.hpss = args.hpss
-            hpss_get(config.hpss, DB_FILENAME)
+            hpss_get(config.hpss, get_db_filename(cache), cache)
         else:
             logger.error('--hpss argument is required when local copy of '
                           'database is unavailable')
             raise Exception
     global con, cur
-    con = sqlite3.connect(DB_FILENAME, detect_types=sqlite3.PARSE_DECLTYPES)
+    con = sqlite3.connect(get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES)
     cur = con.cursor()
 
     # Retrieve some configuration settings from database
@@ -96,7 +102,7 @@ def update():
 
     # Relative file path, eliminating top level zstash directory
     files = [os.path.normpath(os.path.join(x[0], x[1]))
-             for x in files if x[0] != os.path.join('.', CACHE)]
+             for x in files if x[0] != os.path.join('.', cache)]
 
     # Eliminate files based on exclude pattern
     if args.exclude is not None:
@@ -153,12 +159,12 @@ def update():
         itar = max(itar, int(tfile[0][0:6], 16))
 
     # Add files
-    failures = add_files(cur, con, itar, newfiles)
+    failures = add_files(cur, con, itar, newfiles, cache)
 
     # Close database and transfer to HPSS. Always keep local copy
     con.commit()
     con.close()
-    hpss_put(config.hpss, DB_FILENAME, keep=True)
+    hpss_put(config.hpss, get_db_filename(cache), cache, keep=True)
 
     # List failures
     if len(failures) > 0:

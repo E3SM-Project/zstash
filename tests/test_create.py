@@ -8,11 +8,12 @@ class TestCreate(TestZstash):
     Test `zstash create`.
     """
     # x = on, no mark = off, b = both on and off tested
-    # option | CreateVerbose | CreateExcludeDir | CreateExcludeFile | CreateKeep | TestZstash.create (used in multiple tests) | TestCheckParallel.testKeepTarsWithPreviouslySetHPSS |
-    # --exclude | |x|x| | | |
-    # --maxsize | | | | | |x|
-    # --keep    | | | |x|b| |
-    # -v        |x| | | | | |
+    # option | CreateVerbose | CreateExcludeDir | CreateExcludeFile | CreateKeep | CreateCache | TestZstash.create (used in multiple tests) | TestCheckParallel.testKeepTarsWithPreviouslySetHPSS |
+    # --exclude | |x|x| | | | |
+    # --maxsize | | | | | | |x|
+    # --keep    | | | |x| |b| |
+    # --cache   | | | | |x| | |
+    # -v        |x| | | | | | |
 
     def helperCreateVerbose(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
         """
@@ -93,6 +94,19 @@ class TestCreate(TestZstash):
             self.stop(error_message)
         os.chdir(TOP_LEVEL)
 
+    def helperCreateCache(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
+        """
+        Test `zstash create --cache=my_cache`.
+        """
+        self.hpss_path = hpss_path
+        self.cache = 'my_cache'
+        use_hpss = self.setupDirs(test_name)
+        self.create(use_hpss, zstash_path, cache=self.cache)
+        files = os.listdir('{}/{}'.format(self.test_dir, self.cache))
+        if 'index.db' not in files:
+            error_message = 'The zstash cache does not contain expected files.\nIt has: {}'.format(files)
+            self.stop(error_message)        
+
     def testCreateVerbose(self):
         self.helperCreateVerbose('testCreateVerbose', 'none')    
 
@@ -115,5 +129,13 @@ class TestCreate(TestZstash):
         self.conditional_hpss_skip()
         self.helperCreateKeep('testCreateKeepHPSS', HPSS_ARCHIVE)
 
+    def testCreateCache(self):
+        self.helperCreateCache('testCreateCache', 'none')
+
+    def testCreateCacheHPSS(self):
+        self.conditional_hpss_skip()
+        self.helperCreateCache('testCreateCacheHPSS', HPSS_ARCHIVE)
+
+        
 if __name__ == '__main__':
     unittest.main()
