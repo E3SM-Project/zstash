@@ -8,6 +8,10 @@ import subprocess
 import unittest
 from collections import Counter
 
+# Run with:
+# cd .. && python -m pip install . --user && echo $? && cd - && python test.py
+ZSTASH_DIR = ''
+
 
 def write_file(name, contents):
     """
@@ -88,7 +92,7 @@ class TestZstash(unittest.TestCase):
             print_in_box(error_message)
             self.stop(hpss_path, error_message)
 
-    def helper(self, test_name, hpss_path):
+    def helper(self, test_name, hpss_path, zstash_dir=ZSTASH_DIR):
         if hpss_path.lower() == 'none':
             use_hpss = False
         else:
@@ -125,7 +129,7 @@ class TestZstash(unittest.TestCase):
         else:
             step_str = '1. Adding files to local archive'
         print(step_str)
-        cmd = 'zstash create {} --hpss={} zstash_test'.format(option, hpss_path)
+        cmd = '{}zstash create {} --hpss={} zstash_test'.format(zstash_dir, option, hpss_path)
         output, err = run_cmd(cmd)
         if use_hpss:
             expected_present = ['Transferring file to HPSS']
@@ -134,24 +138,24 @@ class TestZstash(unittest.TestCase):
         self.check_strings(cmd, hpss_path, output + err, expected_present, ['ERROR'])
 
         print('2. Testing chgrp')
-        GROUP = 'acme'
+        GROUP = 'e3sm'
         for option in ['-v', '']:
             print('Running zstash chgrp {}'.format(option))
-            cmd = 'zstash chgrp {} -R {} {}'.format(option, GROUP, hpss_path)
+            cmd = '{}zstash chgrp {} -R {} {}'.format(zstash_dir, option, GROUP, hpss_path)
             output, err = run_cmd(cmd)
             if use_hpss:
                 self.check_strings(cmd, hpss_path, output + err, [], ['ERROR'])
                 print('Now check that the files are in the {} group'.format(GROUP))
                 cmd = 'hsi ls -l {}'.format(hpss_path)
                 output, err = run_cmd(cmd)
-                expected_present = 'acme'
+                expected_present = 'e3sm'
             else:
                 expected_present = 'chgrp: HPSS is unavailable'
             self.check_strings(cmd, hpss_path, output + err, expected_present, ['ERROR'])
 
         print('3. Running update on the newly created directory, nothing should happen')
         os.chdir('zstash_test')
-        cmd = 'zstash update -v --hpss={}'.format(hpss_path)
+        cmd = '{}zstash update -v --hpss={}'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         os.chdir('../')
         self.check_strings(cmd, hpss_path, output + err, ['Nothing to update'], ['ERROR'])
@@ -163,7 +167,7 @@ class TestZstash(unittest.TestCase):
         write_file('zstash_test/dir/file1.txt', 'file1 stuff with changes')
 
         os.chdir('zstash_test')
-        cmd = 'zstash update -v --hpss={}'.format(hpss_path)
+        cmd = '{}zstash update -v --hpss={}'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         os.chdir('../')
         if use_hpss:
@@ -180,17 +184,17 @@ class TestZstash(unittest.TestCase):
         print(msg)
         write_file('zstash_test/file3.txt', 'file3 stuff')
         os.chdir('zstash_test')
-        cmd = 'zstash update --hpss={}'.format(hpss_path)
+        cmd = '{}zstash update --hpss={}'.format(zstash_dir, hpss_path)
         run_cmd(cmd)
         os.chdir('../')
         write_file('zstash_test/file4.txt', 'file4 stuff')
         os.chdir('zstash_test')
-        cmd = 'zstash update --hpss={}'.format(hpss_path)
+        cmd = '{}zstash update --hpss={}'.format(zstash_dir, hpss_path)
         run_cmd(cmd)
         os.chdir('../')
         write_file('zstash_test/file5.txt', 'file5 stuff')
         os.chdir('zstash_test')
-        cmd = 'zstash update --hpss={}'.format(hpss_path)
+        cmd = '{}zstash update --hpss={}'.format(zstash_dir, hpss_path)
         run_cmd(cmd)
         os.chdir('../')
 
@@ -198,19 +202,19 @@ class TestZstash(unittest.TestCase):
             os.chdir('zstash_test')
         for option in ['', '-v', '-l']:
             print('6. Testing zstash ls {}'.format(option))
-            cmd = 'zstash ls {} --hpss={}'.format(option, hpss_path)
+            cmd = '{}zstash ls {} --hpss={}'.format(zstash_dir, option, hpss_path)
             output, err = run_cmd(cmd)
             self.check_strings(cmd, hpss_path, output + err, ['file0.txt'], ['ERROR'])
 
         print('7. Testing the checking functionality')
-        cmd = 'zstash check --hpss={}'.format(hpss_path)
+        cmd = '{}zstash check --hpss={}'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         expected_present = ['Checking file0.txt', 'Checking file0_hard.txt', 'Checking file0_soft.txt',
                             'Checking file_empty.txt', 'Checking dir/file1.txt', 'Checking empty_dir',
                             'Checking dir2/file2.txt', 'Checking file3.txt', 'Checking file4.txt', 'Checking file5.txt']
         expected_absent = ['ERROR']
         self.check_strings(cmd, hpss_path, output + err, expected_present, expected_absent)
-        cmd = 'zstash check -v --hpss={}'.format(hpss_path)
+        cmd = '{}zstash check -v --hpss={}'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         self.check_strings(cmd, hpss_path, output + err, expected_present, expected_absent)
 
@@ -222,7 +226,7 @@ class TestZstash(unittest.TestCase):
         os.chdir('zstash_test')
         if not use_hpss:
             shutil.copytree('../zstash_test_backup/zstash', 'zstash')
-        cmd = 'zstash extract --hpss={}'.format(hpss_path)
+        cmd = '{}zstash extract --hpss={}'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         os.chdir('../')
         expected_present = ['Extracting file0.txt', 'Extracting file0_hard.txt', 'Extracting file0_soft.txt',
@@ -236,7 +240,7 @@ class TestZstash(unittest.TestCase):
 
         print('9. Testing the extract functionality again, nothing should happen')
         os.chdir('zstash_test')
-        cmd = 'zstash extract -v --hpss={}'.format(hpss_path)
+        cmd = '{}zstash extract -v --hpss={}'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         if use_hpss:
             # Check that the zstash/ directory is empty.
@@ -265,7 +269,7 @@ class TestZstash(unittest.TestCase):
         os.chdir('zstash_test')
         if not use_hpss:
             shutil.copytree('../zstash_test_backup/zstash', 'zstash')
-        cmd = 'zstash extract -v --hpss={} --keep'.format(hpss_path)
+        cmd = '{}zstash extract -v --hpss={} --keep'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         # Check that the zstash/ directory contains all expected files
         if not compare(os.listdir('zstash'),
@@ -291,7 +295,7 @@ class TestZstash(unittest.TestCase):
         os.chdir('zstash_test')
         if not use_hpss:
             shutil.copytree('../zstash_test_backup/zstash', 'zstash')
-        cmd = 'zstash extract --hpss={} --keep'.format(hpss_path)
+        cmd = '{}zstash extract --hpss={} --keep'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         # Check that the zstash/ directory contains all expected files
         if not compare(os.listdir('zstash'),
@@ -308,7 +312,7 @@ class TestZstash(unittest.TestCase):
         os.chdir('zstash_test')
         if not use_hpss:
             shutil.copytree('../zstash_test_backup/zstash', 'zstash')
-        cmd = 'zstash extract -v --hpss={} --workers=3'.format(hpss_path)
+        cmd = '{}zstash extract -v --hpss={} --workers=3'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         os.chdir('../')
         self.check_strings(cmd, hpss_path, output + err, expected_present, expected_absent)
@@ -329,7 +333,7 @@ class TestZstash(unittest.TestCase):
         os.chdir('zstash_test')
         if not use_hpss:
             shutil.copytree('../zstash_test_backup/zstash', 'zstash')
-        cmd = 'zstash extract --hpss={} --workers=3'.format(hpss_path)
+        cmd = '{}zstash extract --hpss={} --workers=3'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         os.chdir('../')
         self.check_strings(cmd, hpss_path, output + err, expected_present, expected_absent)
@@ -347,7 +351,7 @@ class TestZstash(unittest.TestCase):
 
         print('12. Checking the files again in parallel.')
         os.chdir('zstash_test')
-        cmd = 'zstash check -v --hpss={} --workers=3'.format(hpss_path)
+        cmd = '{}zstash check -v --hpss={} --workers=3'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         os.chdir('../')
         expected_present = ['Checking file0.txt', 'Checking file0_hard.txt', 'Checking file0_soft.txt',
@@ -358,7 +362,7 @@ class TestZstash(unittest.TestCase):
 
         print('13. Checking the files again in parallel without verbose option.')
         os.chdir('zstash_test')
-        cmd = 'zstash check --hpss={} --workers=3'.format(hpss_path)
+        cmd = '{}zstash check --hpss={} --workers=3'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         os.chdir('../')
         self.check_strings(cmd, hpss_path, output + err, expected_present, expected_absent)
@@ -369,7 +373,7 @@ class TestZstash(unittest.TestCase):
         print('14. Messing up the MD5 of all of the files with an even id.')
         cmd = ['sqlite3', 'zstash/index.db', 'UPDATE files SET md5 = 0 WHERE id % 2 = 0;']
         run_cmd(cmd)
-        cmd = 'zstash check -v --hpss={}'.format(hpss_path)
+        cmd = '{}zstash check -v --hpss={}'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         expected_present = ['md5 mismatch for: dir/file1.txt', 'md5 mismatch for: file3.txt',
                             'ERROR: 000001.tar', 'ERROR: 000004.tar', 'ERROR: 000002.tar']
@@ -386,7 +390,7 @@ class TestZstash(unittest.TestCase):
         print('15. Messing up the MD5 of all of the files with an even id.')
         cmd = ['sqlite3', 'zstash/index.db', 'UPDATE files SET md5 = 0 WHERE id % 2 = 0;']
         run_cmd(cmd)
-        cmd = 'zstash check -v --hpss={} --workers=3'.format(hpss_path)
+        cmd = '{}zstash check -v --hpss={} --workers=3'.format(zstash_dir, hpss_path)
         output, err = run_cmd(cmd)
         self.check_strings(cmd, hpss_path, output + err, expected_present, expected_absent)
         # Put the original index.db back.
@@ -445,8 +449,9 @@ class TestZstash(unittest.TestCase):
         run_cmd('touch test_files/file1.txt')
         run_cmd('touch test_files/file2.txt')
         hpss_path = 'none'
+        zstash_dir = ZSTASH_DIR
         # Run `zstash create`
-        run_cmd('zstash create --hpss={} test_files'.format(hpss_path))
+        run_cmd('{}zstash create --hpss={} test_files'.format(zstash_dir, hpss_path))
         actual = sorted(os.listdir('test_files/zstash/'))
         expected = sorted(['000000.tar', 'index.db'])
         self.assertEqual(actual, expected)
@@ -454,9 +459,9 @@ class TestZstash(unittest.TestCase):
         # Delete txt files
         run_cmd('rm file1.txt file2.txt')
         # Run `zstash extract`
-        output, err = run_cmd('zstash extract --hpss={}'.format(hpss_path))
+        output, err = run_cmd('{}zstash extract --hpss={}'.format(zstash_dir, hpss_path))
         # Run `zstash check`
-        output, err = run_cmd('zstash check --hpss={}'.format(hpss_path))
+        output, err = run_cmd('{}zstash check --hpss={}'.format(zstash_dir, hpss_path))
         self.assertEqual(output + err,
                          'INFO: Opening tar archive zstash/000000.tar\nINFO: Checking file1.txt\nINFO: Checking file2.txt\nINFO: No failures detected when checking the files.\n')
         # Check that tar and db files were not deleted
@@ -478,6 +483,24 @@ class TestZstash(unittest.TestCase):
             self.fail(error_message)
         os.chdir('..')
         shutil.rmtree('test_files')
+
+    def testCheck(self):
+        print_in_box('testCheck')
+        if os.path.exists('zstash'):
+            shutil.rmtree('zstash')
+        os.mkdir('zstash')
+        zstash_dir = ZSTASH_DIR
+        # Run `zstash create`
+        run_cmd('{}zstash create --hpss=none  --maxsize 128 .'.format(zstash_dir))
+        actual = sorted(os.listdir('zstash'))
+        expected = sorted(['000000.tar', 'index.db'])
+        self.assertEqual(actual, expected)
+        # Run `zstash check`
+        run_cmd('{}zstash check --workers=2'.format(zstash_dir))
+        actual = sorted(os.listdir('zstash'))
+        expected = sorted(['000000.tar', 'index.db'])
+        self.assertEqual(actual, expected)
+        shutil.rmtree('zstash')
 
 
 if __name__ == '__main__':
