@@ -141,13 +141,13 @@ def extract(keep_files=True):
     config.keep = bool(int(config.keep))
 
     # The command line arg should always have precedence
-    if args.hpss == 'none':
-        # If no HPSS is available, always keep the files.
+    if args.hpss is not None:
+        config.hpss = args.hpss
+    if config.hpss == 'none':
+        # If no HPSS is available, always keep the files.  
         config.keep = True
     else:
         config.keep = args.keep
-    if args.hpss is not None:
-        config.hpss = args.hpss
 
     # Start doing actual work
     cmd = 'extract' if keep_files else 'check'
