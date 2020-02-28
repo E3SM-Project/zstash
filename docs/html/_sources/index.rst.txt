@@ -45,5 +45,6 @@ Source code is available on Github: `<https://github.com/E3SM-Project/zstash>`_.
    design
    database
    support
+   release
    contributing
 
