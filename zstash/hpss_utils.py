@@ -6,10 +6,10 @@ import tarfile
 import traceback
 from datetime import datetime
 from .hpss import hpss_put
-from .settings import config, logger, CACHE, BLOCK_SIZE, DB_FILENAME
+from .settings import config, logger, BLOCK_SIZE, get_db_filename
 
 
-def add_files(cur, con, itar, files):
+def add_files(cur, con, itar, files, cache):
 
     # Now, perform the actual archiving
     failures = []
@@ -26,7 +26,7 @@ def add_files(cur, con, itar, files):
             tname = "{0:0{1}x}".format(itar, 6)
             tfname = "%s.tar" % (tname)
             logger.info('Creating new tar archive %s' % (tfname))
-            tar = tarfile.open(os.path.join(CACHE, tfname), "w")
+            tar = tarfile.open(os.path.join(cache, tfname), "w")
 
         # Add current file to tar archive
         current_file = files[i]
@@ -50,7 +50,7 @@ def add_files(cur, con, itar, files):
             tar.close()
 
             # Transfer tar archive to HPSS
-            hpss_put(config.hpss, os.path.join(CACHE, tfname), config.keep)
+            hpss_put(config.hpss, os.path.join(cache, tfname), cache, config.keep)
 
             # Update database with files that have been archived
             cur.executemany(u"insert into files values (NULL,?,?,?,?,?,?)",

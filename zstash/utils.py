@@ -1,7 +1,7 @@
 from __future__ import print_function, absolute_import
 
 from fnmatch import fnmatch
-from .settings import DB_FILENAME, logger
+from .settings import logger
 import shlex
 import subprocess
 

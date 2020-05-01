@@ -13,33 +13,38 @@ class TestCheck(TestZstash):
     # option | Check | CheckMismatch | CheckKeepTars | CheckParallel | CheckParallelVerboseMismatch | CheckParallelKeepTars |
     # --hpss    |x|x|x|x|x| |
     # --workers | | | |x|x|x|
+    # --cache   |b| | | | | |
     # --keep    | | | | | |b|
     # -v        |b|x| |b|x| |
     
-    def helperCheck(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
+    def helperCheck(self, test_name, hpss_path, cache=None, zstash_path=ZSTASH_PATH):
         """
         Test `zstash check`.
         """
         self.hpss_path = hpss_path
+        if cache:
+            # Override default cache
+            self.cache = cache
+            cache_option = ' --cache={}'.format(self.cache)
+        else:
+            cache_option = ''
         use_hpss = self.setupDirs(test_name)
-        self.create(use_hpss, zstash_path)
-        self.add_files(use_hpss, zstash_path)
+        self.create(use_hpss, zstash_path, cache=self.cache)
+        self.add_files(use_hpss, zstash_path, cache=self.cache)
         print_starred('Testing the checking functionality')
         self.assertWorkspace()
-        if not use_hpss:
-            os.chdir(self.test_dir)
-        cmd = '{}zstash check --hpss={}'.format(zstash_path, self.hpss_path)
+        os.chdir(self.test_dir)
+        cmd = '{}zstash check{} --hpss={}'.format(zstash_path, cache_option, self.hpss_path)
         output, err = run_cmd(cmd)
         expected_present = ['Checking file0.txt', 'Checking file0_hard.txt', 'Checking file0_soft.txt',
                             'Checking file_empty.txt', 'Checking dir/file1.txt', 'Checking empty_dir',
                             'Checking dir2/file2.txt', 'Checking file3.txt', 'Checking file4.txt', 'Checking file5.txt']
         expected_absent = ['ERROR']
         self.check_strings(cmd, output + err, expected_present, expected_absent)
-        cmd = '{}zstash check -v --hpss={}'.format(zstash_path, self.hpss_path)
+        cmd = '{}zstash check{} -v --hpss={}'.format(zstash_path, cache_option, self.hpss_path)
         output, err = run_cmd(cmd)
         self.check_strings(cmd, output + err, expected_present, expected_absent)
-        if not use_hpss:
-            os.chdir(TOP_LEVEL)
+        os.chdir(TOP_LEVEL)
 
     def helperCheckVerboseMismatch(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
         """
@@ -77,6 +82,13 @@ class TestCheck(TestZstash):
         self.conditional_hpss_skip()
         self.helperCheck('testCheckHPSS', HPSS_ARCHIVE)
 
+    def testCheckCache(self):
+        self.helperCheck('testCheckCache', 'none', cache='my_cache')
+
+    def testCheckCacheHPSS(self):
+        self.conditional_hpss_skip()
+        self.helperCheck('testCheckCacheHPSS', HPSS_ARCHIVE, cache='my_cache')
+        
     def testCheckVerboseMismatch(self):
         self.helperCheckVerboseMismatch('testCheckVerboseMismatch', 'none')
 

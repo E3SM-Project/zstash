@@ -8,11 +8,12 @@ class TestUpdate(TestZstash):
     Test `zstash --update`.
     """
     # x = on, no mark = off, b = both on and off tested
-    # option | Update | UpdateDryRun | UpdateKeep | TestZstash.add_files (used in multiple tests)|
-    # --hpss    |x|x|x|x|
-    # --dry-run | |x| | |
-    # --keep    | | |x|b|
-    # -v        | | | |b|
+    # option | Update | UpdateDryRun | UpdateKeep | UpdateCache | TestZstash.add_files (used in multiple tests)|
+    # --hpss    |x|x|x|x|x|
+    # --cache   | | | |x|b|
+    # --dry-run | |x| | | |
+    # --keep    | | |x| |b|
+    # -v        | | | | |b|
    
     def helperUpdate(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
         """
@@ -73,6 +74,24 @@ class TestUpdate(TestZstash):
             error_message = 'The zstash cache does not contain expected files.\nIt has: {}'.format(files)
             self.stop(error_message)
         os.chdir(TOP_LEVEL)
+
+    def helperUpdateCache(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
+        """
+        Test `zstash update --cache`.
+        """
+        self.hpss_path = hpss_path
+        self.cache = 'my_cache'
+        use_hpss = self.setupDirs(test_name)
+        self.create(use_hpss, zstash_path, cache=self.cache)
+        self.add_files(use_hpss, zstash_path, cache=self.cache)
+        files = os.listdir('{}/{}'.format(self.test_dir, self.cache))
+        if use_hpss:
+            expected_files = ['index.db']
+        else:
+            expected_files = ['index.db', '000003.tar', '000004.tar', '000000.tar', '000001.tar', '000002.tar']
+        if not compare(files, expected_files):
+            error_message = 'The zstash cache does not contain expected files.\nIt has: {}'.format(files)
+            self.stop(error_message)
         
     def testUpdate(self):
         self.helperUpdate('testUpdate', 'none')    
@@ -94,6 +113,13 @@ class TestUpdate(TestZstash):
     def testUpdateKeepHPSS(self):
         self.conditional_hpss_skip()
         self.helperUpdateKeep('testUpdateKeepHPSS', HPSS_ARCHIVE)
+
+    def testUpdateCache(self):
+        self.helperUpdateCache('testUpdateCache', 'none')    
+
+    def testUpdateCacheHPSS(self):
+        self.conditional_hpss_skip()
+        self.helperUpdateCache('testUpdateCacheHPSS', HPSS_ARCHIVE)
 
 if __name__ == '__main__':
     unittest.main()

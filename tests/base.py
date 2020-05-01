@@ -1,5 +1,9 @@
 """
 Run the test suite with `pip install .. && python -m unittest`
+
+If running on Cori, it is preferable to run from $CSCRATCH rather than
+/global/homes. Running from the latter may result in a
+'Resource temporarily unavailable' error.
 """
 
 import os
@@ -208,7 +212,7 @@ class TestZstash(unittest.TestCase):
             os.link('{}/file0.txt'.format(self.test_dir), '{}/file0_hard.txt'.format(self.test_dir))
         return use_hpss
 
-    def create(self, use_hpss, zstash_path, keep=False, verbose=False):
+    def create(self, use_hpss, zstash_path, keep=False, cache=None, verbose=False):
         """
         Run `zstash create`.
         """
@@ -219,8 +223,12 @@ class TestZstash(unittest.TestCase):
         print_starred(description_str)
         self.assertWorkspace()
         keep_option = ' --keep' if keep else ''
+        if cache:
+            cache_option = ' --cache={}'.format(cache)
+        else:
+            cache_option = ''
         v_option = ' -v' if verbose else ''
-        cmd = '{}zstash create{}{} --hpss={} {}'.format(zstash_path, keep_option, v_option, self.hpss_path, self.test_dir)
+        cmd = '{}zstash create{}{}{} --hpss={} {}'.format(zstash_path, keep_option, cache_option, v_option, self.hpss_path, self.test_dir)
         output, err = run_cmd(cmd)
         if use_hpss:
             expected_present = ['Transferring file to HPSS']
@@ -233,7 +241,7 @@ class TestZstash(unittest.TestCase):
             expected_absent += ['DEBUG:']
         self.check_strings(cmd, output + err, expected_present, expected_absent)            
 
-    def add_files(self, use_hpss, zstash_path, keep=False):
+    def add_files(self, use_hpss, zstash_path, keep=False, cache=None):
         """
         Add files to the archive.
         """
@@ -246,7 +254,11 @@ class TestZstash(unittest.TestCase):
 
         os.chdir(self.test_dir)
         keep_option = ' --keep' if keep else ''
-        cmd = '{}zstash update -v{} --hpss={}'.format(zstash_path, keep_option, self.hpss_path)
+        if cache:
+            cache_option = ' --cache={}'.format(cache)
+        else:
+            cache_option = ''
+        cmd = '{}zstash update -v{}{} --hpss={}'.format(zstash_path, keep_option, cache_option, self.hpss_path)
         output, err = run_cmd(cmd)
         os.chdir(TOP_LEVEL)
         if use_hpss:
@@ -262,21 +274,21 @@ class TestZstash(unittest.TestCase):
         self.assertWorkspace()
         write_file('{}/file3.txt'.format(self.test_dir), 'file3 stuff')
         os.chdir(self.test_dir)
-        cmd = '{}zstash update{} --hpss={}'.format(zstash_path, keep_option, self.hpss_path)
+        cmd = '{}zstash update{}{} --hpss={}'.format(zstash_path, keep_option, cache_option, self.hpss_path)
         run_cmd(cmd)
         os.chdir(TOP_LEVEL)
         write_file('{}/file4.txt'.format(self.test_dir), 'file4 stuff')
         os.chdir(self.test_dir)
-        cmd = '{}zstash update{} --hpss={}'.format(zstash_path, keep_option, self.hpss_path)
+        cmd = '{}zstash update{}{} --hpss={}'.format(zstash_path, keep_option, cache_option, self.hpss_path)
         run_cmd(cmd)
         os.chdir(TOP_LEVEL)
         write_file('{}/file5.txt'.format(self.test_dir), 'file5 stuff')
         os.chdir(self.test_dir)
-        cmd = '{}zstash update{} --hpss={}'.format(zstash_path, keep_option, self.hpss_path)
+        cmd = '{}zstash update{}{} --hpss={}'.format(zstash_path, keep_option, cache_option, self.hpss_path)
         run_cmd(cmd)
         os.chdir(TOP_LEVEL)
 
-    def extract(self, use_hpss, zstash_path):
+    def extract(self, use_hpss, zstash_path, cache=None):
         """
         Extract files from the archive. This renames `self.test_dir` to `self.backup_dir`.
         """
@@ -287,7 +299,11 @@ class TestZstash(unittest.TestCase):
         os.chdir(self.test_dir)
         if not use_hpss:
             shutil.copytree('{}/{}/{}'.format(TOP_LEVEL, self.backup_dir, self.cache), self.copy_dir)
-        cmd = '{}zstash extract --hpss={}'.format(zstash_path, self.hpss_path)
+        if cache:
+            cache_option = ' --cache={}'.format(cache)
+        else:
+            cache_option = ''
+        cmd = '{}zstash extract{} --hpss={}'.format(zstash_path, cache_option, self.hpss_path)
         output, err = run_cmd(cmd)
         os.chdir(TOP_LEVEL)
         expected_present = ['Extracting file0.txt', 'Extracting file0_hard.txt', 'Extracting file0_soft.txt',
