@@ -82,6 +82,7 @@ to conserve storage space: ::
 This exclude pattern will skip all restart subdirectories under the short-term archive,
 except for those with years ending in '0' or '5'.
 
+
 Check
 =====
 
@@ -199,16 +200,20 @@ Note: Most of the commands for this are the same for ``zstash check`` and ``zsta
 To extract files from an existing zstash archive into current <mydir>: ::
 
    $ cd <mydir>
-   $ zstash extract --hpss=<path to HPSS> [--workers=<num of processes>] [--cache=<cache>] [files]
+   $ zstash extract --hpss=<path to HPSS> [--workers=<num of processes>] [--cache=<cache>] [--keep] [files]
 
 where
 
 * ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system.
+  Note that if ``--hpss=none``, then ``--keep`` is automatically set to ``True``.
 * ``--workers=<num of processes>`` an optional argument which specifies the number of
   processes to use, resulting in extracting being done in parallel.
   **Using a high number will result in slow downloads for each of the tars since your bandwidth is limited.**
   **User discretion is advised.**
 * ``--cache`` to use a cache other than the default of ``zstash``.
+* ``--keep`` to keep a copy of the tar files on the local file system after
+  they have been extracted from the archive. Normally, they are deleted after
+  successful transfer.
 * ``[files]`` is a list of files to be extracted (standard wildcards supported).
 
   * Leave empty to extract all the files.
@@ -289,6 +294,13 @@ between **years 0030 and 0069** for the DECKv1 piControl simulation. The zstash 
    $ zstash extract --hpss=/home/g/golaz/2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
             "*.cam.h0.00[3-6]?-??.nc"
 
+
+You may specify the cache with the ``--cache`` option. Notice that there is no need to include
+``--keep`` when not using HPSS. ::
+
+  $ zstash extract --hpss=none \
+  --cache=/p/user_pub/e3sm/archive/1_1/BGC-v1/20181217.BCRC_CNPCTC20TR_OIBGC.ne30_oECv3.edison \
+  "*cam.h3.1906-01-*-*.nc"
 
 .. _zstash-list:
 
