@@ -8,6 +8,10 @@ If running on Cori, it is preferable to run from ``$CSCRATCH`` rather than
 ``/global/homes``. Running from the latter may result in a
 'Resource temporarily unavailable' error.
 
+.. note::
+    If you have not logged into HSI before, you will have to do so before running ``zstash`` with HPSS.
+    On NERSC machines, just run ``hsi`` on the command line and enter your credentials.
+
 Create
 ======
 
