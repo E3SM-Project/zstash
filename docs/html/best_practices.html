@@ -86,6 +86,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Best practices for E3SM</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#nersc">NERSC</a><ul>
@@ -172,7 +173,7 @@
            <div itemprop="articleBody">
             
   <div class="section" id="best-practices-for-e3sm">
-<h1>Best practices for E3SM<a class="headerlink" href="#best-practices-for-e3sm" title="Permalink to this headline">¶</a></h1>
+<span id="best-practices"></span><h1>Best practices for E3SM<a class="headerlink" href="#best-practices-for-e3sm" title="Permalink to this headline">¶</a></h1>
 <p>This page summarizes the recommended best practices for archiving
 E3SM simulation output using zstash.</p>
 <div class="section" id="nersc">
@@ -320,7 +321,7 @@ $ zstash check . 2&gt;&amp;1 | tee zstash/zstash_check_20200225.log
 </div>
 </div>
 <div class="section" id="transfer-to-nersc-hpss">
-<h3>Transfer to NERSC HPSS<a class="headerlink" href="#transfer-to-nersc-hpss" title="Permalink to this headline">¶</a></h3>
+<span id="globus-compy"></span><h3>Transfer to NERSC HPSS<a class="headerlink" href="#transfer-to-nersc-hpss" title="Permalink to this headline">¶</a></h3>
 <p>After the check completes successfully, transfer all zstash files to NERSC HPSS using
 Globus.</p>
 <ul class="simple">

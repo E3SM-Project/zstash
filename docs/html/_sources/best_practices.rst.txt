@@ -1,3 +1,5 @@
+.. _best-practices:
+
 ***********************
 Best practices for E3SM
 ***********************
@@ -157,6 +159,8 @@ Once archiving is complete, run ``zstash check`` locally to verify integrity of 
    $ screen -r
    $ cd /compyfs/gola749/E3SM_simulations/20191216.alpha20.piControl.ne30_r05_oECv3_ICG.compy
    $ zstash check . 2>&1 | tee zstash/zstash_check_20200225.log
+
+.. _globus-compy:
 
 Transfer to NERSC HPSS
 ----------------------
