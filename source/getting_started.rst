@@ -13,11 +13,11 @@ Using E3SM unified environment
 For E3SM users, the simplest way to use zstash is to load the E3SM unified
 environment. On NERSC machines, for bash shell: ::
 
-   $ source /global/project/projectdirs/acme/software/anaconda_envs/load_latest_e3sm_unified.sh
+   $ source /global/cfs/cdirs/e3sm/software/anaconda_envs/load_latest_e3sm_unified.sh
 
 or for csh ::
 
-   $ source /global/project/projectdirs/acme/software/anaconda_envs/load_latest_e3sm_unified.csh
+   $ source /global/cfs/cdirs/e3sm/software/anaconda_envs/load_latest_e3sm_unified.csh
 
 For more details on the E3SM unified environment, please refer to the `E3SM Diagnostics and Analysis Quickstart <https://acme-climate.atlassian.net/wiki/spaces/EIDMG/pages/780271950/Diagnostics+and+Analysis+Quickstart>`_.  
 
