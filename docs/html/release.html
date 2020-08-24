@@ -286,18 +286,23 @@ This will have the <code class="docutils literal notranslate"><span class="pre">
 <h2>Releasing The Software On Anaconda<a class="headerlink" href="#releasing-the-software-on-anaconda" title="Permalink to this headline">¶</a></h2>
 <p>Since we’re building with <code class="docutils literal notranslate"><span class="pre">noarch</span></code>, you can run the below steps on
 either a Linux or macOS machine. You do <strong>not</strong> need to run these steps on both.</p>
-<p>1. Make sure you have the latest versions of <code class="docutils literal notranslate"><span class="pre">anaconda</span></code>, <code class="docutils literal notranslate"><span class="pre">conda</span></code>, and <code class="docutils literal notranslate"><span class="pre">conda-build</span></code>.
-You cannot be in an existing Anaconda environment when you run <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">update</span></code>,
-so run <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">deactivate</span></code> first. If the <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">deactivate</span></code> command doesn’t work,
-use <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">deactivate</span></code>. This means you have an older version of Anaconda,
-which should be remedied after the following <code class="docutils literal notranslate"><span class="pre">update</span></code> command.</p>
+<p>It is recommended to use Miniconda3 rather than Anacdona3 to build packages.
+The packages from the <code class="docutils literal notranslate"><span class="pre">base</span></code> Anaconda3 environment will come from the <code class="docutils literal notranslate"><span class="pre">defaults</span></code> channel,
+not the <code class="docutils literal notranslate"><span class="pre">conda-forge</span></code> channel, and package updates fail when we try to update to the <code class="docutils literal notranslate"><span class="pre">conda-forge</span></code> version of
+<code class="docutils literal notranslate"><span class="pre">conda-build</span></code>. If you don’t have Miniconda3 yet, you can install it from
+<a class="reference external" href="https://docs.conda.io/en/latest/miniconda.html">Miniconda3</a>.</p>
+<ol class="arabic">
+<li><p>Activate the <code class="docutils literal notranslate"><span class="pre">base</span></code> conda environment if you have not already done so:</p>
 <blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">deactivate</span>
-<span class="n">conda</span> <span class="n">update</span> <span class="n">anaconda</span> <span class="n">conda</span> <span class="n">conda</span><span class="o">-</span><span class="n">build</span>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">activate</span> <span class="n">base</span>
 </pre></div>
 </div>
 </div></blockquote>
-<p>2. On your machine, pull the latest version of the code.
+</li>
+</ol>
+<p>2. Make sure you have the latest versions of <code class="docutils literal notranslate"><span class="pre">conda</span></code>, <code class="docutils literal notranslate"><span class="pre">conda-build</span></code>, and <code class="docutils literal notranslate"><span class="pre">anaconda-client</span></code>
+by running <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">update</span> <span class="pre">-n</span> <span class="pre">base</span> <span class="pre">conda</span> <span class="pre">conda-build</span> <span class="pre">anaconda-client</span></code>.</p>
+<p>3. On your machine, pull the latest version of the code.
 This will have the <code class="docutils literal notranslate"><span class="pre">conda/meta.yaml</span></code> we edited in the first and third sections.</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">checkout</span> <span class="n">master</span>
@@ -312,16 +317,26 @@ This will have the <code class="docutils literal notranslate"><span class="pre">
 </div>
 </dd>
 </dl>
-<p>3. Run the command below. The <code class="docutils literal notranslate"><span class="pre">conda/</span></code> folder is where <code class="docutils literal notranslate"><span class="pre">meta.yaml</span></code> is located and the <code class="docutils literal notranslate"><span class="pre">-c</span></code>
-tells conda the channels where the dependencies defined in <code class="docutils literal notranslate"><span class="pre">meta.yaml</span></code> can be found.</p>
+<p>4. Run <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">env</span> <span class="pre">list</span></code>. Determine the path for the <code class="docutils literal notranslate"><span class="pre">miniconda3</span></code> installation you are using to build the package.
+Typically, this will be <code class="docutils literal notranslate"><span class="pre">~/miniconda3</span></code>. Run <code class="docutils literal notranslate"><span class="pre">rm</span> <span class="pre">-rf</span> <span class="pre">&lt;path&gt;/conda-bld</span></code> to ensure that previously built packages are
+not included in the current build.</p>
+<p>5. Run the following commands to make sure the <code class="docutils literal notranslate"><span class="pre">conda-forge</span></code> channel is included by default and that packages
+come from that channel whenever possible:</p>
 <blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">build</span> <span class="n">conda</span><span class="o">/</span> <span class="o">-</span><span class="n">c</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">config</span> <span class="o">--</span><span class="n">add</span> <span class="n">channels</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span>
+<span class="n">conda</span> <span class="n">config</span> <span class="o">--</span><span class="nb">set</span> <span class="n">channel_priority</span> <span class="n">strict</span>
 </pre></div>
 </div>
 </div></blockquote>
-<p>4. When <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">build</span></code> is completed, you should see something like the example below.
-We only have one package of type <code class="docutils literal notranslate"><span class="pre">noarch</span></code>, so it’s compatible with both Python 2 and 3.
-But since we only officially support Python 3, it might not work with Python 2.</p>
+<p>6. Run <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">build</span> <span class="pre">conda/</span></code>. The <code class="docutils literal notranslate"><span class="pre">conda/</span></code> folder is where <code class="docutils literal notranslate"><span class="pre">meta.yaml</span></code> is located. Keep the output of this command.
+We’ll use it in step 8.</p>
+<p>7. Run <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">search</span> <span class="pre">--info</span> <span class="pre">--use-local</span> <span class="pre">zstash</span></code>. The only dependency should be <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">&gt;=3.6</span></code>. In particular,
+<code class="docutils literal notranslate"><span class="pre">python_abi</span></code> should not be listed as a dependency.</p>
+<p>8. In the output of step 6, you should see something like the below.
+We only have one package of type <code class="docutils literal notranslate"><span class="pre">noarch</span></code>, meaning it works on both Linux and OSX and is compatible with multiple
+versions of Python (3.6, 3.7, 3.8, etc.).
+Since we have constrained python versions to &gt;= 3.6 in the dependencies, it will not work with Python 2 or any other
+version of Python &lt;= 3.5.</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Automatic uploading is disabled</span>
 <span class="c1"># If you want to upload package(s) to anaconda.org later, type:</span>
@@ -334,7 +349,7 @@ But since we only officially support Python 3, it might not work with Python 2.<
 </div>
 </div></blockquote>
 <p>Copy the <code class="docutils literal notranslate"><span class="pre">anaconda</span> <span class="pre">upload</span></code> command and append <code class="docutils literal notranslate"><span class="pre">-u</span> <span class="pre">e3sm</span></code> to upload
-the package to the <code class="docutils literal notranslate"><span class="pre">e3sm</span></code> Anaconda channel. Below is an example.</p>
+the package to the <code class="docutils literal notranslate"><span class="pre">e3sm</span></code> Anaconda channel. Below is an example:</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">anaconda</span> <span class="n">upload</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">anaconda3</span><span class="o">/</span><span class="n">conda</span><span class="o">-</span><span class="n">bld</span><span class="o">/</span><span class="n">noarch</span><span class="o">/</span><span class="n">zstash</span><span class="o">-</span><span class="mf">0.4</span><span class="o">.</span><span class="mi">1</span><span class="o">-</span><span class="n">py_0</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">bz2</span> <span class="o">-</span><span class="n">u</span> <span class="n">e3sm</span>
 <span class="c1"># If you don&#39;t appear to have anaconda installed, try the following:</span>
@@ -349,11 +364,14 @@ the package to the <code class="docutils literal notranslate"><span class="pre">
 contact either Jill Zhang (<a class="reference external" href="mailto:zhang40&#37;&#52;&#48;llnl&#46;gov">zhang40<span>&#64;</span>llnl<span>&#46;</span>gov</a>) or Rob Jacob (<a class="reference external" href="mailto:jacob&#37;&#52;&#48;anl&#46;gov">jacob<span>&#64;</span>anl<span>&#46;</span>gov</a>) for permission.
 You will need to have a <a class="reference external" href="https://anaconda.org/">Conda account</a>.
 Then, you can be given permission to upload a package.</p>
-<ol class="arabic simple" start="5">
+<ol class="arabic simple" start="9">
 <li><p>Check the <a class="reference external" href="https://anaconda.org/e3sm/zstash">https://anaconda.org/e3sm/zstash</a> page to view the newly updated package.</p></li>
 </ol>
-<p>6. Notify the maintainers of the unified E3SM environment about the new release on the
-<a class="reference external" href="https://acme-climate.atlassian.net/wiki/spaces/WORKFLOW/pages/129732419/E3SM+Unified+Anaconda+Environment">E3SM Confluence site</a>.</p>
+<p>10. Notify the maintainers of the E3SM Unified environment about the new <code class="docutils literal notranslate"><span class="pre">zstash</span></code> release on the
+<a class="reference external" href="https://acme-climate.atlassian.net/wiki/spaces/WORKFLOW/pages/129732419/E3SM+Unified+Anaconda+Environment">E3SM Confluence site</a>.
+Be sure to only update the <code class="docutils literal notranslate"><span class="pre">zstash</span></code> version number in the correct version(s) of the E3SM Unified environment.
+This is almost certainly one of the versions listed under “Next versions”.
+If you are uncertain of which to update, leave a comment on the page asking.</p>
 </div>
 </div>
 
