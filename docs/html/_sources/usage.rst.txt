@@ -39,6 +39,7 @@ Additional optional arguments:
   The default is 256 GB. Zstash will create tar files that are smaller 
   than MAXSIZE except when individual input files exceed MAXSIZE (as 
   individual files are never split up between different tar files).
+* ``-v`` increases output verbosity.
 
 Local tar files as well as the sqlite3 index database (index.db) will be stored
 under ``<local path>/zstash``.
@@ -95,7 +96,7 @@ Note: Most of the commands for this are the same for ``zstash extract`` and ``zs
 To verify that your files were uploaded on HPSS successfully,
 go to a **new, empty directory** and run: ::
 
-   $ zstash check --hpss=<path to HPSS> [--workers=<num of processes>] [--cache=<cache>] [files]
+   $ zstash check --hpss=<path to HPSS> [--workers=<num of processes>] [--cache=<cache>] [--keep] [-v] [files]
 
 where
 
@@ -105,6 +106,10 @@ where
   **Using a high number will result in slow downloads for each of the tars since your bandwidth is limited.**
   **User discretion is advised.**
 * ``--cache`` to use a cache other than the default of ``zstash``.
+* ``--keep`` to keep a copy of the tar files on the local file system after
+  they have been extracted from the archive. Normally, they are deleted after
+  successful transfer.
+* ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to check (standard wildcards supported).
 
   * Leave empty to check all the files.
@@ -149,7 +154,7 @@ Update
 An existing zstash archive can be updated to add new or modified files: ::
 
    $ cd <mydir>
-   $ zstash update --hpss=<path to HPSS> [--cache=<cache>] [--dry-run] [--exclude]
+   $ zstash update --hpss=<path to HPSS> [--cache=<cache>] [--dry-run] [--exclude] [--keep] [-v]
 
 where
 
@@ -157,6 +162,10 @@ where
 * ``--cache`` to use a cache other than the default of ``zstash``.
 * ``--dry-run`` an optional argument to specify a dry run, only lists files to be updated in archive.
 * ``--exclude`` an optional argument of comma separated list of file patterns to exclude
+* ``--keep`` to keep a copy of the tar files on the local file system after
+  they have been extracted from the archive. Normally, they are deleted after
+  successful transfer.
+* ``-v`` increases output verbosity.
 
 Example
 -------
@@ -204,7 +213,7 @@ Note: Most of the commands for this are the same for ``zstash check`` and ``zsta
 To extract files from an existing zstash archive into current <mydir>: ::
 
    $ cd <mydir>
-   $ zstash extract --hpss=<path to HPSS> [--workers=<num of processes>] [--cache=<cache>] [--keep] [files]
+   $ zstash extract --hpss=<path to HPSS> [--workers=<num of processes>] [--cache=<cache>] [--keep] [-v] [files]
 
 where
 
@@ -218,6 +227,7 @@ where
 * ``--keep`` to keep a copy of the tar files on the local file system after
   they have been extracted from the archive. Normally, they are deleted after
   successful transfer.
+* ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to be extracted (standard wildcards supported).
 
   * Leave empty to extract all the files.
@@ -315,13 +325,14 @@ Note: Most of the commands for this are the same for ``zstash extract`` and ``zs
 
 You can view the files in an existing zstash archive:  ::
 
-   $ zstash ls --hpss=<path to HPSS> [-l] [--cache=<cache>] [files]
+   $ zstash ls --hpss=<path to HPSS> [-l] [--cache=<cache>] [-v] [files]
 
 where
 
 * ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system,
 * ``-l`` an optional argument to display more information.
 * ``--cache`` to use a cache other than the default of ``zstash``.
+* ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to be listed (standard wildcards supported).
 
   * Leave empty to list all the files.

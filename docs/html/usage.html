@@ -215,6 +215,7 @@ successful transfer.</p></li>
 The default is 256 GB. Zstash will create tar files that are smaller
 than MAXSIZE except when individual input files exceed MAXSIZE (as
 individual files are never split up between different tar files).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-v</span></code> increases output verbosity.</p></li>
 </ul>
 <p>Local tar files as well as the sqlite3 index database (index.db) will be stored
 under <code class="docutils literal notranslate"><span class="pre">&lt;local</span> <span class="pre">path&gt;/zstash</span></code>.</p>
@@ -264,7 +265,7 @@ except for those with years ending in ‘0’ or ‘5’.</p>
 <p>Note: Most of the commands for this are the same for <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">extract</span></code> and <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">ls</span></code>.</p>
 <p>To verify that your files were uploaded on HPSS successfully,
 go to a <strong>new, empty directory</strong> and run:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash check --hpss=&lt;path to HPSS&gt; [--workers=&lt;num of processes&gt;] [--cache=&lt;cache&gt;] [files]
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash check --hpss=&lt;path to HPSS&gt; [--workers=&lt;num of processes&gt;] [--cache=&lt;cache&gt;] [--keep] [-v] [files]
 </pre></div>
 </div>
 <p>where</p>
@@ -275,6 +276,10 @@ processes to use, resulting in checking being done in parallel.
 <strong>Using a high number will result in slow downloads for each of the tars since your bandwidth is limited.</strong>
 <strong>User discretion is advised.</strong></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--cache</span></code> to use a cache other than the default of <code class="docutils literal notranslate"><span class="pre">zstash</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
+they have been extracted from the archive. Normally, they are deleted after
+successful transfer.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-v</span></code> increases output verbosity.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to check (standard wildcards supported).</p>
 <ul>
 <li><p>Leave empty to check all the files.</p></li>
@@ -317,7 +322,7 @@ identifying what causes these issues.</p>
 <h2>Update<a class="headerlink" href="#update" title="Permalink to this headline">¶</a></h2>
 <p>An existing zstash archive can be updated to add new or modified files:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
-$ zstash update --hpss=&lt;path to HPSS&gt; [--cache=&lt;cache&gt;] [--dry-run] [--exclude]
+$ zstash update --hpss=&lt;path to HPSS&gt; [--cache=&lt;cache&gt;] [--dry-run] [--exclude] [--keep] [-v]
 </pre></div>
 </div>
 <p>where</p>
@@ -326,6 +331,10 @@ $ zstash update --hpss=&lt;path to HPSS&gt; [--cache=&lt;cache&gt;] [--dry-run] 
 <li><p><code class="docutils literal notranslate"><span class="pre">--cache</span></code> to use a cache other than the default of <code class="docutils literal notranslate"><span class="pre">zstash</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> an optional argument to specify a dry run, only lists files to be updated in archive.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--exclude</span></code> an optional argument of comma separated list of file patterns to exclude</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
+they have been extracted from the archive. Normally, they are deleted after
+successful transfer.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-v</span></code> increases output verbosity.</p></li>
 </ul>
 <div class="section" id="example">
 <h3>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h3>
@@ -369,7 +378,7 @@ appending to it.</p>
 <p>Note: Most of the commands for this are the same for <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> and <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">ls</span></code>.</p>
 <p>To extract files from an existing zstash archive into current &lt;mydir&gt;:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
-$ zstash extract --hpss=&lt;path to HPSS&gt; [--workers=&lt;num of processes&gt;] [--cache=&lt;cache&gt;] [--keep] [files]
+$ zstash extract --hpss=&lt;path to HPSS&gt; [--workers=&lt;num of processes&gt;] [--cache=&lt;cache&gt;] [--keep] [-v] [files]
 </pre></div>
 </div>
 <p>where</p>
@@ -384,6 +393,7 @@ processes to use, resulting in extracting being done in parallel.
 <li><p><code class="docutils literal notranslate"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
 they have been extracted from the archive. Normally, they are deleted after
 successful transfer.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-v</span></code> increases output verbosity.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to be extracted (standard wildcards supported).</p>
 <ul>
 <li><p>Leave empty to extract all the files.</p></li>
@@ -479,7 +489,7 @@ between <strong>years 0030 and 0069</strong> for the DECKv1 piControl simulation
 <span id="zstash-list"></span><h2>List<a class="headerlink" href="#list" title="Permalink to this headline">¶</a></h2>
 <p>Note: Most of the commands for this are the same for <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">extract</span></code> and <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code>.</p>
 <p>You can view the files in an existing zstash archive:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash ls --hpss=&lt;path to HPSS&gt; [-l] [--cache=&lt;cache&gt;] [files]
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash ls --hpss=&lt;path to HPSS&gt; [-l] [--cache=&lt;cache&gt;] [-v] [files]
 </pre></div>
 </div>
 <p>where</p>
@@ -487,6 +497,7 @@ between <strong>years 0030 and 0069</strong> for the DECKv1 piControl simulation
 <li><p><code class="docutils literal notranslate"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system,</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-l</span></code> an optional argument to display more information.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--cache</span></code> to use a cache other than the default of <code class="docutils literal notranslate"><span class="pre">zstash</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-v</span></code> increases output verbosity.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to be listed (standard wildcards supported).</p>
 <ul>
 <li><p>Leave empty to list all the files.</p></li>
