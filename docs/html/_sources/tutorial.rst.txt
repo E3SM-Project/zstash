@@ -2,9 +2,9 @@
 Tutorial
 ********
 
-.. note::
-    Some statements on this tutorial have been pulled from other pages of the
-    documentation. This is done to provide a comprehensive tutorial on a single page.
+Some statements on this tutorial have been pulled from other pages of the
+documentation. This is done to provide a comprehensive tutorial on a single page.
+There is also an `accompanying video tutorial <https://youtu.be/kmdBdXa3rXo>`_.
 
 What is Zstash?
 ===============
