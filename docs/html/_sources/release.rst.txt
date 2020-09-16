@@ -7,6 +7,7 @@ In this guide, we'll cover:
 * Creating A Release On GitHub
 * Updating The sha256
 * Releasing The Software On Anaconda
+* Creating a New Version of the Documentation
 
 
 
@@ -207,3 +208,34 @@ Then, you can be given permission to upload a package.
 Be sure to only update the ``zstash`` version number in the correct version(s) of the E3SM Unified environment.
 This is almost certainly one of the versions listed under "Next versions".
 If you are uncertain of which to update, leave a comment on the page asking.
+
+
+Creating a New Version of the Documentation
+-------------------------------------------
+
+The main documentation page includes the most up-to-date information. This means it may contain information on
+features not included in a previous release. The main documentation page, :ref:`index-label`, does link to
+the documentation for previous releases.
+
+After you have released a new version of ``zstash``, create a new version of the documentation with the following steps:
+
+    ::
+
+        # cd into zstash directory
+        git fetch origin gh-pages
+        git checkout -b <branch-name> origin/gh-pages
+        conda activate sphinx
+        make html
+        # Copy the latest docs. They now won't be updated regularly.
+        cp -r docs/html docs/html-v0-4-2 # Replace v0-4-2 with the new version number.
+        # Copy the latest source. This will be useful if previous versions of the docs have to be updated to fix mistakes.
+        cp -r source source-v0-4-2 # Replace v0-4-2 with the version number.
+
+Then, edit ``source/index.rst``, adding the link to the new version of the docs to the list of previous versions.
+This will be of the following form:
+
+    ::
+
+        `v0.4.2 <https://e3sm-project.github.io/zstash/docs/html-v0-4-2/index.html>`_
+
+Just replace ``v0.4.2`` and ``v0-4-2`` with the new version number.

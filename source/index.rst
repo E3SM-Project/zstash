@@ -36,6 +36,10 @@ long-term HPSS archiving solution without creating an overly complicated
 
 Source code is available on Github: `<https://github.com/E3SM-Project/zstash>`_.
 
+This documentation reflects the ``master`` branch of ``zstash``. For documentation on specific releases, see:
+
+* `v0.4.2 <https://e3sm-project.github.io/zstash/docs/html-v0-4-2/index.html>`_
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
