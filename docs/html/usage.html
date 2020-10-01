@@ -189,6 +189,15 @@
 <p>If you have not logged into HSI before, you will have to do so before running <code class="docutils literal notranslate"><span class="pre">zstash</span></code> with HPSS.
 On NERSC machines, just run <code class="docutils literal notranslate"><span class="pre">hsi</span></code> on the command line and enter your credentials.</p>
 </div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>When specifying files, wildcards should be enclosed in double quotes (e.g., <code class="docutils literal notranslate"><span class="pre">&quot;a*&quot;</span></code>).</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Specifying a high number for <code class="docutils literal notranslate"><span class="pre">--workers</span></code> will result in slow downloads for each of the tars since your bandwidth
+is limited. User discretion is advised.</p>
+</div>
 <div class="section" id="create">
 <h2>Create<a class="headerlink" href="#create" title="Permalink to this headline">¶</a></h2>
 <p>To create a new zstash archive:</p>

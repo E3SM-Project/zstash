@@ -12,6 +12,13 @@ If running on Cori, it is preferable to run from ``$CSCRATCH`` rather than
     If you have not logged into HSI before, you will have to do so before running ``zstash`` with HPSS.
     On NERSC machines, just run ``hsi`` on the command line and enter your credentials.
 
+.. warning::
+    When specifying files, wildcards should be enclosed in double quotes (e.g., ``"a*"``).
+
+.. warning::
+    Specifying a high number for ``--workers`` will result in slow downloads for each of the tars since your bandwidth
+    is limited. User discretion is advised.
+
 Create
 ======
 
