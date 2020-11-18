@@ -128,10 +128,10 @@ def extract(keep_files=True):
             config.hpss = args.hpss
             hpss_get(config.hpss, get_db_filename(cache), cache)
         else:
-            logger.error('--hpss argument is required when local copy of '
-                          'database is unavailable')
+            error_str = '--hpss argument is required when local copy of database is unavailable'
+            logger.error(error_str)
 
-            raise Exception
+            raise Exception(error_str)
     global con, cur
     con = sqlite3.connect(get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES)
     cur = con.cursor()

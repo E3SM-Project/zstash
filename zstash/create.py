@@ -68,8 +68,9 @@ def create():
     # Make sure input path exists and is a directory
     logger.debug('Making sure input path exists and is a directory')
     if not os.path.isdir(config.path):
-        logger.error('Input path should be a directory: %s', config.path)
-        raise Exception
+        error_str = 'Input path should be a directory: {}'.format(config.path)
+        logger.error(error_str)
+        raise Exception(error_str)
 
     if config.hpss != 'none':
         # Create target HPSS directory if needed
@@ -92,8 +93,9 @@ def create():
         os.makedirs(cache)
     except OSError as exc:
         if exc.errno != errno.EEXIST:
-            logger.error('Cannot create local cache directory')
-            raise Exception
+            error_str = 'Cannot create local cache directory'
+            logger.error(error_str)
+            raise Exception(error_str)
         pass
 
     # Verify that cache is empty
