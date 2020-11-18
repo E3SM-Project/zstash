@@ -36,7 +36,10 @@ def run_command(command, error_str):
     (stdout, stderr) = p1.communicate()
     status = p1.returncode
     if status != 0:
+        error_str = 'Error={}, Command was `{}`'.format(error_str, command)
+        if 'hsi' in command:
+            error_str = '{}. This command includes `hsi`. Be sure that you have logged into `hsi`.'.format(error_str)
         logger.error(error_str)
         logger.debug('stdout:\n%s', stdout)
         logger.debug('stderr:\n%s', stderr)
-        raise Exception
+        raise Exception(error_str)
