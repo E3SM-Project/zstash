@@ -402,6 +402,22 @@ This will be of the following form:</p>
 </div>
 </div></blockquote>
 <p>Just replace <code class="docutils literal notranslate"><span class="pre">v0.4.2</span></code> and <code class="docutils literal notranslate"><span class="pre">v0-4-2</span></code> with the new version number.</p>
+<p>Then, run <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">html</span></code> again to update the new working version of the documentation.</p>
+<p>Then, commit and push your changes.</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">am</span> <span class="s1">&#39;Link latest documentation version&#39;</span>
+<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">gh</span><span class="o">-</span><span class="n">pages</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>Or:</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">am</span> <span class="s1">&#39;Link latest documentation version&#39;</span>
+<span class="n">git</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">fork</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
+<span class="c1"># Create pull request for the gh-pages branch</span>
+</pre></div>
+</div>
+</div></blockquote>
 </div>
 </div>
 
