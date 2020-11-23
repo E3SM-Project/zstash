@@ -239,3 +239,20 @@ This will be of the following form:
         `v0.4.2 <https://e3sm-project.github.io/zstash/docs/html-v0-4-2/index.html>`_
 
 Just replace ``v0.4.2`` and ``v0-4-2`` with the new version number.
+
+Then, run ``make html`` again to update the new working version of the documentation.
+
+Then, commit and push your changes.
+
+    ::
+
+        git commit -am 'Link latest documentation version'
+        git push origin gh-pages
+
+Or:
+
+    ::
+
+        git commit -am 'Link latest documentation version'
+        git push <fork-name> <branch-name>
+        # Create pull request for the gh-pages branch
