@@ -7,7 +7,7 @@ package:
 
 source:
   url: https://github.com/E3SM-Project/{{ name }}/archive/v{{ version }}.tar.gz
-  sha256: 192f9842ce07168bdeaec78175bad88e974a6be5ca7680faa86258baef840f38
+  sha256: ed0ed5b8c6442d1e1641317a79ca47389ddb6996c2492e51c1511344f04510b0
 
 build:
   number: 0
