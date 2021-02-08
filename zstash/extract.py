@@ -100,11 +100,11 @@ def extract(keep_files=True):
         usage='zstash extract [<args>] [files]',
         description='Extract files from existing archive')
     optional = parser.add_argument_group('optional named arguments')
-    optional.add_argument('--hpss', type=str, help='path to HPSS storage')
+    optional.add_argument('--hpss', type=str, help='path to storage on HPSS. Set to "none" for local archiving. Must be set to "none" if the machine does not have HPSS access.')
     optional.add_argument('--workers', type=int, default=1, help='num of multiprocess workers')
-    optional.add_argument('--keep', action='store_true', help='keep tar files in local cache (default off)')
+    optional.add_argument('--keep', action='store_true', help='if --hpss is not "none", keep the downloaded tar files in the local archive (cache) after file extraction. Default is to delete the tar files. If --hpss=none, this flag has no effect.')
     optional.add_argument(
-        '--cache', type=str, help='path to store files')
+        '--cache', type=str, help='path to the zstash archive on the local file system. The default name is "zstash".')
     optional.add_argument('-v', '--verbose', action="store_true", 
                           help="increase output verbosity")
     parser.add_argument('files', nargs='*', default=['*'])

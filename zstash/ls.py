@@ -15,14 +15,14 @@ def ls():
     Supports the '-l' argument for more information.
     """
     parser = argparse.ArgumentParser(
-        usage='zstash ls [<args>]',
-        description='List the files from an existing archive')
+        usage='zstash ls [<args>] [files]',
+        description='List the files from an existing archive. If `files` is specified, then only the files specified will be listed. If `hpss=none`, then this will list the directories and files in the current directory excluding the cache.')
     optional = parser.add_argument_group('optional named arguments')
     optional.add_argument('--hpss', type=str, help='path to HPSS storage')
     optional.add_argument('-l', dest='long', action='store_const', const=True,
                           help='show more information for the files')
     optional.add_argument(
-        '--cache', type=str, help='path to store files')
+        '--cache', type=str, help='the path to the zstash archive on the local file system. The default name is "zstash".')
     optional.add_argument('-v', '--verbose', action="store_true", 
                           help="increase output verbosity")
     
