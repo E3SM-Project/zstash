@@ -151,22 +151,13 @@ Starting with v0.4, zstash supports the creation of local archives only (using t
    $ zstash create --hpss=none  --maxsize 128 . 2>&1 | tee zstash/zstash_create_20200224.log
    ctrl-a d # to disconnect from screen session
 
-Check
------
-
-Once archiving is complete, run ``zstash check`` locally to verify integrity of archive: ::
-
-   $ screen -r
-   $ cd /compyfs/gola749/E3SM_simulations/20191216.alpha20.piControl.ne30_r05_oECv3_ICG.compy
-   $ zstash check . 2>&1 | tee zstash/zstash_check_20200225.log
 
 .. _globus-compy:
 
 Transfer to NERSC HPSS
 ----------------------
 
-After the check completes successfully, transfer all zstash files to NERSC HPSS using 
-Globus.
+Transfer all zstash files to NERSC HPSS using Globus.
 
 * Login to Globus web interface at https://www.globus.org/ using your NERSC credentials.
 * On the leftmost pane, select 'ENDPOINT'
@@ -208,4 +199,11 @@ Globus.
    :scale: 50%
    :alt: Globus screenshot, sync
 
+Check
+-----
 
+Once archiving is complete, run ``zstash check`` on NERSC to verify integrity of the archive: ::
+
+   $ ssh dtn01.nersc.gov
+   $ cd <scratch directory>
+   $ zstash check --hpss=<HPSS path>
