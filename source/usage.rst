@@ -358,6 +358,53 @@ Below is an example. Note the names of the columns:  ::
    30482	archive/logs/atm.log.8229335.180130-143234.gz	20156521	2018-02-01 10:02:35	e8161bba53500848dc917258d1d8f56a	000018.tar	131697281536	
    51608	case_scripts/logs/atm.log.8229335.180130-143234.gz	20156521	2018-02-01 10:02:52	e8161bba53500848dc917258d1d8f56a	000047.tar	202381473280	
 
+.. warning::
+    Running ``zstash ls`` outside the source directory (the directory you're archiving)
+    is not advised. ``zstash`` will only retrieve ``index.db`` from the HPSS archive
+    if a local archive (cache) is not present.
+
+Example 1 -- changing the HPSS archive: ::
+
+    $ zstash create --hpss=hpss_archive source_directory           # Creates an HPSS archive named `hpss_archive` and a local archive (cache) `source_directory/zstash`.
+    $ zstash ls --hpss=hpss_archive                                # List the contents of `hpss_archive` and creates a cache `zstash` at the same level of `source_directory`.
+    # Add `source_directory/new_file.txt`
+    $ zstash create --hpss=different_hpss_archive source_directory # Create a different HPSS archive of the source directory. This overwrites the local archive (cache) `source_directory/zstash`.
+    $ zstash ls --hpss=different_hpss_archive                      # `new_file.txt` will NOT be shown. The existing cache `zstash` (same level as `source_directory`) is being used.
+    $ rm -rf zstash                                                # Delete the cache. (You could instead change to another directory).
+    $ zstash ls --hpss=different_hpss_archive                      # `new_file.txt` will be shown.
+
+Example 2 -- updating the HPSS archive: ::
+
+    $ zstash create --hpss=hpss_archive source_directory # Creates an HPSS archive named `hpss_archive` and a local archive (cache) `source_directory/zstash`.
+    $ zstash ls --hpss=hpss_archive                      # List the contents of `hpss_archive` and creates a cache `zstash` at the same level of `source_directory`.
+    # Add `source_directory/new_file.txt`
+    $ cd source_directory
+    $ zstash update --hpss=hpss_archive                  # Add `new_file.txt` to the HPSS archive. This updates the cache `zstash` (in `source_directory`).
+    $ cd ..
+    $ zstash ls --hpss=hpss_archive                      # `new_file.txt` will NOT be shown. The existing cache `zstash` (same level as `source_directory`) is being used.
+    $ rm -rf zstash                                      # Delete the cache. (You could instead change to another directory).
+    $ zstash ls --hpss=hpss_archive                      # `new_file.txt` will be shown.
+
+Example 3 -- changing the HPSS archive, running ``zstash_ls`` from the source directory: ::
+
+    $ zstash create --hpss=hpss_archive source_directory           # Creates an HPSS archive named `hpss_archive` and a local archive (cache) `source_directory/zstash`.
+    $ cd source_directory                                          # This is the directory we are archiving.
+    $ zstash ls --hpss=hpss_archive                                # List the contents of `hpss_archive` and uses the existing cache `zstash` (in `source_directory`).
+    # Add `new_file.txt`
+    $ cd ..
+    $ zstash create --hpss=different_hpss_archive source_directory # Create a different HPSS archive of the source directory. This overwrites the local archive (cache) `source_directory/zstash`.
+    $ cd source_directory
+    $ zstash ls --hpss=different_archive                           # `new_file.txt` will be shown.
+
+Example 4 -- updating the HPSS archive, running ``zstash_ls`` from the source directory: ::
+
+    $ zstash create --hpss=hpss_archive source_directory # Creates an HPSS archive named `hpss_archive` and a local archive (cache) `source_directory/zstash`.
+    $ cd source_directory                                # This is the directory we are archiving.
+    $ zstash ls --hpss=hpss_archive                      # List the contents of `hpss_archive` and uses the existing cache `zstash` (in `source_directory`).
+    # Add new_file.txt
+    $ zstash update --hpss=hpss_archive                  # Add `new_file.txt` to the HPSS archive. This updates the cache `zstash` (in `source_directory`).
+    $ zstash ls --hpss=hpss_archive                      # `new_file.txt` will be shown.
+
 Version
 =======
 
