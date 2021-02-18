@@ -2,8 +2,10 @@
 from __future__ import print_function, absolute_import
 
 import argparse
+import os
 import os.path
 import sys
+from signal import signal, SIGINT
 from . import settings, __version__
 from .create import create
 from .update import update
@@ -12,10 +14,20 @@ from .chgrp import chgrp
 from .check import check
 from .ls import ls
 
+# -----------------------------------------------------------------------------
+def handler(signal_received, frame):
+
+    # Handle any cleanup here
+    print('SIGINT or CTRL-C detected. Exiting.')
+    os._exit(1)
 
 # -----------------------------------------------------------------------------
 def main():
 
+    # Run the handler() function when SIGINT is received
+    signal(SIGINT, handler)
+
+    # Parser
     parser = argparse.ArgumentParser(
         usage='''For {}, zstash <command> [<args>]
 
