@@ -174,6 +174,10 @@ where
   successful transfer.
 * ``-v`` increases output verbosity.
 
+Note: in the event that an update includes revisions to files previously archived, ``zstash update``
+will archive the new revisions. ``zstah extract`` will only extract the latest revision, but all
+file versions will still be listed with the ``zstash ls`` and ``zstash ls -l`` commands.
+
 Example
 -------
 
