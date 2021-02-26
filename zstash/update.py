@@ -20,7 +20,7 @@ def update():
         description='Update an existing zstash archive')
     required = parser.add_argument_group('required named arguments')
     optional = parser.add_argument_group('optional named arguments')
-    optional.add_argument('--hpss', type=str, help='path to HPSS storage')
+    optional.add_argument('--hpss', type=str, help='path to storage on HPSS. Set to "none" for local archiving. Must be set to "none" if the machine does not have HPSS access.')
     optional.add_argument(
         '--exclude', type=str,
         help='comma separated list of file patterns to exclude')
@@ -30,10 +30,10 @@ def update():
         action="store_true")
     optional.add_argument(
         '--keep',
-        help='keep tar files in local cache (default off)',
+        help='if --hpss is not "none", keep the tar files in the local archive (cache) after uploading to the HPSS archive. Default is to delete the tar files. If --hpss=none, this flag has no effect.',
         action="store_true")
     optional.add_argument(
-        '--cache', type=str, help='path to store files')
+        '--cache', type=str, help='path to the zstash archive on the local file system. The default name is "zstash".')
     optional.add_argument('-v', '--verbose', action="store_true", 
                           help="increase output verbosity")
     args = parser.parse_args(sys.argv[2:])
