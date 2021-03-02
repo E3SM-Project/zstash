@@ -10,12 +10,12 @@ class TestExtract(TestZstash):
     """
     # `zstash extract` is tested in TestExtract and TestExtractParallel.
     # x = on, no mark = off, b = both on and off tested
-    # option | ExtractVerbose | ExtractKeep | ExtractCache | ExtractParallel |
-    # --hpss    |x|x|x|x|
-    # --workers | | | |x|
-    # --cache   | | |x| |
-    # --keep    | |x| | |
-    # -v        |x| | |b|
+    # option | ExtractVerbose | ExtractKeep | ExtractCache | ExtractWildcard | ExtractParallel |
+    # --hpss    |x|x|x|x|x|
+    # --workers | | | | |x|
+    # --cache   | | |x| | |
+    # --keep    | |x| | | |
+    # -v        |x| | | |b|
 
     def helperExtractVerbose(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
         """
@@ -98,7 +98,7 @@ class TestExtract(TestZstash):
         if not compare(os.listdir(self.cache),
                        ['index.db', '000000.tar', '000001.tar', '000002.tar', '000003.tar', '000004.tar']):
             error_message = 'The zstash directory does not contain expected files.\nIt has: {}'.format(
-                os.listdir(d))
+                os.listdir(self.cache))
             self.stop(error_message)
         os.chdir(TOP_LEVEL)
         expected_present = ['Extracting file0.txt', 'Extracting file0_hard.txt', 'Extracting file0_soft.txt',
@@ -131,6 +131,45 @@ class TestExtract(TestZstash):
             error_message = 'The zstash cache does not contain expected files.\nIt has: {}'.format(files)
             self.stop(error_message)
 
+    def helperExtractWildcard(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
+        """
+        Test `zstash extract` with wildcard.
+        """
+        self.assertWorkspace()
+        print_in_box(test_name)
+        self.hpss_path = hpss_path
+        if self.hpss_path.lower() == 'none':
+            use_hpss = False
+        else:
+            use_hpss = True
+        os.mkdir(self.test_dir)
+        os.chdir(self.test_dir)
+        write_file('aa0.txt', 'aa0')
+        write_file('aa1.txt', 'aa1')
+        write_file('ab2.txt', 'ab2')
+        write_file('ab3.txt', 'ab3')
+        os.chdir(TOP_LEVEL)
+        self.create(use_hpss, zstash_path)
+        # Rename test_dir to backup_dir so that the new test_dir won't have the files we're trying to extract.
+        os.rename(self.test_dir, self.backup_dir)
+        os.mkdir(self.test_dir)
+        os.chdir(self.test_dir)
+        if not use_hpss:
+            shutil.copytree('{}/{}/{}'.format(TOP_LEVEL, self.backup_dir, self.cache), self.copy_dir)
+        cmd = '{}zstash extract --hpss={} ab*'.format(zstash_path, self.hpss_path)
+        output, err = run_cmd(cmd)
+        print(output + err)
+        expected_present = ['Extracting ab2.txt', 'Extracting ab3.txt']
+        self.check_strings(cmd, output + err, expected_present, [])
+        cmd = '{}zstash extract --hpss={} a*'.format(zstash_path, self.hpss_path)
+        output, err = run_cmd(cmd)
+        print(output + err)
+        expected_present = ['Extracting aa0.txt', 'Extracting aa1.txt',
+                            'Not extracting ab2.txt', 'Not extracting ab3.txt']
+        self.check_strings(cmd, output + err, expected_present, [])
+        os.chdir(TOP_LEVEL)
+
+
     def testExtractVerbose(self):
         self.helperExtractVerbose('testExtractVerbose', 'none')
 
@@ -147,6 +186,9 @@ class TestExtract(TestZstash):
 
     def testExtractCache(self):
         self.helperExtractCache('testExtractCache', 'none')
+
+    def testExtractWildcard(self):
+        self.helperExtractWildcard('testExtractWildcard', 'none')
 
     def testExtractCacheHPSS(self):
         self.conditional_hpss_skip()
