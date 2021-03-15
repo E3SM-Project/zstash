@@ -4,3 +4,13 @@ zstash.egg-info/
 *.pyc
 *~
 \#*
+
+
+# Distribution / packaging
+.idea/
+
+# virtualenv
+venv/
+
+# Sphinx documentation
+docs/_build/

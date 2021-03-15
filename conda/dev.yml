@@ -1,0 +1,15 @@
+name: zstash_dev
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Base
+  - pip=21.0.1
+  - python=3.7.10
+  # Documentation
+  # If versions are updated, also update in `.github/workflows/workflow.yml`
+  - sphinx=3.5.1
+  - sphinx_rtd_theme=0.5.1
+  - pip:
+    - sphinx-multiversion==0.2.4
+prefix: /opt/miniconda3/envs/zstash_dev
