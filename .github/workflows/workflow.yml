@@ -9,12 +9,7 @@ on:
 
 jobs:
   build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest", "macos-latest"]
-    name: ${{ matrix.os }} Build
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash -l {0}
@@ -38,6 +33,7 @@ jobs:
           python -m unittest
 
   publish-docs:
+    if: github.event_name == 'push'
     needs: [build]
     runs-on: ubuntu-latest
     defaults:
