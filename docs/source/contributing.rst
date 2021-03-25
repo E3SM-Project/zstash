@@ -43,7 +43,7 @@ using Sphinx, you can refer to
 
    $ cd <myDir>/zstash
    $ conda env create -f conda/dev.yml
-   $ conda activate zstash_env_dev
+   $ conda activate zstash_dev
 
 4. To modify the documentation, simply edit the files under ``/docs/source``.
 
