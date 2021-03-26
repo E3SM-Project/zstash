@@ -61,7 +61,7 @@ using Sphinx, you can refer to
     $ # `/docs/_build` is ignored by git since it does not need to be pushed
     $ git add .
     $ git commit
-    $ git push origin <branch-name>
+    $ git push <fork-origin> <branch-name>
 
 8. <`OPTIONAL`> If you want to generate and view versioned docs: ::
 
@@ -76,7 +76,7 @@ using Sphinx, you can refer to
 
       Docs version selector dropdown in the bottom left-hand corner
 
-9. Create a pull request from ``your-fork/zstash/branch-name`` to ``E3SM-Project/zstash/master``.
+9. Create a pull request from ``<your-fork>/zstash/branch-name`` to ``E3SM-Project/zstash/master``.
 
 Once this pull request is merged and GitHub Actions finishes building the docs, changes will be available on the
 `zstash documentation page <https://e3sm-project.github.io/zstash/>`_.
@@ -85,14 +85,16 @@ How Documentation is Versioned
 ----------------------------
 The `sphinx-multiversion <https://github.com/Holzhaus/sphinx-multiversion>`_ package manages documentation versioning.
 
-``sphinx-multiversion`` is configured to generate versioned docs for available tags and branches on local, ``origin`` and ``upstream``.
+``sphinx-multiversion`` is configured to generate versioned docs for available tags and
+branches on local, ``origin`` (the likely name for your ``<fork-origin>``) and
+``upstream`` (the likely name for your ``<upstream-origin>``)..
 
 Branches or tags that don’t contain both the sphinx ``source`` directory and the ``conf.py`` file will be skipped automatically.
 
     - Skipped versions include releases ``<= v1.0.1`` since the documention source was not included in those tagged releases.
     - Run ``sphinx-multiversion source _build/html --dump-metadata`` to see which tags/branches matched.
 
-Initial setup (for reference only)
+Initial setup (obsolete/for reference only)
 ==================================
 
 The instructions below only apply for the initial configuration of the
