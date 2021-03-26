@@ -184,7 +184,7 @@ Instead, the developer will ``pip install .`` to build ``zstash`` with changes
 
 1. Follow :ref:`"Others/Local" <conda_environment_others>` section for installing conda.
 
-2. Clone your fork and keep it in sync with upstream ``master``
+2. Clone your fork and keep it in sync with the main repo's ``master``
 
     ::
 

@@ -22,14 +22,14 @@ for all instructions on this page.
     ::
 
         git checkout master
-        git pull origin master
+        git pull <upstream-origin> master
 
 Or checkout a branch:
 
     ::
 
-        git fetch origin master
-        git checkout -b <branch-name> origin/master
+        git fetch <upstream-origin> master
+        git checkout -b <branch-name> <upstream-origin>/master
 
 2. Edit ``version`` in ``setup.py`` to the new version. Don't prefix this with a "v".
 
@@ -45,14 +45,14 @@ Don't prefix this with a "v". Reset the build number to 0 if necessary
     ::
 
         git commit -am 'Update to v0.4.1'
-        git push origin master
+        git push <upstream-origin> master
 
 Or:
 
     ::
 
         git commit -am 'Update to v0.4.1'
-        git push <fork-name> <branch-name>
+        git push <fork-origin> <branch-name>
         # Create pull request for the master branch
 
 Creating A Release On GitHub
@@ -87,13 +87,13 @@ This will have the ``conda/meta.yaml`` we edited in the first section.
     ::
 
         git checkout master
-        git pull origin master
+        git pull <upstream-origin> master
 
 Or:
     ::
 
-        git fetch origin master
-        git checkout -b <branch-name> origin/master
+        git fetch <upstream-origin> master
+        git checkout -b <branch-name> <upstream-origin>/master
 
 4. Change ``sha256`` in ``conda/meta.yaml`` to the result of step 2.
 
@@ -102,14 +102,14 @@ Or:
     ::
 
         git commit -am 'Edit sha256 for v0.4.1'
-        git push origin master
+        git push <upstream-origin> master
 
 Or:
 
     ::
 
         git commit -am 'Edit sha256 for v0.4.1'
-        git push <fork-name> <branch-name>
+        git push <fork-origin> <branch-name>
         # Create pull request for the master branch
 
 Releasing The Software On Anaconda
@@ -140,13 +140,13 @@ This will have the ``conda/meta.yaml`` we edited in the first and third sections
     ::
 
         git checkout master
-        git pull origin master
+        git pull <upstream-origin> master
 
 Or:
     ::
 
-        git fetch origin master
-        git checkout -b <branch-name> origin/master
+        git fetch <upstream-origin> master
+        git checkout -b <branch-name> <upstream-origin>/master
 
 4. Run ``conda env list``. Determine the path for the ``miniconda3`` installation you are using to build the package.
 Typically, this will be ``~/miniconda3``. Run ``rm -rf <path>/conda-bld`` to ensure that previously built packages are
@@ -222,8 +222,8 @@ After you have released a new version of ``zstash``, create a new version of the
     ::
 
         # cd into zstash directory
-        git fetch origin gh-pages
-        git checkout -b <branch-name> origin/gh-pages
+        git fetch <upstream-origin> gh-pages
+        git checkout -b <branch-name> <upstream-origin>/gh-pages
         conda activate sphinx
         make html
         # Copy the latest docs. They now won't be updated regularly.
@@ -247,12 +247,12 @@ Then, commit and push your changes.
     ::
 
         git commit -am 'Link latest documentation version'
-        git push origin gh-pages
+        git push <upstream-origin> gh-pages
 
 Or:
 
     ::
 
         git commit -am 'Link latest documentation version'
-        git push <fork-name> <branch-name>
+        git push <fork-origin> <branch-name>
         # Create pull request for the gh-pages branch

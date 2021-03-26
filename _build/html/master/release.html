@@ -189,14 +189,14 @@ It’s usually <code class="docutils literal notranslate"><span class="pre">mast
 for all instructions on this page.</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">checkout</span> <span class="n">master</span>
-<span class="n">git</span> <span class="n">pull</span> <span class="n">origin</span> <span class="n">master</span>
+<span class="n">git</span> <span class="n">pull</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">master</span>
 </pre></div>
 </div>
 </div></blockquote>
 <p>Or checkout a branch:</p>
 <blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="n">origin</span> <span class="n">master</span>
-<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">origin</span><span class="o">/</span><span class="n">master</span>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">master</span>
+<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;/</span><span class="n">master</span>
 </pre></div>
 </div>
 </div></blockquote>
@@ -212,7 +212,7 @@ Don’t prefix this with a “v”. Reset the build number to 0 if necessary
 <li><p>Commit and push your changes.</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">am</span> <span class="s1">&#39;Update to v0.4.1&#39;</span>
-<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">master</span>
+<span class="n">git</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">master</span>
 </pre></div>
 </div>
 </div></blockquote>
@@ -221,7 +221,7 @@ Don’t prefix this with a “v”. Reset the build number to 0 if necessary
 <p>Or:</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">am</span> <span class="s1">&#39;Update to v0.4.1&#39;</span>
-<span class="n">git</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">fork</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
+<span class="n">git</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">fork</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
 <span class="c1"># Create pull request for the master branch</span>
 </pre></div>
 </div>
@@ -257,13 +257,13 @@ what features have been added recently.</p>
 This will have the <code class="docutils literal notranslate"><span class="pre">conda/meta.yaml</span></code> we edited in the first section.</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">checkout</span> <span class="n">master</span>
-<span class="n">git</span> <span class="n">pull</span> <span class="n">origin</span> <span class="n">master</span>
+<span class="n">git</span> <span class="n">pull</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">master</span>
 </pre></div>
 </div>
 </div></blockquote>
 <dl>
-<dt>Or:</dt><dd><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="n">origin</span> <span class="n">master</span>
-<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">origin</span><span class="o">/</span><span class="n">master</span>
+<dt>Or:</dt><dd><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">master</span>
+<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;/</span><span class="n">master</span>
 </pre></div>
 </div>
 </dd>
@@ -273,7 +273,7 @@ This will have the <code class="docutils literal notranslate"><span class="pre">
 <li><p>Commit and push your changes.</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">am</span> <span class="s1">&#39;Edit sha256 for v0.4.1&#39;</span>
-<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">master</span>
+<span class="n">git</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">master</span>
 </pre></div>
 </div>
 </div></blockquote>
@@ -282,7 +282,7 @@ This will have the <code class="docutils literal notranslate"><span class="pre">
 <p>Or:</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">am</span> <span class="s1">&#39;Edit sha256 for v0.4.1&#39;</span>
-<span class="n">git</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">fork</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
+<span class="n">git</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">fork</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
 <span class="c1"># Create pull request for the master branch</span>
 </pre></div>
 </div>
@@ -312,13 +312,13 @@ by running <code class="docutils literal notranslate"><span class="pre">conda</s
 This will have the <code class="docutils literal notranslate"><span class="pre">conda/meta.yaml</span></code> we edited in the first and third sections.</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">checkout</span> <span class="n">master</span>
-<span class="n">git</span> <span class="n">pull</span> <span class="n">origin</span> <span class="n">master</span>
+<span class="n">git</span> <span class="n">pull</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">master</span>
 </pre></div>
 </div>
 </div></blockquote>
 <dl>
-<dt>Or:</dt><dd><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="n">origin</span> <span class="n">master</span>
-<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">origin</span><span class="o">/</span><span class="n">master</span>
+<dt>Or:</dt><dd><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">master</span>
+<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;/</span><span class="n">master</span>
 </pre></div>
 </div>
 </dd>
@@ -387,8 +387,8 @@ the documentation for previous releases.</p>
 <p>After you have released a new version of <code class="docutils literal notranslate"><span class="pre">zstash</span></code>, create a new version of the documentation with the following steps:</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># cd into zstash directory</span>
-<span class="n">git</span> <span class="n">fetch</span> <span class="n">origin</span> <span class="n">gh</span><span class="o">-</span><span class="n">pages</span>
-<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="n">origin</span><span class="o">/</span><span class="n">gh</span><span class="o">-</span><span class="n">pages</span>
+<span class="n">git</span> <span class="n">fetch</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">gh</span><span class="o">-</span><span class="n">pages</span>
+<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;/</span><span class="n">gh</span><span class="o">-</span><span class="n">pages</span>
 <span class="n">conda</span> <span class="n">activate</span> <span class="n">sphinx</span>
 <span class="n">make</span> <span class="n">html</span>
 <span class="c1"># Copy the latest docs. They now won&#39;t be updated regularly.</span>
@@ -410,14 +410,14 @@ This will be of the following form:</p>
 <p>Then, commit and push your changes.</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">am</span> <span class="s1">&#39;Link latest documentation version&#39;</span>
-<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">gh</span><span class="o">-</span><span class="n">pages</span>
+<span class="n">git</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">gh</span><span class="o">-</span><span class="n">pages</span>
 </pre></div>
 </div>
 </div></blockquote>
 <p>Or:</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">am</span> <span class="s1">&#39;Link latest documentation version&#39;</span>
-<span class="n">git</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">fork</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
+<span class="n">git</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">fork</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
 <span class="c1"># Create pull request for the gh-pages branch</span>
 </pre></div>
 </div>
