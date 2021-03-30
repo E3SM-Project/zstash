@@ -1,7 +1,8 @@
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import, print_function
 
-import os.path
 import logging
+import os.path
+
 
 # Class to hold configuration
 class Config(object):
@@ -10,15 +11,17 @@ class Config(object):
     maxsize = None
     keep = None
 
+
 def get_db_filename(cache):
-    # Database filename 
-    return os.path.join(cache, 'index.db')
+    # Database filename
+    return os.path.join(cache, "index.db")
+
 
 # Block size
-BLOCK_SIZE = 1024*1014
+BLOCK_SIZE = 1024 * 1014
 
 # Default sub-directory to hold cache
-DEFAULT_CACHE = 'zstash'
+DEFAULT_CACHE = "zstash"
 
 # Time tolerance (in seconds) for file modification time
 TIME_TOL = 1.0
@@ -27,7 +30,6 @@ TIME_TOL = 1.0
 config = Config()
 
 # Initialize logger
-logger = logging.basicConfig(format='%(levelname)s: %(message)s',
-                        level=logging.INFO)
+# FIXME: "basicConfig" does not return a value mypy(error)
+logger = logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)  # type: ignore
 logger = logging.getLogger(__name__)
-

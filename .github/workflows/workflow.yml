@@ -8,6 +8,24 @@ on:
     branches: [master]
 
 jobs:
+  pre-commit-hooks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+
+      # Run all pre-commit hooks on all the files.
+      # Getting only staged files can be tricky in case a new PR is opened
+      # since the action is run on a branch in detached head state
+      - name: Install and Run Pre-commit
+        uses: pre-commit/action@v2.0.0
+
   build:
     runs-on: ubuntu-latest
     defaults:
@@ -34,7 +52,7 @@ jobs:
 
   publish-docs:
     if: github.event_name == 'push'
-    needs: [build]
+    needs: [pre-commit-hooks, build]
     runs-on: ubuntu-latest
     defaults:
       run:

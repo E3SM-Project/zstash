@@ -1,9 +1,8 @@
 from __future__ import print_function
 
-import sys
-import multiprocessing
 import collections
 import ctypes
+import multiprocessing
 
 
 class NotYourTurnError(Exception):
@@ -11,14 +10,17 @@ class NotYourTurnError(Exception):
     An error to let a worker know it needs to wait
     to print its stuff.
     """
+
     pass
+
 
 class PrintMonitor(object):
     """
     Used to synchronize the printing of the output between workers.
     Depending on the current_tar, the worker processing the work
     for that tar will print it's output.
-    """        
+    """
+
     def __init__(self, tars_to_print, *args, **kwargs):
         # A list of tars to print.
         # Ex: ['000000.tar', '000008.tar', '00001a.tar']
@@ -26,19 +28,22 @@ class PrintMonitor(object):
             msg = "You must pass in a list of tars, which dictates"
             msg += " the order of which to print the results."
             raise RuntimeError(msg)
-        
+
         # The variables below are modified/accessed by different processes,
         # so they need to be in shared memory.
         self._cv = multiprocessing.Condition()
 
-        self._tars_to_print = multiprocessing.Queue()
+        # FIXME: Need type annotation for '_tars_to_print' mypy(error)
+        self._tars_to_print = multiprocessing.Queue()  # type: ignore
         for tar in tars_to_print:
             self._tars_to_print.put(tar)
 
         # We need a manager to instantiate the Value instead of multiprocessing.Value.
         # If we didn't use a manager, it seems to get some junk value.
         self._manager = multiprocessing.Manager()
-        self._current_tar = self._manager.Value(ctypes.c_char_p, self._tars_to_print.get())
+        self._current_tar = self._manager.Value(
+            ctypes.c_char_p, self._tars_to_print.get()
+        )
 
     def wait_turn(self, worker, workers_curr_tar, indef_wait=True, *args, **kwargs):
         """
@@ -73,7 +78,9 @@ class PrintMonitor(object):
         self.wait_turn(worker, workers_curr_tar, *args, **kwargs)
 
         with self._cv:
-            self._current_tar.value = self._tars_to_print.get() if not self._tars_to_print.empty() else ''
+            self._current_tar.value = (
+                self._tars_to_print.get() if not self._tars_to_print.empty() else ""
+            )
             self._cv.notify_all()
 
 
@@ -83,17 +90,20 @@ class ExtractWorker(object):
     It redirects all of the output of the logging module to a queue.
     Then with a PrintMonitor, it prints to the
     terminal in the order defined by the PrintMonitor.
-    
+
     This worker is called during `zstash extract`.
     """
+
     class PrintQueue(collections.deque):
         """
         A queue with a write() function.
         This is so that this can be replaced with sys.stdout in the extractFiles function.
         This way, all calls to `print()` will be sent here.
         """
+
         def __init__(self):
-            self.TarAndMsg = collections.namedtuple('TarAndMsg', ['tar', 'msg'])
+            # FIXME: NamedTuple type as an attribute is not supported mypy(error)
+            self.TarAndMsg = collections.namedtuple("TarAndMsg", ["tar", "msg"])  # type: ignore
             self.curr_tar = None
 
         def write(self, msg):
@@ -116,7 +126,7 @@ class ExtractWorker(object):
         # be piped to this queue instead of the screen.
         self.print_queue = self.PrintQueue()
         # A tar is mapped to True when all of its output is in the queue.
-        self.is_output_done_enqueuing = {tar:False for tar in tars_to_work_on}
+        self.is_output_done_enqueuing = {tar: False for tar in tars_to_work_on}
         # After extractFiles is done, all of the failures will be added to this queue.
         self.failure_queue = failure_queue
 
@@ -125,21 +135,21 @@ class ExtractWorker(object):
         Sets the current tar this worker is working on.
         """
         self.print_queue.curr_tar = tar
-    
+
     def done_enqueuing_output_for_tar(self, tar):
         """
         All of the output for extracting this tar is in the print queue.
         """
-        if not tar in self.is_output_done_enqueuing:
-            msg = 'This tar {} isn\'t assigned to this worker.'
+        if tar not in self.is_output_done_enqueuing:
+            msg = "This tar {} isn't assigned to this worker."
             raise RuntimeError(msg.format(tar))
 
         if self.is_output_done_enqueuing[tar]:
-            msg = 'This tar ({}) was already told to be done.'
+            msg = "This tar ({}) was already told to be done."
             raise RuntimeError(msg.format(tar))
 
         self.is_output_done_enqueuing[tar] = True
-    
+
     def print_contents(self):
         """
         Try to print the contents from self.print_queue.
@@ -150,7 +160,7 @@ class ExtractWorker(object):
         except NotYourTurnError:
             # It's not our turn, so try again the next time this function is called.
             pass
-    
+
     def has_to_print(self):
         """
         Returns True if this Worker still has things to print.
@@ -172,11 +182,10 @@ class ExtractWorker(object):
             # Print all applicable values in the print_queue.
             while self.print_queue and self.print_queue[0].tar == tar_to_print:
                 msg = self.print_queue.popleft().msg
-                print(msg, end='', flush=True)
+                print(msg, end="", flush=True)
 
             # If True, then all of the output for extracting tar_to_print was in the queue.
             # Since we just finished printing all of it, we can move onto the next one.
             if self.is_output_done_enqueuing[tar_to_print]:
                 # Let all of the other workers know that this worker is done.
                 self.print_monitor.done_dequeuing_output_for_tar(self, tar_to_print)
-
