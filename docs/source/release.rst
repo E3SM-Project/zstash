@@ -55,6 +55,8 @@ Or:
         git push <fork-origin> <branch-name>
         # Create pull request for the master branch
 
+.. _github-release:
+
 Creating A Release On GitHub
 ----------------------------
 
@@ -213,46 +215,11 @@ If you are uncertain of which to update, leave a comment on the page asking.
 Creating a New Version of the Documentation
 -------------------------------------------
 
-The main documentation page includes the most up-to-date information. This means it may contain information on
-features not included in a previous release. The main documentation page, :ref:`index-label`, does link to
-the documentation for previous releases.
+1. Be sure to have already completed :ref:`Creating A Release On GitHub <github-release>`.
+This triggers the CI/CD workflow that handles publishing documentation versions.
 
-After you have released a new version of ``zstash``, create a new version of the documentation with the following steps:
+2. Wait until the CI/CD build is successful. You can view all workflows at
+`All Workflows <https://github.com/E3SM-Project/zstash/actions>`_.
 
-    ::
-
-        # cd into zstash directory
-        git fetch <upstream-origin> gh-pages
-        git checkout -b <branch-name> <upstream-origin>/gh-pages
-        conda activate sphinx
-        make html
-        # Copy the latest docs. They now won't be updated regularly.
-        cp -r docs/html docs/html-v0-4-2 # Replace v0-4-2 with the new version number.
-        # Copy the latest source. This will be useful if previous versions of the docs have to be updated to fix mistakes.
-        cp -r source source-v0-4-2 # Replace v0-4-2 with the version number.
-
-Then, edit ``source/index.rst``, adding the link to the new version of the docs to the list of previous versions.
-This will be of the following form:
-
-    ::
-
-        `v0.4.2 <https://e3sm-project.github.io/zstash/docs/html-v0-4-2/index.html>`_
-
-Just replace ``v0.4.2`` and ``v0-4-2`` with the new version number.
-
-Then, run ``make html`` again to update the new working version of the documentation.
-
-Then, commit and push your changes.
-
-    ::
-
-        git commit -am 'Link latest documentation version'
-        git push <upstream-origin> gh-pages
-
-Or:
-
-    ::
-
-        git commit -am 'Link latest documentation version'
-        git push <fork-origin> <branch-name>
-        # Create pull request for the gh-pages branch
+3. Changes will be available on the
+`zstash documentation page <https://e3sm-project.github.io/zstash/>`_.
