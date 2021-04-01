@@ -10,50 +10,71 @@ In this guide, we'll cover:
 * Creating a New Version of the Documentation
 
 
-
-
 Preparing The Code For Release
 ------------------------------
 
+These steps entail modifying files before a release is made.
+
 1. Pull the lastest code from whatever branch you want to release from.
-It's usually ``master``. We will assume this to be the case
-for all instructions on this page.
-
-    ::
-
-        git checkout master
-        git pull <upstream-origin> master
-
-Or checkout a branch:
+It's usually ``master``.
 
     ::
 
         git fetch <upstream-origin> master
         git checkout -b <branch-name> <upstream-origin>/master
 
-2. Edit ``version`` in ``setup.py`` to the new version. Don't prefix this with a "v".
 
-3. Edit ``__version__`` in ``zstash/__init__.py``. Prefix this with a "v".
+2. Edit the ``version`` argument in ``setup.py`` to the new version.
+Don't prefix this with a "v".
 
-4. Change the ``version``  in ``conda/meta.yaml``.
-``version`` is what the version of the software will be on Anaconda.
-Don't prefix this with a "v". Reset the build number to 0 if necessary
-(i.e., if higher builds of the previous version have been made).
+    .. code-block:: python
+
+        setup(
+            name="zstash",
+            version="1.0.1",
+            author="Ryan Forsyth, Chris Golaz, Zeshawn Shaheen",
+            author_email="forsyth2@llnl.gov, golaz1@llnl.gov, shaheen2@llnl.gov",
+            description="Long term HPSS archiving software for E3SM",
+            packages=find_packages(exclude=["*.test", "*.test.*", "test.*", "test"]),
+            entry_points={"console_scripts": ["zstash=zstash.main:main"]},
+        )
+
+3. Edit ``__version__`` in ``zstash/__init__.py``.
+We use ``__version__`` when generating the webpages.
+
+    ::
+
+        __version__ = 'v1.0.1'
+
+4. Change the ``version`` and ``git_rev`` tag in ``conda/meta.yaml``.
+``version`` is what the version of the software will be on Anaconda and
+``git_rev`` is the tag that we'll setup on GitHub in the next section.
+
+    .. note::
+        When running ``conda build``, ``conda`` will download the code tagged by ``git_rev``.
+        Even though ``meta.yaml`` is in your local clone of the repo, running ``conda build``
+        from here **does not** build the package based on your local code.
+
+    ::
+
+        package:
+            name: zstash
+            version: 1.0.1
+
+        source:
+            git_url: git://github.com/E3SM-Project/zstash
+            git_rev: v1.0.1
 
 5. Commit and push your changes.
 
     ::
 
-        git commit -am 'Update to v0.4.1'
-        git push <upstream-origin> master
-
-Or:
-
-    ::
-
-        git commit -am 'Update to v0.4.1'
+        git commit -am 'Changes before release.'
         git push <fork-origin> <branch-name>
-        # Create pull request for the master branch
+
+6. Create a pull request to the main repo and merge it.
+
+.. _github-release:
 
 Creating A Release On GitHub
 ----------------------------
@@ -63,10 +84,25 @@ Creating A Release On GitHub
 and draft a new release.
 
 2. ``Tag version`` and ``Release title`` should both be the version, including the "v".
+(They should match ``git_rev`` in step 4 of the previous section).
 ``Target`` should be ``master``. Use ``Describe this release`` to write what features
 the release adds. You can scroll through
 `Zstash commits <https://github.com/E3SM-Project/zstash/commits/master>`_ to see
 what features have been added recently.
+
+Note that you can also change the branch which you want to release from,
+this is specified after the tag (@ Target: ``master``).
+
+The title of a release is often the same as the tag, but you can set it to whatever you want.
+
+Remember to write a description.
+
+.. figure:: github_release.png
+    :figwidth: 100 %
+    :align: center
+    :target: github_release.png
+
+    An example of a completed page to release the code
 
 3. Click "Publish release".
 
@@ -115,144 +151,28 @@ Or:
 Releasing The Software On Anaconda
 ----------------------------------
 
-Since we're building with ``noarch``, you can run the below steps on
-either a Linux or macOS machine. You do **not** need to run these steps on both.
+1. Be sure to have already completed :ref:`Creating A Release On GitHub <github-release>`.
+This triggers the CI/CD workflow that handles Anaconda releases.
 
-It is recommended to use Miniconda3 rather than Anacdona3 to build packages.
-The packages from the ``base`` Anaconda3 environment will come from the ``defaults`` channel,
-not the ``conda-forge`` channel, and package updates fail when we try to update to the ``conda-forge`` version of
-``conda-build``. If you don't have Miniconda3 yet, you can install it from
-`Miniconda3 <https://docs.conda.io/en/latest/miniconda.html>`_.
+2. Wait until the CI/CD build is successful. You can view all workflows at `All Workflows <https://github.com/E3SM-Project/zstash/actions>`_.
 
+3. Check the https://anaconda.org/e3sm/zstash page to view the newly updated package.
 
-1. Activate the ``base`` conda environment if you have not already done so:
-
-    ::
-
-        conda activate base
-
-2. Make sure you have the latest versions of ``conda``, ``conda-build``, and ``anaconda-client``
-by running ``conda update -n base conda conda-build anaconda-client``.
-
-3. On your machine, pull the latest version of the code.
-This will have the ``conda/meta.yaml`` we edited in the first and third sections.
-
-    ::
-
-        git checkout master
-        git pull <upstream-origin> master
-
-Or:
-    ::
-
-        git fetch <upstream-origin> master
-        git checkout -b <branch-name> <upstream-origin>/master
-
-4. Run ``conda env list``. Determine the path for the ``miniconda3`` installation you are using to build the package.
-Typically, this will be ``~/miniconda3``. Run ``rm -rf <path>/conda-bld`` to ensure that previously built packages are
-not included in the current build.
-
-5. Run the following commands to make sure the ``conda-forge`` channel is included by default and that packages
-come from that channel whenever possible:
-
-    ::
-
-        conda config --add channels conda-forge
-        conda config --set channel_priority strict
-
-6. Run ``conda build conda/``. The ``conda/`` folder is where ``meta.yaml`` is located. Keep the output of this command.
-We'll use it in step 8.
-
-7. Run ``conda search --info --use-local zstash``. The only dependency should be ``python >=3.6``. In particular,
-``python_abi`` should not be listed as a dependency.
-
-8. In the output of step 6, you should see something like the below.
-We only have one package of type ``noarch``, meaning it works on both Linux and OSX and is compatible with multiple
-versions of Python (3.6, 3.7, 3.8, etc.).
-Since we have constrained python versions to >= 3.6 in the dependencies, it will not work with Python 2 or any other
-version of Python <= 3.5.
-
-    ::
-
-        # Automatic uploading is disabled
-        # If you want to upload package(s) to anaconda.org later, type:
-
-        anaconda upload /usr/local/anaconda3/conda-bld/noarch/zstash-0.4.1-py_0.tar.bz2
-
-        # To have conda build upload to anaconda.org automatically, use
-        # $ conda config --set anaconda_upload yes
-
-Copy the ``anaconda upload`` command and append ``-u e3sm`` to upload
-the package to the ``e3sm`` Anaconda channel. Below is an example:
-
-    ::
-
-        anaconda upload /usr/local/anaconda3/conda-bld/noarch/zstash-0.4.1-py_0.tar.bz2 -u e3sm
-        # If you don't appear to have anaconda installed, try the following:
-        which conda
-        # Append the top-level directory for anaconda (e.g., `/usr/local/anaconda3`) to the command.
-        # For example:
-        /usr/local/anaconda3/bin/anaconda upload /usr/local/anaconda3/conda-bld/noarch/zstash-0.4.1-py_0.tar.bz2  -u e3sm
-
-If you're having permission issues uploading a package to the e3sm channel,
-contact either Jill Zhang (zhang40@llnl.gov) or Rob Jacob (jacob@anl.gov) for permission.
-You will need to have a `Conda account <https://anaconda.org/>`_.
-Then, you can be given permission to upload a package.
-
-
-9. Check the https://anaconda.org/e3sm/zstash page to view the newly updated package.
-
-
-10. Notify the maintainers of the E3SM Unified environment about the new ``zstash`` release on the
+4. Notify the maintainers of the unified E3SM environment about the new release on the
 `E3SM Confluence site <https://acme-climate.atlassian.net/wiki/spaces/WORKFLOW/pages/129732419/E3SM+Unified+Anaconda+Environment>`_.
-Be sure to only update the ``zstash`` version number in the correct version(s) of the E3SM Unified environment.
-This is almost certainly one of the versions listed under "Next versions".
-If you are uncertain of which to update, leave a comment on the page asking.
-
+Be sure to only update the ``zstash`` version number in the correct version(s) of
+the E3SM Unified environment. This is almost certainly one of the versions listed under
+“Next versions”. If you are uncertain of which to update, leave a comment on the page
+asking.
 
 Creating a New Version of the Documentation
 -------------------------------------------
 
-The main documentation page includes the most up-to-date information. This means it may contain information on
-features not included in a previous release. The main documentation page, :ref:`index-label`, does link to
-the documentation for previous releases.
+1. Be sure to have already completed :ref:`Creating A Release On GitHub <github-release>`.
+This triggers the CI/CD workflow that handles publishing documentation versions.
 
-After you have released a new version of ``zstash``, create a new version of the documentation with the following steps:
+2. Wait until the CI/CD build is successful. You can view all workflows at
+`All Workflows <https://github.com/E3SM-Project/zstash/actions>`_.
 
-    ::
-
-        # cd into zstash directory
-        git fetch <upstream-origin> gh-pages
-        git checkout -b <branch-name> <upstream-origin>/gh-pages
-        conda activate sphinx
-        make html
-        # Copy the latest docs. They now won't be updated regularly.
-        cp -r docs/html docs/html-v0-4-2 # Replace v0-4-2 with the new version number.
-        # Copy the latest source. This will be useful if previous versions of the docs have to be updated to fix mistakes.
-        cp -r source source-v0-4-2 # Replace v0-4-2 with the version number.
-
-Then, edit ``source/index.rst``, adding the link to the new version of the docs to the list of previous versions.
-This will be of the following form:
-
-    ::
-
-        `v0.4.2 <https://e3sm-project.github.io/zstash/docs/html-v0-4-2/index.html>`_
-
-Just replace ``v0.4.2`` and ``v0-4-2`` with the new version number.
-
-Then, run ``make html`` again to update the new working version of the documentation.
-
-Then, commit and push your changes.
-
-    ::
-
-        git commit -am 'Link latest documentation version'
-        git push <upstream-origin> gh-pages
-
-Or:
-
-    ::
-
-        git commit -am 'Link latest documentation version'
-        git push <fork-origin> <branch-name>
-        # Create pull request for the gh-pages branch
+3. Changes will be available on the
+`zstash documentation page <https://e3sm-project.github.io/zstash/>`_.

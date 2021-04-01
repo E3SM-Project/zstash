@@ -7,9 +7,9 @@ Contributing to This Documentation
 Getting Started
 ==========================
 
-This documentation is created using 
-`Sphinx <http://www.sphinx-doc.org/en/stable>`_. Sphinx is an open-source tool 
-that makes it easy to create intelligent and beautiful documentation, written 
+This documentation is created using
+`Sphinx <http://www.sphinx-doc.org/en/stable>`_. Sphinx is an open-source tool
+that makes it easy to create intelligent and beautiful documentation, written
 by Georg Brandl and licensed under the BSD license.
 
 The documentation is maintained in the ``master`` branch of the GitHub repository.
@@ -51,8 +51,9 @@ using Sphinx, you can refer to
 
    $ cd <myDir>/zstash/docs
    $ make html
- 
+
 6. View them locally in a web browser at ``file:///<myDir>/zstash/docs/_build/html/index.html``.
+
  - Sometimes the browser caches Sphinx docs, so you might need to delete your cache to view changes.
 
 7. Once you are satisfied with your modifications, commit and push them back to the repository: ::
@@ -82,7 +83,7 @@ Once this pull request is merged and GitHub Actions finishes building the docs, 
 `zstash documentation page <https://e3sm-project.github.io/zstash/>`_.
 
 How Documentation is Versioned
-----------------------------
+------------------------------
 The `sphinx-multiversion <https://github.com/Holzhaus/sphinx-multiversion>`_ package manages documentation versioning.
 
 ``sphinx-multiversion`` is configured to generate versioned docs for available tags and
@@ -95,12 +96,12 @@ Branches or tags that don’t contain both the sphinx ``source`` directory and t
     - Run ``sphinx-multiversion source _build/html --dump-metadata`` to see which tags/branches matched.
 
 Initial setup (obsolete/for reference only)
-==================================
+============================================
 
 The instructions below only apply for the initial configuration of the
 Sphinx documentation on the Github repository. They are documented here
 for reference only. Do not follow them unless you are setting up documentation
-for a new repository. (Adapted from `Sphinx documentation on GitHub 
+for a new repository. (Adapted from `Sphinx documentation on GitHub
 <http://datadesk.latimes.com/posts/2012/01/sphinx-on-github>`_.)
 
 Create Sphinx conda environment (see above).
