@@ -341,12 +341,34 @@ squashed down to a single* buildable commit, and then rebased on top of the main
 </div>
 <div class="section" id="continuous-integration-continuous-delivery-ci-cd">
 <span id="ci-cd"></span><h2>Continuous Integration / Continuous Delivery (CI/CD)<a class="headerlink" href="#continuous-integration-continuous-delivery-ci-cd" title="Permalink to this headline">¶</a></h2>
-<p>This project uses <a class="reference external" href="https://github.com/E3SM-Project/zstash/actions">GitHub Actions</a> to run the CI/CD build. The build is triggered by Git <code class="docutils literal notranslate"><span class="pre">pull_request</span></code> and <code class="docutils literal notranslate"><span class="pre">push</span></code> (merging PRs) events to the the main repo’s <code class="docutils literal notranslate"><span class="pre">master</span></code>.</p>
-<p>The CI/CD workflow has two jobs:</p>
+<p>This project uses <a class="reference external" href="https://github.com/E3SM-Project/zstash/actions">GitHub Actions</a> to run two CI/CD workflows.</p>
 <ol class="arabic simple">
+<li><p>CI/CD Build Workflow</p></li>
+</ol>
+<blockquote>
+<div><p>This workflow is triggered by Git <code class="docutils literal notranslate"><span class="pre">pull_request</span></code> and <code class="docutils literal notranslate"><span class="pre">push</span></code> (merging PRs) events to the the main repo’s <code class="docutils literal notranslate"><span class="pre">master</span></code>.</p>
+<p>Jobs:</p>
+<blockquote>
+<div><ol class="arabic simple">
 <li><p>Run <code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> for formatting, linting, and type checking</p></li>
 <li><p>Run test suite in a conda environment</p></li>
+<li><p>Publish latest <cite>master</cite> docs (depends on jobs 1 and 2)</p></li>
 </ol>
+</div></blockquote>
+</div></blockquote>
+<ol class="arabic simple" start="2">
+<li><p>CI/CD Release Workflow</p></li>
+</ol>
+<blockquote>
+<div><p>This workflow is triggered by the Git <code class="docutils literal notranslate"><span class="pre">publish</span></code> event, which occurs when a new release is tagged.</p>
+<p>Jobs:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>Publish new release docs</p></li>
+<li><p>Publish Anaconda package</p></li>
+</ol>
+</div></blockquote>
+</div></blockquote>
 </div>
 <div class="section" id="style-guide">
 <h2>Style Guide<a class="headerlink" href="#style-guide" title="Permalink to this headline">¶</a></h2>
