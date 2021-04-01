@@ -113,7 +113,7 @@
 <li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="support.html">Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="release.html">How to Prepare a Release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev_guide/index.html">Developer Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to This Documentation</a></li>
 </ul>
 
@@ -335,11 +335,13 @@ you can update <code class="docutils literal notranslate"><span class="pre">zsta
 </div>
 </div>
 <div class="section" id="b-development-environment">
-<h2>(b) Development Environment<a class="headerlink" href="#b-development-environment" title="Permalink to this headline">¶</a></h2>
+<span id="dev-env"></span><h2>(b) Development Environment<a class="headerlink" href="#b-development-environment" title="Permalink to this headline">¶</a></h2>
 <p>Unlike the latest stable release (i.e., the user environment), the development
 environment does not include <code class="docutils literal notranslate"><span class="pre">zstash</span></code>.
 Instead, the developer will <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.</span></code> to build <code class="docutils literal notranslate"><span class="pre">zstash</span></code> with changes
 (see step 6 below).</p>
+<p>Furthermore, the dev environment includes quality assurance (QA) tools such as code formatters, linters, and <code class="docutils literal notranslate"><span class="pre">pre-commit</span></code>.
+<strong>NOTE</strong>: These QA tools are enforced using <code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> checks in the continuous integration/continuous delivery (CI/CD) build, so you must use the dev environment for all contributions.</p>
 <ol class="arabic">
 <li><p>Follow <a class="reference internal" href="#conda-environment-others"><span class="std std-ref">“Others/Local”</span></a> section for installing conda.</p></li>
 <li><p>Clone your fork and keep it in sync with the main repo’s <code class="docutils literal notranslate"><span class="pre">master</span></code></p>
@@ -414,10 +416,28 @@ conda activate zstash_dev
 </div>
 </div></blockquote>
 <ol class="arabic" start="6">
+<li><p>Install <code class="docutils literal notranslate"><span class="pre">pre-commit</span></code>.</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>pre-commit install
+</pre></div>
+</div>
+</div></blockquote>
+</li>
 <li><p>Make the desired changes to <code class="docutils literal notranslate"><span class="pre">zstash</span></code>, then rebuild and install with:</p>
 <blockquote>
 <div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>pip install .
 </pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>Commit changes and make sure <code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> checks pass</p>
+<blockquote>
+<div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>git commit -m &quot;commit-message&quot;
+</pre></div>
+</div>
+<div class="figure align-default" id="id2">
+<img alt="pre-commit Output" src="_images/pre-commit-passing.png" />
+<p class="caption"><span class="caption-text"><code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> Output</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
 </div>
 </div></blockquote>
 </li>
