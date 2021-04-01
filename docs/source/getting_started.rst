@@ -173,6 +173,7 @@ you can update ``zstash`` by doing the following:  ::
 
     conda update zstash -c e3sm -c conda-forge
 
+.. _dev-env:
 
 (b) Development Environment
 ===========================
@@ -181,6 +182,9 @@ Unlike the latest stable release (i.e., the user environment), the development
 environment does not include ``zstash``.
 Instead, the developer will ``pip install .`` to build ``zstash`` with changes
 (see step 6 below).
+
+Furthermore, the dev environment includes quality assurance (QA) tools such as code formatters, linters, and ``pre-commit``.
+**NOTE**: These QA tools are enforced using ``pre-commit`` checks in the continuous integration/continuous delivery (CI/CD) build, so you must use the dev environment for all contributions.
 
 1. Follow :ref:`"Others/Local" <conda_environment_others>` section for installing conda.
 
@@ -252,11 +256,28 @@ Instead, the developer will ``pip install .`` to build ``zstash`` with changes
         conda env create -f conda/dev.yml
         conda activate zstash_dev
 
-6. Make the desired changes to ``zstash``, then rebuild and install with:
+6. Install ``pre-commit``.
+
+    ::
+
+        pre-commit install
+
+7. Make the desired changes to ``zstash``, then rebuild and install with:
 
     ::
 
         pip install .
+
+8. Commit changes and make sure ``pre-commit`` checks pass
+
+    ::
+
+        git commit -m "commit-message"
+
+    .. figure:: _static/pre-commit-passing.png
+       :alt: pre-commit Output
+
+       ``pre-commit`` Output
 
 Archiving
 =========

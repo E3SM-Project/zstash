@@ -1,12 +1,14 @@
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import, print_function
 
 import hashlib
 import os.path
 import tarfile
 import traceback
 from datetime import datetime
+from typing import Optional
+
 from .hpss import hpss_put
-from .settings import config, logger, BLOCK_SIZE, get_db_filename
+from .settings import BLOCK_SIZE, config, logger
 
 
 def add_files(cur, con, itar, files, cache):
@@ -25,36 +27,36 @@ def add_files(cur, con, itar, files, cache):
             itar += 1
             tname = "{0:0{1}x}".format(itar, 6)
             tfname = "%s.tar" % (tname)
-            logger.info('Creating new tar archive %s' % (tfname))
+            logger.info("Creating new tar archive %s" % (tfname))
             tar = tarfile.open(os.path.join(cache, tfname), "w")
 
         # Add current file to tar archive
         current_file = files[i]
-        logger.info('Archiving %s' % (current_file))
+        logger.info("Archiving %s" % (current_file))
         try:
             offset, size, mtime, md5 = add_file(tar, current_file)
             archived.append((current_file, size, mtime, md5, tfname, offset))
             tarsize += size
-        except:
+        except Exception:
             traceback.print_exc()
-            logger.error('Archiving %s' % (current_file))
+            logger.error("Archiving %s" % (current_file))
             failures.append(current_file)
 
         # Close tar archive if current file is the last one or adding one more
         # would push us over the limit.
         next_file_size = tar.gettarinfo(current_file).size
-        if (i == nfiles-1 or tarsize+next_file_size > config.maxsize):
+        # FIXME: Unsupported operand types for > ("int" and "None") mypy(error)
+        if i == nfiles - 1 or tarsize + next_file_size > config.maxsize:  # type: ignore
 
             # Close current temporary file
-            logger.debug('Closing tar archive %s' % (tfname))
+            logger.debug("Closing tar archive %s" % (tfname))
             tar.close()
 
             # Transfer tar archive to HPSS
             hpss_put(config.hpss, os.path.join(cache, tfname), cache, config.keep)
 
             # Update database with files that have been archived
-            cur.executemany(u"insert into files values (NULL,?,?,?,?,?,?)",
-                            archived)
+            cur.executemany(u"insert into files values (NULL,?,?,?,?,?,?)", archived)
             con.commit()
 
             # Open new archive next time
@@ -73,6 +75,7 @@ def add_file(tar, file_name):
         tarinfo.size = os.path.getsize(file_name)
     tar.addfile(tarinfo)
 
+    md5: Optional[str] = None
     # Only add files or hardlinks.
     # So don't add directories or softlinks.
     if tarinfo.isfile() or tarinfo.islnk():
@@ -86,15 +89,12 @@ def add_file(tar, file_name):
             if len(s) < BLOCK_SIZE:
                 blocks, remainder = divmod(tarinfo.size, tarfile.BLOCKSIZE)
                 if remainder > 0:
-                    tar.fileobj.write(tarfile.NUL *
-                                      (tarfile.BLOCKSIZE - remainder))
+                    tar.fileobj.write(tarfile.NUL * (tarfile.BLOCKSIZE - remainder))
                     blocks += 1
                 tar.offset += blocks * tarfile.BLOCKSIZE
                 break
         f.close()
         md5 = hash_md5.hexdigest()
-    else:
-        md5 = None
     size = tarinfo.size
     mtime = datetime.utcfromtimestamp(tarinfo.mtime)
     return offset, size, mtime, md5

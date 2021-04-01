@@ -26,12 +26,12 @@ long-term HPSS archiving solution without creating an overly complicated
 * **Checksums (md5)** of input files are computed *on-the-fly* during
   archiving. For large files, this saves a considerable amount of
   time compared to separate checksumming and archiving steps.
-* Checksums and additional metadata (size, modification time, tar file and offset) 
+* Checksums and additional metadata (size, modification time, tar file and offset)
   are stored in a sqlite3 **index database**.
 * **Database enables faster retrieval** of individual files by locating in which tar
-  file a specific file is stored, as well as its location (offset) within the 
+  file a specific file is stored, as well as its location (offset) within the
   tar file.
-* **File integrity** is verified by computing checksums on-the-fly while **extracting** 
+* **File integrity** is verified by computing checksums on-the-fly while **extracting**
   files.
 
 Source code is available on Github: `<https://github.com/E3SM-Project/zstash>`_.
@@ -55,6 +55,6 @@ For documentation not included in the version selector (<= ``v1.0.1``):
    design
    database
    support
-   release
+   dev_guide/index
    contributing
 
