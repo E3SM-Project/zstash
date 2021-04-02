@@ -6,32 +6,103 @@ import logging
 import os.path
 import sqlite3
 import sys
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 from .hpss import hpss_put
 from .hpss_utils import add_files
 from .settings import DEFAULT_CACHE, config, get_db_filename, logger
-from .utils import exclude_files, run_command
-
-con = None
-cur = None
+from .utils import get_files_to_archive, run_command
 
 
 def create():
+    cache: str
+    exclude: str
+    cache, exclude = setup_create()
 
+    # Check config fields
+    if config.path is not None:
+        path: str = config.path
+    else:
+        raise TypeError("Invalid config.path={}".format(config.path))
+    if config.hpss is not None:
+        hpss: str = config.hpss
+    else:
+        raise TypeError("Invalid config.hpss={}".format(config.hpss))
+
+    # Start doing actual work
+    logger.debug("Running zstash create")
+    logger.debug("Local path : {}".format(path))
+    logger.debug("HPSS path  : {}".format(hpss))
+    logger.debug("Max size  : {}".format(config.maxsize))
+    logger.debug("Keep local tar files  : {}".format(config.keep))
+
+    # Make sure input path exists and is a directory
+    logger.debug("Making sure input path exists and is a directory")
+    if not os.path.isdir(path):
+        # Input path is not a directory
+        input_path_error_str: str = "Input path should be a directory: {}".format(path)
+        logger.error(input_path_error_str)
+        raise NotADirectoryError(input_path_error_str)
+
+    if hpss != "none":
+        # config.hpss is not "none", so we need to
+        # create target HPSS directory
+        logger.debug("Creating target HPSS directory")
+        mkdir_command: str = "hsi -q mkdir -p {}".format(hpss)
+        mkdir_error_str: str = "Could not create HPSS directory: {}".format(hpss)
+        run_command(mkdir_command, mkdir_error_str)
+
+        # Make sure it is exists and is empty
+        logger.debug("Making sure target HPSS directory exists and is empty")
+
+        ls_command: str = 'hsi -q "cd {}; ls -l"'.format(hpss)
+        ls_error_str: str = "Target HPSS directory is not empty"
+        run_command(ls_command, ls_error_str)
+
+    # Create cache directory
+    logger.debug("Creating local cache directory")
+    os.chdir(path)
+    try:
+        os.makedirs(cache)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST:
+            cache_error_str: str = "Cannot create local cache directory"
+            logger.error(cache_error_str)
+            raise OSError(cache_error_str)
+
+    # TODO: Verify that cache is empty
+
+    # Create and set up the database
+    failures: List[str] = create_database(cache, exclude)
+
+    # Transfer to HPSS. Always keep a local copy.
+    hpss_put(hpss, get_db_filename(cache), cache, keep=True)
+
+    if len(failures) > 0:
+        # List the failures
+        logger.warning("Some files could not be archived")
+        for file_path in failures:
+            logger.error("Failed to archive {}".format(file_path))
+
+
+def setup_create() -> Tuple[str, str]:
     # Parser
-    parser = argparse.ArgumentParser(
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
         usage="zstash create [<args>] path", description="Create a new zstash archive"
     )
     parser.add_argument("path", type=str, help="root directory to archive")
-    required = parser.add_argument_group("required named arguments")
+    required: argparse._ArgumentGroup = parser.add_argument_group(
+        "required named arguments"
+    )
     required.add_argument(
         "--hpss",
         type=str,
         help='path to storage on HPSS. Set to "none" for local archiving. Must be set to "none" if the machine does not have HPSS access.',
         required=True,
     )
-    optional = parser.add_argument_group("optional named arguments")
+    optional: argparse._ArgumentGroup = parser.add_argument_group(
+        "optional named arguments"
+    )
     optional.add_argument(
         "--exclude", type=str, help="comma separated list of file patterns to exclude"
     )
@@ -56,7 +127,7 @@ def create():
     )
     # Now that we're inside a subcommand, ignore the first two argvs
     # (zstash create)
-    args = parser.parse_args(sys.argv[2:])
+    args: argparse.Namespace = parser.parse_args(sys.argv[2:])
     if args.hpss and args.hpss.lower() == "none":
         args.hpss = "none"
     if args.verbose:
@@ -65,67 +136,27 @@ def create():
     # Copy configuration
     config.path = os.path.abspath(args.path)
     config.hpss = args.hpss
-    # FIXME: Incompatible types in assignment (expression has type "int", variable has type "None") mypy(error)
-    # Solution: https://stackoverflow.com/a/42279784
-    config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)  # type: ignore
+    config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)
     config.keep = args.keep
+    cache: str
     if args.cache:
         cache = args.cache
     else:
         cache = DEFAULT_CACHE
 
-    # Start doing actual work
-    logger.debug("Running zstash create")
-    logger.debug("Local path : %s" % (config.path))
-    logger.debug("HPSS path  : %s" % (config.hpss))
-    logger.debug("Max size  : %i" % (config.maxsize))  # type: ignore
-    logger.debug("Keep local tar files  : %s" % (config.keep))
+    return cache, args.exclude
 
-    # Make sure input path exists and is a directory
-    logger.debug("Making sure input path exists and is a directory")
-    # FIXME: Argument 1 to "isdir" has incompatible type "None"; expected "Union[str, bytes, _PathLike[str], _PathLike[bytes]]"mypy(error)
-    if not os.path.isdir(config.path):  # type: ignore
-        error_str = "Input path should be a directory: {}".format(config.path)
-        logger.error(error_str)
-        raise Exception(error_str)
 
-    if config.hpss != "none":
-        # Create target HPSS directory if needed
-        logger.debug("Creating target HPSS directory")
-        command = "hsi -q mkdir -p {}".format(config.hpss)
-        error_str = "Could not create HPSS directory: {}".format(config.hpss)
-        run_command(command, error_str)
-
-        # Make sure it is empty
-        logger.debug("Making sure target HPSS directory exists and is empty")
-
-        command = 'hsi -q "cd {}; ls -l"'.format(config.hpss)
-        error_str = "Target HPSS directory is not empty"
-        run_command(command, error_str)
-
-    # Create cache directory
-    logger.debug("Creating local cache directory")
-    # FIXME: Argument 1 to "chdir" has incompatible type "None"; expected "Union[int, Union[str, bytes, _PathLike[str], _PathLike[bytes]]]" mypy(error)
-    os.chdir(config.path)  # type: ignore
-    try:
-        os.makedirs(cache)
-    except OSError as exc:
-        if exc.errno != errno.EEXIST:
-            error_str = "Cannot create local cache directory"
-            logger.error(error_str)
-            raise Exception(error_str)
-        pass
-
-    # Verify that cache is empty
-    # ...to do (?)
-
+def create_database(cache: str, exclude: str) -> List[str]:
     # Create new database
     logger.debug("Creating index database")
     if os.path.exists(get_db_filename(cache)):
+        # Remove old database
         os.remove(get_db_filename(cache))
-    global con, cur
-    con = sqlite3.connect(get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES)
-    cur = con.cursor()
+    con: sqlite3.Connection = sqlite3.connect(
+        get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES
+    )
+    cur: sqlite3.Cursor = con.cursor()
 
     # Create 'config' table
     cur.execute(
@@ -155,48 +186,25 @@ create table files (
     con.commit()
 
     # Store configuration in database
+    # Loop through all attributes of config.
     for attr in dir(config):
-        value = getattr(config, attr)
+        value: Any = getattr(config, attr)
         if not callable(value) and not attr.startswith("__"):
+            # config.{attr} is not a function.
+            # The attribute name does not start with "__"
+            # This creates a new row in the 'config' table.
+            # Insert attr for column 1 ('arg')
+            # Insert value for column 2 ('text')
             cur.execute(u"insert into config values (?,?)", (attr, value))
     con.commit()
 
-    # List of files
-    logger.info("Gathering list of files to archive")
-    files: List[Tuple[str, str]] = []
-    for root, dirnames, filenames in os.walk("."):
-        # Empty directory
-        if not dirnames and not filenames:
-            files.append((root, ""))
-        # Loop over files
-        for filename in filenames:
-            files.append((root, filename))
-
-    # Sort files by directories and filenames
-    files = sorted(files, key=lambda x: (x[0], x[1]))
-
-    # Relative file path, eliminating top level zstash directory
-    # FIXME: Name 'files' already defined mypy(error)
-    files: List[str] = [  # type: ignore
-        os.path.normpath(os.path.join(x[0], x[1]))
-        for x in files
-        if x[0] != os.path.join(".", cache)
-    ]
-
-    # Eliminate files based on exclude pattern
-    if args.exclude is not None:
-        files = exclude_files(args.exclude, files)
+    files: List[str] = get_files_to_archive(cache, exclude)
 
     # Add files to archive
-    failures = add_files(cur, con, -1, files, cache)
+    failures: List[str] = add_files(cur, con, -1, files, cache)
 
-    # Close database and transfer to HPSS. Always keep local copy
+    # Close database
     con.commit()
     con.close()
-    hpss_put(config.hpss, get_db_filename(cache), cache, keep=True)
 
-    # List failures
-    if len(failures) > 0:
-        logger.warning("Some files could not be archived")
-        for file_path in failures:
-            logger.error("Archiving %s" % (file_path))
+    return failures

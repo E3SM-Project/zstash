@@ -11,7 +11,7 @@ from .settings import logger
 def chgrp():
 
     # Parser
-    parser = argparse.ArgumentParser(
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
         usage="zstash chgrp [<args>] group hpss_archive",
         description="Change the group of an HPSS repository.",
     )
@@ -24,11 +24,12 @@ def chgrp():
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
 
-    args = parser.parse_args(sys.argv[2:])
+    args: argparse.Namespace = parser.parse_args(sys.argv[2:])
     if args.hpss and args.hpss.lower() == "none":
         args.hpss = "none"
 
+    # Start doing actual work
     if args.verbose:
         logger.setLevel(logging.DEBUG)
-    recurse = True if args.R else False
+    recurse: bool = True if args.R else False
     hpss_chgrp(args.hpss, args.group, recurse)

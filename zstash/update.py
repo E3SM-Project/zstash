@@ -7,27 +7,59 @@ import sqlite3
 import stat
 import sys
 from datetime import datetime
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from .hpss import hpss_get, hpss_put
 from .hpss_utils import add_files
-from .settings import DEFAULT_CACHE, TIME_TOL, config, get_db_filename, logger
-from .utils import exclude_files
+from .settings import (
+    DEFAULT_CACHE,
+    TIME_TOL,
+    FilesRow,
+    TupleFilesRow,
+    config,
+    get_db_filename,
+    logger,
+)
+from .utils import get_files_to_archive, update_config
 
-con = None
-cur = None
+
+def update():
+
+    args: argparse.Namespace
+    cache: str
+    args, cache = setup_update()
+
+    result: Optional[List[str]] = update_database(args, cache)
+
+    if result is None:
+        # There was either nothing to update or `--dry-run` was set.
+        return
+    else:
+        failures = result
+
+    # Transfer to HPSS. Always keep a local copy.
+    if config.hpss is not None:
+        hpss = config.hpss
+    else:
+        raise TypeError("Invalid config.hpss={}".format(config.hpss))
+    hpss_put(hpss, get_db_filename(cache), cache, keep=True)
+
+    # List failures
+    if len(failures) > 0:
+        logger.warning("Some files could not be archived")
+        for file_path in failures:
+            logger.error("Archiving {}".format(file_path))
 
 
-# FIXME: C901 'update' is too complex (26)
-def update():  # noqa: C901
-
+def setup_update() -> Tuple[argparse.Namespace, str]:
     # Parser
-    parser = argparse.ArgumentParser(
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
         usage="zstash update [<args>]", description="Update an existing zstash archive"
     )
-    # FIXME: F841 local variable 'required' is assigned to but never used
-    required = parser.add_argument_group("required named arguments")  # noqa: F841
-    optional = parser.add_argument_group("optional named arguments")
+    parser.add_argument_group("required named arguments")
+    optional: argparse._ArgumentGroup = parser.add_argument_group(
+        "optional named arguments"
+    )
     optional.add_argument(
         "--hpss",
         type=str,
@@ -54,9 +86,10 @@ def update():  # noqa: C901
     optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
-    args = parser.parse_args(sys.argv[2:])
+    args: argparse.Namespace = parser.parse_args(sys.argv[2:])
     if args.hpss and args.hpss.lower() == "none":
         args.hpss = "none"
+    cache: str
     if args.cache:
         cache = args.cache
     else:
@@ -64,141 +97,130 @@ def update():  # noqa: C901
     if args.verbose:
         logger.setLevel(logging.DEBUG)
 
+    return args, cache
+
+
+def update_database(args: argparse.Namespace, cache: str) -> Optional[List[str]]:
     # Open database
     logger.debug("Opening index database")
     if not os.path.exists(get_db_filename(cache)):
-        # will need to retrieve from HPSS
+        # The database file doesn't exist in the cache.
+        # We need to retrieve it from HPSS
         if args.hpss is not None:
             config.hpss = args.hpss
-            hpss_get(config.hpss, get_db_filename(cache), cache)
+            if config.hpss is not None:
+                hpss: str = config.hpss
+            else:
+                raise TypeError("Invalid config.hpss={}".format(config.hpss))
+            hpss_get(hpss, get_db_filename(cache), cache)
         else:
-            error_str = (
+            error_str: str = (
                 "--hpss argument is required when local copy of database is unavailable"
             )
             logger.error(error_str)
-            raise Exception(error_str)
-    global con, cur
-    con = sqlite3.connect(get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES)
-    cur = con.cursor()
+            raise ValueError(error_str)
 
-    # Retrieve some configuration settings from database
-    for attr in dir(config):
-        value = getattr(config, attr)
-        if not callable(value) and not attr.startswith("__"):
-            cur.execute(u"select value from config where arg=?", (attr,))
-            value = cur.fetchone()[0]
-            setattr(config, attr, value)
-    # FIXME: Incompatible types in assignment (expression has type "bool", variable has type "None") mypy(error)
-    config.maxsize = int(config.maxsize)  # type: ignore
-    # FIXME: Incompatible types in assignment (expression has type "bool", variable has type "None") mypy(error)
-    config.keep = bool(int(config.keep))  # type: ignore
+    con: sqlite3.Connection = sqlite3.connect(
+        get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES
+    )
+    cur: sqlite3.Cursor = con.cursor()
+
+    update_config(cur)
+
+    if config.maxsize is not None:
+        maxsize = config.maxsize
+    else:
+        raise TypeError("Invalid config.maxsize={}".format(config.maxsize))
+    config.maxsize = int(maxsize)
+    if config.keep is not None:
+        keep = config.keep
+    else:
+        raise TypeError("Invalid config.keep={}".format(config.keep))
+    config.keep = bool(int(keep))
 
     # The command line arg should always have precedence
     if args.hpss == "none":
         # If no HPSS is available, always keep the files.
-        # FIXME: Incompatible types in string interpolation (expression has type "None", placeholder has type "Union[int, float, SupportsInt]") mypy(error)
-        config.keep = True  # type: ignore
+        config.keep = True
     else:
+        # If HPSS is used, let the user specify whether or not to keep the files.
         config.keep = args.keep
     if args.hpss is not None:
         config.hpss = args.hpss
 
     # Start doing actual work
     logger.debug("Running zstash update")
-    logger.debug("Local path : %s" % (config.path))
-    logger.debug("HPSS path  : %s" % (config.hpss))
-    # FIXME: Incompatible types in string interpolation (expression has type "None", placeholder has type "Union[int, float, SupportsInt]") mypy(error)
-    logger.debug("Max size  : %i" % (config.maxsize))  # type: ignore
-    logger.debug("Keep local tar files  : %s" % (config.keep))
+    logger.debug("Local path : {}".format(config.path))
+    logger.debug("HPSS path  : {}".format(config.hpss))
+    logger.debug("Max size  : {}".format(maxsize))
+    logger.debug("Keep local tar files  : {}".format(keep))
 
-    # List of files
-    logger.info("Gathering list of files to archive")
-    files: List[Tuple[str, str]] = []
-    for root, dirnames, filenames in os.walk("."):
-        # Empty directory
-        if not dirnames and not filenames:
-            files.append((root, ""))
-        # Loop over files
-        for filename in filenames:
-            files.append((root, filename))
-
-    # Sort files by directories and filenames
-    files = sorted(files, key=lambda x: (x[0], x[1]))
-
-    # Relative file path, eliminating top level zstash directory
-    # FIXME: Name 'files' already defined mypy(error)
-    files: List[str] = [  # type: ignore
-        os.path.normpath(os.path.join(x[0], x[1]))
-        for x in files
-        if x[0] != os.path.join(".", cache)
-    ]
-
-    # Eliminate files based on exclude pattern
-    if args.exclude is not None:
-        files = exclude_files(args.exclude, files)
+    files: List[str] = get_files_to_archive(cache, args.exclude)
 
     # Eliminate files that are already archived and up to date
-    newfiles = []
+    newfiles: List[str] = []
     for file_path in files:
-        # FIXME: Argument 1 to "lstat" has incompatible type "Tuple[str, str]"; expected "Union[str, bytes, _PathLike[str], _PathLike[bytes]]" mypy(error)
-        statinfo = os.lstat(file_path)  # type: ignore
-        mdtime_new = datetime.utcfromtimestamp(statinfo.st_mtime)
-        mode = statinfo.st_mode
+        statinfo: os.stat_result = os.lstat(file_path)
+        mdtime_new: datetime = datetime.utcfromtimestamp(statinfo.st_mtime)
+        mode: int = statinfo.st_mode
         # For symbolic links or directories, size should be 0
+        size_new: int
         if stat.S_ISLNK(mode) or stat.S_ISDIR(mode):
             size_new = 0
         else:
             size_new = statinfo.st_size
 
+        # Select the file matching the path.
         cur.execute(u"select * from files where name = ?", (file_path,))
-        new = True
+        new: bool = True
         while True:
-            match = cur.fetchone()
-            if match is None:
+            # Get the corresponding row in the 'files' table
+            match_: Optional[TupleFilesRow] = cur.fetchone()
+            if match_ is None:
                 break
-            size = match[2]
-            mdtime = match[3]
+            else:
+                match: FilesRow = FilesRow(match_)
 
-            if (size_new == size) and (
-                abs((mdtime_new - mdtime).total_seconds()) <= TIME_TOL
+            if (size_new == match.size) and (
+                abs((mdtime_new - match.mtime).total_seconds()) <= TIME_TOL
             ):
                 # File exists with same size and modification time within tolerance
                 new = False
                 break
-            # print(file,size_new,size,mdtime_new,mdtime)
         if new:
             newfiles.append(file_path)
 
     # Anything to do?
     if len(newfiles) == 0:
         logger.info("Nothing to update")
-        return
+        # Close database
+        con.commit()
+        con.close()
+        return None
 
     # --dry-run option
     if args.dry_run:
         print("List of files to be updated")
         for file_path in newfiles:
             print(file_path)
-        return
+        # Close database
+        con.commit()
+        con.close()
+        return None
 
     # Find last used tar archive
-    itar = -1
+    itar: int = -1
     cur.execute(u"select distinct tar from files")
-    tfiles = cur.fetchall()
+    tfiles: List[Tuple[str]] = cur.fetchall()
     for tfile in tfiles:
-        itar = max(itar, int(tfile[0][0:6], 16))
+        tfile_string: str = tfile[0]
+        itar = max(itar, int(tfile_string[0:6], 16))
 
     # Add files
-    failures = add_files(cur, con, itar, newfiles, cache)
+    failures: List[str] = add_files(cur, con, itar, newfiles, cache)
 
-    # Close database and transfer to HPSS. Always keep local copy
+    # Close database
     con.commit()
     con.close()
-    hpss_put(config.hpss, get_db_filename(cache), cache, keep=True)
 
-    # List failures
-    if len(failures) > 0:
-        logger.warning("Some files could not be archived")
-        for file_path in failures:
-            # FIXME: Not all arguments converted during string formatting mypy(error)
-            logger.error("Archiving %s" % (file_path))  # type: ignore
+    return failures

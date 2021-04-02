@@ -87,15 +87,14 @@ class TestCheck(TestZstash):
             "{}/index.db".format(self.cache), "{}/index_old.db".format(self.cache)
         )
         print("Messing up the MD5 of all of the files with an even id.")
-        cmd = [
+        sqlite_cmd = [
             "sqlite3",
             "{}/index.db".format(self.cache),
             "UPDATE files SET md5 = 0 WHERE id % 2 = 0;",
         ]
-        run_cmd(cmd)
-        # FIXME: Incompatible types in assignment (expression has type "str", variable has type "List[str]") mypy(error)
-        cmd = "{}zstash check -v --hpss={}".format(zstash_path, self.hpss_path)  # type: ignore
-        output, err = run_cmd(cmd)
+        run_cmd(sqlite_cmd)
+        zstash_cmd = "{}zstash check -v --hpss={}".format(zstash_path, self.hpss_path)
+        output, err = run_cmd(zstash_cmd)
         # These files have an even `id` in the sqlite3 table.
         expected_present = [
             "md5 mismatch for: dir/file1.txt",
@@ -110,7 +109,7 @@ class TestCheck(TestZstash):
             "ERROR: 000003.tar",
             "ERROR: 000005.tar",
         ]
-        self.check_strings(cmd, output + err, expected_present, expected_absent)
+        self.check_strings(zstash_cmd, output + err, expected_present, expected_absent)
         # Put the original index.db back.
         os.remove("{}/index.db".format(self.cache))
         shutil.copy(
