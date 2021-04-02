@@ -33,8 +33,7 @@ class PrintMonitor(object):
         # so they need to be in shared memory.
         self._cv = multiprocessing.Condition()
 
-        # FIXME: Need type annotation for '_tars_to_print' mypy(error)
-        self._tars_to_print = multiprocessing.Queue()  # type: ignore
+        self._tars_to_print: multiprocessing.Queue[str] = multiprocessing.Queue()
         for tar in tars_to_print:
             self._tars_to_print.put(tar)
 
@@ -102,6 +101,7 @@ class ExtractWorker(object):
         """
 
         def __init__(self):
+            # TODO: Created the class independently of the factory method?
             # FIXME: NamedTuple type as an attribute is not supported mypy(error)
             self.TarAndMsg = collections.namedtuple("TarAndMsg", ["tar", "msg"])  # type: ignore
             self.curr_tar = None

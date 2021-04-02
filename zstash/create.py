@@ -13,11 +13,9 @@ from .hpss_utils import add_files
 from .settings import DEFAULT_CACHE, config, get_db_filename, logger
 from .utils import exclude_files, run_command
 
-con = None
-cur = None
 
-
-def create():
+# FIXME: C901 'create' is too complex (19)
+def create():  # noqa: C901
 
     # Parser
     parser = argparse.ArgumentParser(
@@ -65,9 +63,7 @@ def create():
     # Copy configuration
     config.path = os.path.abspath(args.path)
     config.hpss = args.hpss
-    # FIXME: Incompatible types in assignment (expression has type "int", variable has type "None") mypy(error)
-    # Solution: https://stackoverflow.com/a/42279784
-    config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)  # type: ignore
+    config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)
     config.keep = args.keep
     if args.cache:
         cache = args.cache
@@ -78,13 +74,16 @@ def create():
     logger.debug("Running zstash create")
     logger.debug("Local path : %s" % (config.path))
     logger.debug("HPSS path  : %s" % (config.hpss))
-    logger.debug("Max size  : %i" % (config.maxsize))  # type: ignore
+    logger.debug("Max size  : %i" % (config.maxsize))
     logger.debug("Keep local tar files  : %s" % (config.keep))
 
     # Make sure input path exists and is a directory
     logger.debug("Making sure input path exists and is a directory")
-    # FIXME: Argument 1 to "isdir" has incompatible type "None"; expected "Union[str, bytes, _PathLike[str], _PathLike[bytes]]"mypy(error)
-    if not os.path.isdir(config.path):  # type: ignore
+    if config.path:
+        path = config.path
+    else:
+        raise Exception("Invalid config.path={}".format(config.path))
+    if not os.path.isdir(path):
         error_str = "Input path should be a directory: {}".format(config.path)
         logger.error(error_str)
         raise Exception(error_str)
@@ -105,8 +104,7 @@ def create():
 
     # Create cache directory
     logger.debug("Creating local cache directory")
-    # FIXME: Argument 1 to "chdir" has incompatible type "None"; expected "Union[int, Union[str, bytes, _PathLike[str], _PathLike[bytes]]]" mypy(error)
-    os.chdir(config.path)  # type: ignore
+    os.chdir(config.path)
     try:
         os.makedirs(cache)
     except OSError as exc:
@@ -123,7 +121,6 @@ def create():
     logger.debug("Creating index database")
     if os.path.exists(get_db_filename(cache)):
         os.remove(get_db_filename(cache))
-    global con, cur
     con = sqlite3.connect(get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES)
     cur = con.cursor()
 
@@ -163,23 +160,22 @@ create table files (
 
     # List of files
     logger.info("Gathering list of files to archive")
-    files: List[Tuple[str, str]] = []
+    file_tuples: List[Tuple[str, str]] = []
     for root, dirnames, filenames in os.walk("."):
         # Empty directory
         if not dirnames and not filenames:
-            files.append((root, ""))
+            file_tuples.append((root, ""))
         # Loop over files
         for filename in filenames:
-            files.append((root, filename))
+            file_tuples.append((root, filename))
 
     # Sort files by directories and filenames
-    files = sorted(files, key=lambda x: (x[0], x[1]))
+    file_tuples = sorted(file_tuples, key=lambda x: (x[0], x[1]))
 
     # Relative file path, eliminating top level zstash directory
-    # FIXME: Name 'files' already defined mypy(error)
-    files: List[str] = [  # type: ignore
+    files: List[str] = [
         os.path.normpath(os.path.join(x[0], x[1]))
-        for x in files
+        for x in file_tuples
         if x[0] != os.path.join(".", cache)
     ]
 

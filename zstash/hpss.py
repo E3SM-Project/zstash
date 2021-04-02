@@ -19,16 +19,14 @@ def hpss_transfer(hpss, file_path, transfer_type, cache, keep=None):
             # https://unix.stackexchange.com/questions/46915/get-the-chmod-numerical-value-for-a-file
             display_mode = "stat --format '%a' {}".format(file_path).split()
             output = subprocess.check_output(display_mode).strip()
-            # FIXME: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior mypy(error)
-            logger.info("{} original mode={}".format(file_path, output))  # type: ignore
+            logger.info("{!r} original mode={!r}".format(file_path, output))
             # https://www.washington.edu/doit/technology-tips-chmod-overview
             # Remove write-permission from user, group, and others,
             # without changing read or execute permissions for any.
             change_mode = "chmod ugo-w {}".format(file_path).split()
             subprocess.check_output(change_mode)
             output = subprocess.check_output(display_mode).strip()
-            # FIXME: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior mypy(error)
-            logger.info("{} new mode={}".format(file_path, output))  # type: ignore
+            logger.info("{!r} new mode={!r}".format(file_path, output))
         return
     if transfer_type == "put":
         transfer_word = "to"

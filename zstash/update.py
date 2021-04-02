@@ -14,9 +14,6 @@ from .hpss_utils import add_files
 from .settings import DEFAULT_CACHE, TIME_TOL, config, get_db_filename, logger
 from .utils import exclude_files
 
-con = None
-cur = None
-
 
 # FIXME: C901 'update' is too complex (26)
 def update():  # noqa: C901
@@ -25,8 +22,7 @@ def update():  # noqa: C901
     parser = argparse.ArgumentParser(
         usage="zstash update [<args>]", description="Update an existing zstash archive"
     )
-    # FIXME: F841 local variable 'required' is assigned to but never used
-    required = parser.add_argument_group("required named arguments")  # noqa: F841
+    parser.add_argument_group("required named arguments")
     optional = parser.add_argument_group("optional named arguments")
     optional.add_argument(
         "--hpss",
@@ -77,7 +73,6 @@ def update():  # noqa: C901
             )
             logger.error(error_str)
             raise Exception(error_str)
-    global con, cur
     con = sqlite3.connect(get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES)
     cur = con.cursor()
 
@@ -88,16 +83,21 @@ def update():  # noqa: C901
             cur.execute(u"select value from config where arg=?", (attr,))
             value = cur.fetchone()[0]
             setattr(config, attr, value)
-    # FIXME: Incompatible types in assignment (expression has type "bool", variable has type "None") mypy(error)
-    config.maxsize = int(config.maxsize)  # type: ignore
-    # FIXME: Incompatible types in assignment (expression has type "bool", variable has type "None") mypy(error)
-    config.keep = bool(int(config.keep))  # type: ignore
+    if config.maxsize:
+        maxsize = config.maxsize
+    else:
+        raise Exception("Invalid config.maxsize={}".format(config.maxsize))
+    config.maxsize = int(maxsize)
+    if config.keep:
+        keep = config.keep
+    else:
+        raise Exception("Invalid config.keep={}".format(config.keep))
+    config.keep = bool(int(keep))
 
     # The command line arg should always have precedence
     if args.hpss == "none":
         # If no HPSS is available, always keep the files.
-        # FIXME: Incompatible types in string interpolation (expression has type "None", placeholder has type "Union[int, float, SupportsInt]") mypy(error)
-        config.keep = True  # type: ignore
+        config.keep = True
     else:
         config.keep = args.keep
     if args.hpss is not None:
@@ -107,29 +107,27 @@ def update():  # noqa: C901
     logger.debug("Running zstash update")
     logger.debug("Local path : %s" % (config.path))
     logger.debug("HPSS path  : %s" % (config.hpss))
-    # FIXME: Incompatible types in string interpolation (expression has type "None", placeholder has type "Union[int, float, SupportsInt]") mypy(error)
-    logger.debug("Max size  : %i" % (config.maxsize))  # type: ignore
+    logger.debug("Max size  : %i" % (config.maxsize))
     logger.debug("Keep local tar files  : %s" % (config.keep))
 
     # List of files
     logger.info("Gathering list of files to archive")
-    files: List[Tuple[str, str]] = []
+    file_tuples: List[Tuple[str, str]] = []
     for root, dirnames, filenames in os.walk("."):
         # Empty directory
         if not dirnames and not filenames:
-            files.append((root, ""))
+            file_tuples.append((root, ""))
         # Loop over files
         for filename in filenames:
-            files.append((root, filename))
+            file_tuples.append((root, filename))
 
     # Sort files by directories and filenames
-    files = sorted(files, key=lambda x: (x[0], x[1]))
+    file_tuples = sorted(file_tuples, key=lambda x: (x[0], x[1]))
 
     # Relative file path, eliminating top level zstash directory
-    # FIXME: Name 'files' already defined mypy(error)
-    files: List[str] = [  # type: ignore
+    files: List[str] = [
         os.path.normpath(os.path.join(x[0], x[1]))
-        for x in files
+        for x in file_tuples
         if x[0] != os.path.join(".", cache)
     ]
 
@@ -140,8 +138,7 @@ def update():  # noqa: C901
     # Eliminate files that are already archived and up to date
     newfiles = []
     for file_path in files:
-        # FIXME: Argument 1 to "lstat" has incompatible type "Tuple[str, str]"; expected "Union[str, bytes, _PathLike[str], _PathLike[bytes]]" mypy(error)
-        statinfo = os.lstat(file_path)  # type: ignore
+        statinfo = os.lstat(file_path)
         mdtime_new = datetime.utcfromtimestamp(statinfo.st_mtime)
         mode = statinfo.st_mode
         # For symbolic links or directories, size should be 0
@@ -200,5 +197,4 @@ def update():  # noqa: C901
     if len(failures) > 0:
         logger.warning("Some files could not be archived")
         for file_path in failures:
-            # FIXME: Not all arguments converted during string formatting mypy(error)
-            logger.error("Archiving %s" % (file_path))  # type: ignore
+            logger.error("Archiving %s" % (file_path))

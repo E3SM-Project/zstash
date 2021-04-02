@@ -12,7 +12,7 @@ import sys
 import tarfile
 import traceback
 from datetime import datetime
-from typing import List
+from typing import DefaultDict, List, Optional, Tuple
 
 from . import parallel
 from .hpss import hpss_get
@@ -39,15 +39,13 @@ def multiprocess_extract(num_workers, matches, keep_files, keep_tars, cache):
     # A dict of tar -> size of files in it.
     # This is because we're trying to balance the load between
     # the processes.
-    # FIXME: Need type annotation for 'tar_to_size' mypy(error)
-    tar_to_size = collections.defaultdict(float)  # type: ignore
+    tar_to_size_unsorted: DefaultDict[str, float] = collections.defaultdict(float)
     for db_row in matches:
         tar, size = db_row[5], db_row[2]
-        tar_to_size[tar] += size
+        tar_to_size_unsorted[tar] += size
     # Sort by the size.
-    # FIXME: Incompatible types in assignment (expression has type "OrderedDict[Any, Any]", variable has type "defaultdict[Any, Any]") mypy(error)
-    tar_to_size = collections.OrderedDict(  # type: ignore
-        sorted(tar_to_size.items(), key=lambda x: x[1])
+    tar_to_size: collections.OrderedDict[str, float] = collections.OrderedDict(
+        sorted(tar_to_size_unsorted.items(), key=lambda x: x[1])
     )
 
     # We don't want to instantiate more processes than we need to.
@@ -55,12 +53,11 @@ def multiprocess_extract(num_workers, matches, keep_files, keep_tars, cache):
 
     # For worker i, workers_to_tars[i] is a set of tars
     # that worker i will work on.
-    # FIXME: Need type annotation for 'workers_to_tars' mypy(error)
-    workers_to_tars = [set() for _ in range(num_workers)]  # type: ignore
+    workers_to_tars: List[set] = [set() for _ in range(num_workers)]
     # A min heap, of (work, worker_idx) tuples, work is the size of data
     # that worker_idx needs to work on.
     # We can efficiently get the worker with the least amount of work.
-    work_to_workers = [(0, i) for i in range(num_workers)]
+    work_to_workers: List[Tuple[int, int]] = [(0, i) for i in range(num_workers)]
     heapq.heapify(workers_to_tars)
 
     # Using a greedy approach, populate workers_to_tars.
@@ -69,12 +66,13 @@ def multiprocess_extract(num_workers, matches, keep_files, keep_tars, cache):
         workers_work, worker_idx = heapq.heappop(work_to_workers)
         workers_to_tars[worker_idx].add(tar)
         # Add this worker back to the heap, with the new amount of work.
-        heapq.heappush(work_to_workers, (workers_work + tar_to_size[tar], worker_idx))
+        worker_tuple: Tuple[float, int] = (workers_work + tar_to_size[tar], worker_idx)
+        # FIXME: error: Cannot infer type argument 1 of "heappush"
+        heapq.heappush(work_to_workers, worker_tuple)  # type: ignore
 
     # For worker i, workers_to_matches[i] is a list of
     # matches from the database for it to process.
-    # FIXME: Need type annotation for 'workers_to_matches'
-    workers_to_matches = [[] for _ in range(num_workers)]  # type: ignore
+    workers_to_matches: List[List[int]] = [[] for _ in range(num_workers)]
     for db_row in matches:
         tar = db_row[5]
         for worker_idx in range(len(workers_to_tars)):
@@ -86,8 +84,9 @@ def multiprocess_extract(num_workers, matches, keep_files, keep_tars, cache):
     monitor = parallel.PrintMonitor(tar_ordering)
 
     # The return value for extractFiles will be added here.
-    # FIXME: Need type annotation for 'failure_queue' mypy(error)
-    failure_queue = multiprocessing.Queue()  # type: ignore
+    failure_queue: multiprocessing.Queue[
+        Tuple[int, str, int, datetime, Optional[str], str, int]
+    ] = multiprocessing.Queue()
     processes = []
     for matches in workers_to_matches:
         tars_for_this_worker = list(set(match[5] for match in matches))
@@ -102,7 +101,7 @@ def multiprocess_extract(num_workers, matches, keep_files, keep_tars, cache):
     # Otherwise, it causes hanging.
     # No need to join() each of the processes when doing this,
     # cause we'll be in this loop until completion.
-    failures = []
+    failures: List[Tuple[int, str, int, datetime, Optional[str], str, int]] = []
     while any(p.is_alive() for p in processes):
         while not failure_queue.empty():
             failures.append(failure_queue.get())
@@ -112,7 +111,8 @@ def multiprocess_extract(num_workers, matches, keep_files, keep_tars, cache):
     return failures
 
 
-def extract(keep_files=True):
+# FIXME: C901 'extract' is too complex (19)
+def extract(keep_files=True):  # noqa: C901
     """
     Given an HPSS path in the zstash database or passed via the command line,
     extract the archived data based on the file pattern (if given).
@@ -182,18 +182,23 @@ def extract(keep_files=True):
             cur.execute(u"select value from config where arg=?", (attr,))
             value = cur.fetchone()[0]
             setattr(config, attr, value)
-    # FIXME: No overload variant of "int" matches argument type "None" mypy(error)
-    config.maxsize = int(config.maxsize)  # type: ignore
-    # FIXME: Incompatible types in assignment (expression has type "bool", variable has type "None")mypy(error)
-    config.keep = bool(int(config.keep))  # type: ignore
+    if config.maxsize:
+        maxsize = config.maxsize
+    else:
+        raise Exception("Invalid config.maxsize={}".format(config.maxsize))
+    config.maxsize = int(maxsize)
+    if config.keep:
+        keep = config.keep
+    else:
+        raise Exception("Invalid config.keep={}".format(config.keep))
+    config.keep = bool(int(keep))
 
     # The command line arg should always have precedence
     if args.hpss is not None:
         config.hpss = args.hpss
     if config.hpss == "none":
         # If no HPSS is available, always keep the files.
-        # FIXME: Incompatible types in assignment (expression has type "bool", variable has type "None") mypy(error)
-        config.keep = True  # type: ignore
+        config.keep = True
     else:
         config.keep = args.keep
 
@@ -203,8 +208,7 @@ def extract(keep_files=True):
     logger.debug("Running zstash " + cmd)
     logger.debug("Local path : %s" % (config.path))
     logger.debug("HPSS path  : %s" % (config.hpss))
-    # FIXME: Incompatible types in string interpolation (expression has type "None", placeholder has type "Union[int, float, SupportsInt]") mypy(error)
-    logger.debug("Max size  : %i" % (config.maxsize))  # type: ignore
+    logger.debug("Max size  : %i" % (config.maxsize))
     logger.debug("Keep local tar files  : %s" % (config.keep))
 
     # Find matching files
@@ -309,7 +313,7 @@ def extractFiles(  # noqa: C901
     We need a reference to it so we can signal it to print
     the contents of what's in it's print queue.
     """
-    failures = []
+    failures: List[Tuple[int, str, int, datetime, Optional[str], str, int]] = []
     tfname = None
     newtar = True
     nfiles = len(files)
@@ -327,7 +331,7 @@ def extractFiles(  # noqa: C901
     for i in range(nfiles):
         # The current structure of each of the db row, `file`, is:
         # (id, name, size, mtime, md5, tar, offset)
-        file_tuple = files[i]
+        file_tuple: Tuple[int, str, int, datetime, Optional[str], str, int] = files[i]
 
         # Open new tar archive
         if newtar:
@@ -365,16 +369,23 @@ def extractFiles(  # noqa: C901
 
         try:
             # Seek file position
-            # FIXME: Item "None" of "Optional[IO[bytes]]" has no attribute "seek" mypy(error)
-            tar.fileobj.seek(file_tuple[6])  # type: ignore
+            if tar.fileobj:
+                fileobj = tar.fileobj
+            else:
+                raise Exception("Invalid tar.fileobj={}".format(tar.fileobj))
+            fileobj.seek(file_tuple[6])
 
             # Get next member
             tarinfo = tar.tarinfo.fromtarfile(tar)
 
             if tarinfo.isfile():
                 # fileobj to extract
+                extracted_file = tar.extractfile(tarinfo)
+                if extracted_file:
+                    fin = extracted_file
+                else:
+                    raise Exception("Invalid extracted_file={}".format(extracted_file))
                 try:
-                    fin = tar.extractfile(tarinfo)
                     fname = tarinfo.name
                     path, name = os.path.split(fname)
                     if path != "" and extract_this_file:
@@ -387,8 +398,7 @@ def extractFiles(  # noqa: C901
 
                     hash_md5 = hashlib.md5()
                     while True:
-                        # FIXME: Item "None" of "Optional[IO[bytes]]" has no attribute "read" mypy(error)
-                        s = fin.read(BLOCK_SIZE)  # type: ignore
+                        s = fin.read(BLOCK_SIZE)
                         if len(s) > 0:
                             hash_md5.update(s)
                             if extract_this_file:
@@ -396,8 +406,7 @@ def extractFiles(  # noqa: C901
                         if len(s) < BLOCK_SIZE:
                             break
                 finally:
-                    # FIXME: Item "None" of "Optional[IO[bytes]]" has no attribute "close" mypy(error)
-                    fin.close()  # type: ignore
+                    fin.close()
                     if extract_this_file:
                         fout.close()
 
@@ -457,8 +466,10 @@ def extractFiles(  # noqa: C901
 
             # Delete this tar if the corresponding command-line arg was used.
             if not keep_tars:
-                # FIXME: Argument 1 to "remove" has incompatible type "Optional[Any]"; expected "Union[str, bytes, _PathLike[str], _PathLike[bytes]]"mypy(error)
-                os.remove(tfname)  # type: ignore
+                if tfname:
+                    os.remove(tfname)
+                else:
+                    raise Exception("Invalid tfname={}".format(tfname))
 
     if multiprocess_worker:
         # If there are stuff left to print, print them.

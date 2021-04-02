@@ -80,17 +80,16 @@ class TestCheckParallel(TestZstash):
             "{}/index.db".format(self.cache), "{}/index_old.db".format(self.cache)
         )
         print("Messing up the MD5 of all of the files with an even id.")
-        cmd = [
+        sqlite_cmd = [
             "sqlite3",
             "{}/index.db".format(self.cache),
             "UPDATE files SET md5 = 0 WHERE id % 2 = 0;",
         ]
-        run_cmd(cmd)
-        # FIXME: Incompatible types in assignment (expression has type "str", variable has type "List[str]") mypy(error)
-        cmd = "{}zstash check -v --hpss={} --workers=3".format(  # type: ignore
+        run_cmd(sqlite_cmd)
+        zstash_cmd = "{}zstash check -v --hpss={} --workers=3".format(
             zstash_path, self.hpss_path
         )
-        output, err = run_cmd(cmd)
+        output, err = run_cmd(zstash_cmd)
         # These files have an even `id` in the sqlite3 table.
         expected_present = [
             "md5 mismatch for: dir/file1.txt",
@@ -105,7 +104,7 @@ class TestCheckParallel(TestZstash):
             "ERROR: 000003.tar",
             "ERROR: 000005.tar",
         ]
-        self.check_strings(cmd, output + err, expected_present, expected_absent)
+        self.check_strings(zstash_cmd, output + err, expected_present, expected_absent)
         # Put the original index.db back.
         os.remove("{}/index.db".format(self.cache))
         shutil.copy(
@@ -115,12 +114,12 @@ class TestCheckParallel(TestZstash):
 
         print("Verifying the data from database with the actual files")
         # Checksums from HPSS
-        cmd = [
+        sqlite_cmd = [
             "sqlite3",
             "{}/{}/index.db".format(self.test_dir, self.cache),
             "SELECT md5, name FROM files;",
         ]
-        output_hpss, err_hpss = run_cmd(cmd)
+        output_hpss, err_hpss = run_cmd(sqlite_cmd)
         hpss_dict = {}
 
         for checksum in output_hpss.split("\n"):
@@ -131,13 +130,11 @@ class TestCheckParallel(TestZstash):
                 hpss_dict[f_name] = f_hash
 
         # Checksums from local files
-        # FIXME: Incompatible types in assignment (expression has type "str", variable has type "List[str]") mypy(error)
-        cmd = "find {} ".format(self.backup_dir)  # type: ignore
-        cmd += (
-            # FIXME: W605 invalid escape sequence '\.'
-            """-regex .*\.txt.* -exec md5sum {} + """  # Literal {}, not for formatting  # noqa: W605
+        find_cmd = "find {} ".format(self.backup_dir)
+        find_cmd += (
+            r"""-regex .*\.txt.* -exec md5sum {} + """  # Literal {}, not for formatting
         )
-        output_local, err_local = run_cmd(cmd)
+        output_local, err_local = run_cmd(find_cmd)
         local_dict = {}
 
         for checksum in output_local.split("\n"):

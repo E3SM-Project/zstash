@@ -150,8 +150,7 @@ class TestExtract(TestZstash):
             ],
         ):
             error_message = "The zstash directory does not contain expected files.\nIt has: {}".format(
-                # FIXME: F821 undefined name 'd'
-                os.listdir(d)  # type: ignore # noqa: F821
+                os.listdir(self.cache)
             )
             self.stop(error_message)
         os.chdir(TOP_LEVEL)

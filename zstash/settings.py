@@ -2,14 +2,15 @@ from __future__ import absolute_import, print_function
 
 import logging
 import os.path
+from typing import Optional
 
 
 # Class to hold configuration
 class Config(object):
-    path = None
-    hpss = None
-    maxsize = None
-    keep = None
+    path: Optional[str] = None
+    hpss: Optional[str] = None
+    maxsize: Optional[int] = None
+    keep: Optional[bool] = None
 
 
 def get_db_filename(cache):
@@ -30,6 +31,5 @@ TIME_TOL = 1.0
 config = Config()
 
 # Initialize logger
-# FIXME: "basicConfig" does not return a value mypy(error)
-logger = logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)  # type: ignore
+logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)

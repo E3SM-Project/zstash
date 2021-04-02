@@ -66,7 +66,6 @@ def ls():
             logger.error(error_str)
             raise Exception(error_str)
 
-    global con, cur
     con = sqlite3.connect(get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES)
     cur = con.cursor()
 
@@ -77,10 +76,16 @@ def ls():
             cur.execute(u"select value from config where arg=?", (attr,))
             value = cur.fetchone()[0]
             setattr(config, attr, value)
-    # FIXME: No overload variant of "int" matches argument type "None" mypy(error)
-    config.maxsize = int(config.maxsize)  # type: ignore
-    # FIXME: No overload variant of "int" matches argument type "None" mypy(error)
-    config.keep = bool(int(config.keep))  # type: ignore
+    if config.maxsize:
+        maxsize = config.maxsize
+    else:
+        raise Exception("Invalid config.maxsize={}".format(config.maxsize))
+    config.maxsize = int(maxsize)
+    if config.keep:
+        keep = config.keep
+    else:
+        raise Exception("Invalid config.keep={}".format(config.keep))
+    config.keep = bool(int(keep))
 
     # The command line arg should always have precedence
     if args.hpss is not None:

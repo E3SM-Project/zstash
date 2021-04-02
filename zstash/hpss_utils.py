@@ -45,8 +45,11 @@ def add_files(cur, con, itar, files, cache):
         # Close tar archive if current file is the last one or adding one more
         # would push us over the limit.
         next_file_size = tar.gettarinfo(current_file).size
-        # FIXME: Unsupported operand types for > ("int" and "None") mypy(error)
-        if i == nfiles - 1 or tarsize + next_file_size > config.maxsize:  # type: ignore
+        if config.maxsize:
+            maxsize = config.maxsize
+        else:
+            raise Exception("Invalid config.maxsize={}".format(config.maxsize))
+        if i == nfiles - 1 or tarsize + next_file_size > maxsize:
 
             # Close current temporary file
             logger.debug("Closing tar archive %s" % (tfname))
