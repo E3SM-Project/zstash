@@ -11,7 +11,15 @@ from typing import List, Optional, Tuple
 
 from .hpss import hpss_get, hpss_put
 from .hpss_utils import add_files
-from .settings import DEFAULT_CACHE, TIME_TOL, FilesRow, config, get_db_filename, logger
+from .settings import (
+    DEFAULT_CACHE,
+    TIME_TOL,
+    FilesRow,
+    TupleFilesRow,
+    config,
+    get_db_filename,
+    logger,
+)
 from .utils import get_files_to_archive, update_config
 
 
@@ -167,14 +175,14 @@ def update_database(args: argparse.Namespace, cache: str) -> Optional[List[str]]
         new: bool = True
         while True:
             # Get the corresponding row in the 'files' table
-            match: FilesRow = cur.fetchone()
-            if match is None:
+            match_: Optional[TupleFilesRow] = cur.fetchone()
+            if match_ is None:
                 break
-            size: int = match[2]
-            mdtime: datetime = match[3]
+            else:
+                match: FilesRow = FilesRow(match_)
 
-            if (size_new == size) and (
-                abs((mdtime_new - mdtime).total_seconds()) <= TIME_TOL
+            if (size_new == match.size) and (
+                abs((mdtime_new - match.mtime).total_seconds()) <= TIME_TOL
             ):
                 # File exists with same size and modification time within tolerance
                 new = False

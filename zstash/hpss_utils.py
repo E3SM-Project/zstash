@@ -12,7 +12,7 @@ import _hashlib
 import _io
 
 from .hpss import hpss_put
-from .settings import BLOCK_SIZE, FilesRowNoId, config, logger
+from .settings import BLOCK_SIZE, TupleFilesRowNoId, config, logger
 
 
 def add_files(
@@ -27,7 +27,7 @@ def add_files(
     failures: List[str] = []
     newtar: bool = True
     nfiles: int = len(files)
-    archived: List[FilesRowNoId]
+    archived: List[TupleFilesRowNoId]
     tarsize: int
     tname: str
     tfname: str
@@ -57,7 +57,7 @@ def add_files(
             mtime: datetime
             md5: Optional[str]
             offset, size, mtime, md5 = add_file(tar, current_file)
-            t: FilesRowNoId = (
+            t: TupleFilesRowNoId = (
                 current_file,
                 size,
                 mtime,

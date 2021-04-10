@@ -5,7 +5,7 @@ import ctypes
 import multiprocessing
 from typing import Dict, List, Optional
 
-from .settings import FilesRowOptionalHash
+from .settings import FilesRow
 
 
 class NotYourTurnError(Exception):
@@ -117,7 +117,7 @@ class ExtractWorker(object):
         self,
         print_monitor: PrintMonitor,
         tars_to_work_on: List[str],
-        # TODO: failure_queue has type `multiprocessing.Queue[FilesRowOptionalHash]`
+        # TODO: failure_queue has type `multiprocessing.Queue[FilesRow]`
         failure_queue,
         *args,
         **kwargs
@@ -136,7 +136,7 @@ class ExtractWorker(object):
             tar: False for tar in tars_to_work_on
         }
         # After extractFiles is done, all of the failures will be added to this queue.
-        self.failure_queue: multiprocessing.Queue[FilesRowOptionalHash] = failure_queue
+        self.failure_queue: multiprocessing.Queue[FilesRow] = failure_queue
 
     def set_curr_tar(self, tar: str):
         """

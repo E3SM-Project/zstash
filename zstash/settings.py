@@ -36,17 +36,29 @@ logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 logger: logging.Logger = logging.getLogger(__name__)
 
 # Type aliases
-# TODO: would it be better to have these in utils.py?
+TupleFilesRow = Tuple[int, str, int, datetime.datetime, Optional[str], str, int]
+# No corresponding class needed for this tuple.
+TupleFilesRowNoId = Tuple[str, int, datetime.datetime, Optional[str], str, int]
 
-# A row of the 'files' table:
-# id     -- integer
-# name   -- text
-# size   -- integer
-# mtime  -- timestamp
-# md5    -- text
-# tar    -- text
-# offset -- integer
-FilesRow = Tuple[int, str, int, datetime.datetime, str, str, int]
-FilesRowOptionalHash = Tuple[int, str, int, datetime.datetime, Optional[str], str, int]
-FilesRowNoId = Tuple[str, int, datetime.datetime, Optional[str], str, int]
-# TODO: make these `namedtuple`s
+
+# Corresponding class to make accessing variables easier
+class FilesRow(object):
+    def __init__(self, t: TupleFilesRow):
+        self.identifier: int = t[0]
+        self.name: str = t[1]
+        self.size: int = t[2]
+        self.mtime: datetime.datetime = t[3]
+        self.md5: Optional[str] = t[4]
+        self.tar: str = t[5]
+        self.offset: int = t[6]
+
+    def to_tuple(self) -> TupleFilesRow:
+        return (
+            self.identifier,
+            self.name,
+            self.size,
+            self.mtime,
+            self.md5,
+            self.tar,
+            self.offset,
+        )

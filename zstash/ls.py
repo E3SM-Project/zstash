@@ -8,7 +8,14 @@ import sys
 from typing import List, Tuple
 
 from .hpss import hpss_get
-from .settings import DEFAULT_CACHE, FilesRow, config, get_db_filename, logger
+from .settings import (
+    DEFAULT_CACHE,
+    FilesRow,
+    TupleFilesRow,
+    config,
+    get_db_filename,
+    logger,
+)
 from .utils import update_config
 
 
@@ -25,15 +32,16 @@ def ls():
     matches: List[FilesRow] = ls_database(args, cache)
 
     # Print the results
+    match: FilesRow
     for match in matches:
         if args.long:
             # Print all contents of each match
-            for col in match:
+            for col in match.to_tuple():
                 print(col, end="\t")
             print("")
         else:
             # Just print the file name
-            print(match[1])
+            print(match.name)
 
 
 def setup_ls() -> Tuple[argparse.Namespace, str]:
@@ -124,21 +132,20 @@ def ls_database(args: argparse.Namespace, cache: str) -> List[FilesRow]:
     logger.debug("HPSS path  : %s" % (config.hpss))
 
     # Find matching files
-    matches: List[FilesRow] = []
+    matches_: List[TupleFilesRow] = []
     for args_file in args.files:
         cur.execute(
             u"select * from files where name GLOB ? or tar GLOB ?",
             (args_file, args_file),
         )
-        matches = matches + cur.fetchall()
+        matches_ = matches_ + cur.fetchall()
 
     # Remove duplicates
-    matches = list(set(matches))
+    matches_ = list(set(matches_))
+    matches: List[FilesRow] = list(map(FilesRow, matches_))
 
     # Sort by tape and order within tapes (offset)
-    # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-    # So, x[5] is tar and x[6] is offset.)
-    matches = sorted(matches, key=lambda x: (x[5], x[6]))
+    matches = sorted(matches, key=lambda t: (t.tar, t.offset))
 
     if args.long:
         # Get the names of the columns

@@ -24,7 +24,7 @@ from .settings import (
     DEFAULT_CACHE,
     TIME_TOL,
     FilesRow,
-    FilesRowOptionalHash,
+    TupleFilesRow,
     config,
     get_db_filename,
     logger,
@@ -41,19 +41,15 @@ def extract(keep_files: bool = True):
     cache: str
     args, cache = setup_extract()
 
-    failures: List[FilesRowOptionalHash] = extract_database(args, cache, keep_files)
+    failures: List[FilesRow] = extract_database(args, cache, keep_files)
 
     if failures:
         logger.error("Encountered an error for files:")
 
         for fail in failures:
-            # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-            # So, fail[1] is the name and fail[5] is the tar.)
-            logger.error("{} in {}".format(fail[1], fail[5]))
+            logger.error("{} in {}".format(fail.name, fail.tar))
 
-        # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-        # So, fail[5] is the tar.)
-        broken_tars: List[str] = sorted(set([f[5] for f in failures]))
+        broken_tars: List[str] = sorted(set([f.tar for f in failures]))
 
         logger.error("The following tar archives had errors:")
         for tar in broken_tars:
@@ -111,7 +107,7 @@ def setup_extract() -> Tuple[argparse.Namespace, str]:
 
 def extract_database(
     args: argparse.Namespace, cache: str, keep_files: bool
-) -> List[FilesRowOptionalHash]:
+) -> List[FilesRow]:
 
     # Open database
     logger.debug("Opening index database")
@@ -167,19 +163,19 @@ def extract_database(
     logger.debug("Keep local tar files  : {}".format(config.keep))
 
     # Find matching files
-    matches: List[FilesRow] = []
+    matches_: List[TupleFilesRow] = []
     for args_file in args.files:
         cur.execute(
             u"select * from files where name GLOB ? or tar GLOB ?",
             (args_file, args_file),
         )
-        matches = matches + cur.fetchall()
+        matches_ = matches_ + cur.fetchall()
+
+    matches: List[FilesRow] = list(map(lambda match: FilesRow(match), matches_))
 
     # Sort by the filename, tape (so the tar archive),
     # and order within tapes (offset).
-    # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-    # So, x[1] is the name, x[5] is the tar and x[6] is the offset.)
-    matches.sort(key=lambda x: (x[1], x[5], x[6]))
+    matches.sort(key=lambda t: (t.name, t.tar, t.offset))
 
     # Based off the filenames, keep only the last instance of a file.
     # This is because we may have different versions of the
@@ -191,7 +187,7 @@ def extract_database(
         # If the filenames are unique, just increment insert_idx.
         # iter_idx will increment after this iteration.
         # (matches[x][1] is the name.)
-        if matches[insert_idx][1] != matches[iter_idx][1]:
+        if matches[insert_idx].name != matches[iter_idx].name:
             insert_idx += 1
         # Always copy over the value at the correct location.
         matches[insert_idx] = matches[iter_idx]
@@ -201,12 +197,10 @@ def extract_database(
 
     # Sort by tape and offset, so that we make sure
     # that extract the files by tape order.
-    # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-    # So, x[5] is the tar and x[6] is the offset.)
-    matches.sort(key=lambda x: (x[5], x[6]))
+    matches.sort(key=lambda t: (t.tar, t.offset))
 
     # Retrieve from tapes
-    failures: List[FilesRowOptionalHash]
+    failures: List[FilesRow]
     if args.workers > 1:
         logger.debug("Running zstash {} with multiprocessing".format(cmd))
         failures = multiprocess_extract(
@@ -228,7 +222,7 @@ def multiprocess_extract(
     keep_files: bool,
     keep_tars: Optional[bool],
     cache: str,
-) -> List[FilesRowOptionalHash]:
+) -> List[FilesRow]:
     """
     Extract the files from the matches in parallel.
 
@@ -239,16 +233,13 @@ def multiprocess_extract(
     # This is because we're trying to balance the load between
     # the processes.
     tar_to_size_unsorted: DefaultDict[str, float] = collections.defaultdict(float)
+    db_row: FilesRow
     tar: str
     size: int
     for db_row in matches:
-        # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-        # So, db_row[5] is the tar and db_row[2] is the size.)
-        tar, size = db_row[5], db_row[2]
+        tar, size = db_row.tar, db_row.size
         tar_to_size_unsorted[tar] += size
     # Sort by the size.
-    # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-    # So, x[1] is the name.)
     tar_to_size: collections.OrderedDict[str, float] = collections.OrderedDict(
         sorted(tar_to_size_unsorted.items(), key=lambda x: x[1])
     )
@@ -283,9 +274,7 @@ def multiprocess_extract(
     # matches from the database for it to process.
     workers_to_matches: List[List[FilesRow]] = [[] for _ in range(num_workers)]
     for db_row in matches:
-        # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-        # So, db_row[5] is the tar.)
-        tar = db_row[5]
+        tar = db_row.tar
         workers_idx: int
         for worker_idx in range(len(workers_to_tars)):
             if tar in workers_to_tars[worker_idx]:
@@ -296,12 +285,10 @@ def multiprocess_extract(
     monitor: parallel.PrintMonitor = parallel.PrintMonitor(tar_ordering)
 
     # The return value for extractFiles will be added here.
-    failure_queue: multiprocessing.Queue[FilesRowOptionalHash] = multiprocessing.Queue()
+    failure_queue: multiprocessing.Queue[FilesRow] = multiprocessing.Queue()
     processes: List[multiprocessing.Process] = []
     for matches in workers_to_matches:
-        # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-        # So, db_row[5] is the tar.)
-        tars_for_this_worker: List[str] = list(set(match[5] for match in matches))
+        tars_for_this_worker: List[str] = list(set(match.tar for match in matches))
         worker: parallel.ExtractWorker = parallel.ExtractWorker(
             monitor, tars_for_this_worker, failure_queue
         )
@@ -315,25 +302,24 @@ def multiprocess_extract(
     # Otherwise, it causes hanging.
     # No need to join() each of the processes when doing this,
     # because we'll be in this loop until completion.
-    failures: List[FilesRowOptionalHash] = []
+    failures: List[FilesRow] = []
     while any(p.is_alive() for p in processes):
         while not failure_queue.empty():
             failures.append(failure_queue.get())
 
     # Sort the failures, since they can come in at any order.
-    failures.sort(key=lambda x: (x[1], x[5], x[6]))
+    failures.sort(key=lambda t: (t.name, t.tar, t.offset))
     return failures
 
 
-# TODO: need to improve readability for this function, should_extract_file, and anything involving parallel
-# C901 'extractFiles' is too complex (33)
+# FIXME: C901 'extractFiles' is too complex (33)
 def extractFiles(  # noqa: C901
     files: List[FilesRow],
     keep_files: bool,
     keep_tars: Optional[bool],
     cache: str,
     multiprocess_worker: Optional[parallel.ExtractWorker] = None,
-) -> List[FilesRowOptionalHash]:
+) -> List[FilesRow]:
     """
     Given a list of database rows, extract the files from the
     tar archives to the current location on disk.
@@ -350,7 +336,7 @@ def extractFiles(  # noqa: C901
     We need a reference to it so we can signal it to print
     the contents of what's in its print queue.
     """
-    failures: List[FilesRowOptionalHash] = []
+    failures: List[FilesRow] = []
     tfname: Optional[str] = None
     newtar: bool = True
     nfiles: int = len(files)
@@ -367,19 +353,17 @@ def extractFiles(  # noqa: C901
         logger.propagate = False
 
     for i in range(nfiles):
-        # The current structure of each of the db row, `file`, is:
-        # (id, name, size, mtime, md5, tar, offset)
-        file_tuple: FilesRowOptionalHash = files[i]
+        files_row: FilesRow = files[i]
 
         # Open new tar archive
         if newtar:
             newtar = False
-            tfname = os.path.join(cache, file_tuple[5])
+            tfname = os.path.join(cache, files_row.tar)
             # Everytime we're extracting a new tar, if running in parallel,
             # let the process know.
             # This is to synchronize the print statements.
             if multiprocess_worker:
-                multiprocess_worker.set_curr_tar(file_tuple[5])
+                multiprocess_worker.set_curr_tar(files_row.tar)
 
             if not os.path.exists(tfname):
                 # Will need to retrieve from HPSS
@@ -394,22 +378,20 @@ def extractFiles(  # noqa: C901
 
         # Extract file
         cmd: str = "Extracting" if keep_files else "Checking"
-        logger.info(cmd + " %s" % (file_tuple[1]))
+        logger.info(cmd + " %s" % (files_row.name))
         # if multiprocess_worker:
         #     print('{} is {} {} from {}'.format(multiprocess_worker, cmd, file[1], file[5]))
 
-        if keep_files and not should_extract_file(file_tuple):
+        if keep_files and not should_extract_file(files_row):
             # If we were going to extract, but aren't
             # because a matching file is on disk
             msg: str = "Not extracting {}, because it"
             msg += " already exists on disk with the same"
             msg += " size and modification date."
-            # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-            # So, file_tuple[1] is the name.)
-            logger.info(msg.format(file_tuple[1]))
+            logger.info(msg.format(files_row.name))
 
         # True if we should actually extract the file from the tar
-        extract_this_file: bool = keep_files and should_extract_file(file_tuple)
+        extract_this_file: bool = keep_files and should_extract_file(files_row)
 
         try:
             # Seek file position
@@ -417,9 +399,7 @@ def extractFiles(  # noqa: C901
                 fileobj: _io.BufferedReader = tar.fileobj
             else:
                 raise Exception("Invalid tar.fileobj={}".format(tar.fileobj))
-            # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-            # So, file_tuple[6] is the offset.)
-            fileobj.seek(file_tuple[6])
+            fileobj.seek(files_row.offset)
 
             # Get next member
             tarinfo: tarfile.TarInfo = tar.tarinfo.fromtarfile(tar)
@@ -470,18 +450,18 @@ def extractFiles(  # noqa: C901
                     tar.chmod(tarinfo, fname)
                     tar.utime(tarinfo, fname)
                     # Verify size
-                    if os.path.getsize(fname) != file_tuple[2]:
-                        logger.error("size mismatch for: %s" % (fname))
+                    if os.path.getsize(fname) != files_row.size:
+                        logger.error("size mismatch for: {}".format(fname))
 
                 # Verify md5 checksum
-                # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-                # So, file_tuple[4] is the md5 hash.)
-                if md5 != file_tuple[4]:
-                    logger.error("md5 mismatch for: {}".format(fname))
-                    logger.error("md5 of extracted file: {}".format(md5))
-                    logger.error("md5 of original file:  {}".format(file_tuple[4]))
+                if files_row.md5:
+                    files_row_md5: str = files_row.md5
+                    if md5 != files_row_md5:
+                        logger.error("md5 mismatch for: {}".format(fname))
+                        logger.error("md5 of extracted file: {}".format(md5))
+                        logger.error("md5 of original file:  {}".format(files_row_md5))
 
-                    failures.append(file_tuple)
+                    failures.append(files_row)
                 else:
                     logger.debug("Valid md5: {} {}".format(md5, fname))
 
@@ -499,24 +479,22 @@ def extractFiles(  # noqa: C901
 
         except Exception:
             traceback.print_exc()
-            logger.error("Retrieving %s" % (file_tuple[1]))
-            failures.append(file_tuple)
+            logger.error("Retrieving %s" % (files_row.name))
+            failures.append(files_row)
 
         if multiprocess_worker:
             multiprocess_worker.print_contents()
 
         # Close current archive?
-        if i == nfiles - 1 or files[i][5] != files[i + 1][5]:
+        if i == nfiles - 1 or files[i].tar != files[i + 1].tar:
             # We're either on the last file or the tar is distinct from the tar of the next file.
-            # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-            # So, files[i][5] is the tar.)
 
             # Close current archive file
             logger.debug("Closing tar archive {}".format(tfname))
             tar.close()
 
             if multiprocess_worker:
-                multiprocess_worker.done_enqueuing_output_for_tar(file_tuple[5])
+                multiprocess_worker.done_enqueuing_output_for_tar(files_row.tar)
 
             # Open new archive next time
             newtar = True
@@ -540,17 +518,15 @@ def extractFiles(  # noqa: C901
     return failures
 
 
-def should_extract_file(db_row: FilesRowOptionalHash) -> bool:
+def should_extract_file(db_row: FilesRow) -> bool:
     """
     If a file is on disk already with the correct
     timestamp and size, don't extract the file.
     """
-    # (The `files` table has columns id, name, size, mtime, md5, tar, offset.
-    # So, db_row[1] is the name, db_row[2] is the size, db_row[3] is the mtime.
     file_name: str
     size_db: int
     mod_time_db: datetime
-    file_name, size_db, mod_time_db = db_row[1], db_row[2], db_row[3]
+    file_name, size_db, mod_time_db = db_row.name, db_row.size, db_row.mtime
 
     if not os.path.exists(file_name):
         # The file doesn't exist locally.
