@@ -454,12 +454,11 @@ def extractFiles(  # noqa: C901
                         logger.error("size mismatch for: {}".format(fname))
 
                 # Verify md5 checksum
-                if files_row.md5:
-                    files_row_md5: str = files_row.md5
-                    if md5 != files_row_md5:
-                        logger.error("md5 mismatch for: {}".format(fname))
-                        logger.error("md5 of extracted file: {}".format(md5))
-                        logger.error("md5 of original file:  {}".format(files_row_md5))
+                files_row_md5: Optional[str] = files_row.md5
+                if md5 != files_row_md5:
+                    logger.error("md5 mismatch for: {}".format(fname))
+                    logger.error("md5 of extracted file: {}".format(md5))
+                    logger.error("md5 of original file:  {}".format(files_row_md5))
 
                     failures.append(files_row)
                 else:
@@ -479,7 +478,7 @@ def extractFiles(  # noqa: C901
 
         except Exception:
             traceback.print_exc()
-            logger.error("Retrieving %s" % (files_row.name))
+            logger.error("Retrieving {}".format(files_row.name))
             failures.append(files_row)
 
         if multiprocess_worker:
