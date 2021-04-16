@@ -312,7 +312,7 @@ def multiprocess_extract(
     return failures
 
 
-# FIXME: C901 'extractFiles' is too complex (33)
+# C901 'extractFiles' is too complex (20)
 def extractFiles(  # noqa: C901
     files: List[FilesRow],
     keep_files: bool,
@@ -357,24 +357,9 @@ def extractFiles(  # noqa: C901
 
         # Open new tar archive
         if newtar:
-            newtar = False
-            tfname = os.path.join(cache, files_row.tar)
-            # Everytime we're extracting a new tar, if running in parallel,
-            # let the process know.
-            # This is to synchronize the print statements.
-            if multiprocess_worker:
-                multiprocess_worker.set_curr_tar(files_row.tar)
-
-            if not os.path.exists(tfname):
-                # Will need to retrieve from HPSS
-                if config.hpss is not None:
-                    hpss: str = config.hpss
-                else:
-                    raise Exception("Invalid config.hpss={}".format(config.hpss))
-                hpss_get(hpss, tfname, cache)
-
-            logger.info("Opening tar archive %s" % (tfname))
-            tar: tarfile.TarFile = tarfile.open(tfname, "r")
+            newtar, tfname, tar = open_new_tar_archive(
+                cache, files_row, multiprocess_worker
+            )
 
         # Extract file
         cmd: str = "Extracting" if keep_files else "Checking"
@@ -406,42 +391,19 @@ def extractFiles(  # noqa: C901
 
             if tarinfo.isfile():
                 # fileobj to extract
-                # error: Name 'tarfile.ExFileObject' is not defined
+                # FIXME: error: Name 'tarfile.ExFileObject' is not defined
                 extracted_file: Optional[tarfile.ExFileObject] = tar.extractfile(tarinfo)  # type: ignore
                 if extracted_file:
-                    # error: Name 'tarfile.ExFileObject' is not defined
+                    # FIXME: error: Name 'tarfile.ExFileObject' is not defined
                     fin: tarfile.ExFileObject = extracted_file  # type: ignore
                 else:
                     raise Exception("Invalid extracted_file={}".format(extracted_file))
-                try:
-                    fname: str = tarinfo.name
-                    path: str
-                    name: str
-                    path, name = os.path.split(fname)
-                    if path != "" and extract_this_file:
-                        if not os.path.isdir(path):
-                            # The path doesn't exist, so create it.
-                            os.makedirs(path)
-                    if extract_this_file:
-                        # If we're keeping the files,
-                        # then have an output file
-                        fout: _io.BufferedWriter = open(fname, "wb")
-
-                    hash_md5: _hashlib.HASH = hashlib.md5()
-                    while True:
-                        s: bytes = fin.read(BLOCK_SIZE)
-                        if len(s) > 0:
-                            hash_md5.update(s)
-                            if extract_this_file:
-                                fout.write(s)
-                        if len(s) < BLOCK_SIZE:
-                            break
-                finally:
-                    fin.close()
-                    if extract_this_file:
-                        fout.close()
-
-                md5: str = hash_md5.hexdigest()
+                hash_md5: Optional[_hashlib.HASH]
+                fname: str
+                hash_md5, fname = extract_file(tarinfo, extract_this_file, fin)
+                md5: Optional[str] = None
+                if hash_md5:
+                    md5 = hash_md5.hexdigest()
                 if extract_this_file:
                     # numeric_owner is a required arg in Python 3.
                     # If True, "only the numbers for user/group names
@@ -487,23 +449,9 @@ def extractFiles(  # noqa: C901
         # Close current archive?
         if i == nfiles - 1 or files[i].tar != files[i + 1].tar:
             # We're either on the last file or the tar is distinct from the tar of the next file.
-
-            # Close current archive file
-            logger.debug("Closing tar archive {}".format(tfname))
-            tar.close()
-
-            if multiprocess_worker:
-                multiprocess_worker.done_enqueuing_output_for_tar(files_row.tar)
-
-            # Open new archive next time
-            newtar = True
-
-            # Delete this tar if the corresponding command-line arg was used.
-            if not keep_tars:
-                if tfname is not None:
-                    os.remove(tfname)
-                else:
-                    raise Exception("Invalid tfname={}".format(tfname))
+            newtar = close_current_archive(
+                tfname, tar, multiprocess_worker, keep_tars, files_row
+            )
 
     if multiprocess_worker:
         # If there are things left to print, print them.
@@ -541,3 +489,93 @@ def should_extract_file(db_row: FilesRow) -> bool:
         (size_disk == size_db)
         and (abs(mod_time_disk - mod_time_db).total_seconds() < TIME_TOL)
     )
+
+
+def open_new_tar_archive(
+    cache: str,
+    files_row: FilesRow,
+    multiprocess_worker: Optional[parallel.ExtractWorker],
+) -> Tuple[bool, str, tarfile.TarFile]:
+    newtar: bool = False
+    tfname: str = os.path.join(cache, files_row.tar)
+    # Everytime we're extracting a new tar, if running in parallel,
+    # let the process know.
+    # This is to synchronize the print statements.
+    if multiprocess_worker:
+        multiprocess_worker.set_curr_tar(files_row.tar)
+
+    if not os.path.exists(tfname):
+        # Will need to retrieve from HPSS
+        if config.hpss is not None:
+            hpss: str = config.hpss
+        else:
+            raise Exception("Invalid config.hpss={}".format(config.hpss))
+        hpss_get(hpss, tfname, cache)
+
+    logger.info("Opening tar archive %s" % (tfname))
+    tar: tarfile.TarFile = tarfile.open(tfname, "r")
+
+    return newtar, tfname, tar
+
+
+# FIXME: error: Name 'tarfile.ExFileObject' is not defined
+def extract_file(
+    tarinfo: tarfile.TarInfo, extract_this_file: bool, fin: tarfile.ExFileObject  # type: ignore
+) -> Tuple[Optional[_hashlib.HASH], str]:
+    return_hash: Optional[_hashlib.HASH] = None
+    try:
+        fname: str = tarinfo.name
+        path: str
+        name: str
+        path, name = os.path.split(fname)
+        if path != "" and extract_this_file:
+            if not os.path.isdir(path):
+                # The path doesn't exist, so create it.
+                os.makedirs(path)
+        if extract_this_file:
+            # If we're keeping the files,
+            # then have an output file
+            fout: _io.BufferedWriter = open(fname, "wb")
+
+        hash_md5: _hashlib.HASH = hashlib.md5()
+        while True:
+            s: bytes = fin.read(BLOCK_SIZE)
+            if len(s) > 0:
+                hash_md5.update(s)
+                if extract_this_file:
+                    fout.write(s)
+                if len(s) < BLOCK_SIZE:
+                    break
+        return_hash = hash_md5
+    finally:
+        fin.close()
+        if extract_this_file:
+            fout.close()
+    return return_hash, fname
+
+
+def close_current_archive(
+    tfname: Optional[str],
+    tar: tarfile.TarFile,
+    multiprocess_worker: Optional[parallel.ExtractWorker],
+    keep_tars: Optional[bool],
+    files_row: FilesRow,
+) -> bool:
+    # Close current archive file
+    logger.debug("Closing tar archive {}".format(tfname))
+    tar.close()
+
+    if multiprocess_worker:
+        multiprocess_worker.done_enqueuing_output_for_tar(files_row.tar)
+
+    # Open new archive next time
+    newtar = True
+
+    # Delete this tar if the corresponding command-line arg was used.
+    if not keep_tars:
+        if tfname is not None:
+            os.remove(tfname)
+        else:
+            raise Exception("Invalid tfname={}".format(tfname))
+
+    return newtar
