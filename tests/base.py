@@ -232,7 +232,15 @@ class TestZstash(unittest.TestCase):
             )
         return use_hpss
 
-    def create(self, use_hpss, zstash_path, keep=False, cache=None, verbose=False):
+    def create(
+        self,
+        use_hpss,
+        zstash_path,
+        keep=False,
+        cache=None,
+        verbose=False,
+        no_tars_md5=False,
+    ):
         """
         Run `zstash create`.
         """
@@ -248,11 +256,13 @@ class TestZstash(unittest.TestCase):
         else:
             cache_option = ""
         v_option = " -v" if verbose else ""
-        cmd = "{}zstash create{}{}{} --hpss={} {}".format(
+        no_tars_md5_option = " --no_tars_md5" if no_tars_md5 else ""
+        cmd = "{}zstash create{}{}{}{} --hpss={} {}".format(
             zstash_path,
             keep_option,
             cache_option,
             v_option,
+            no_tars_md5_option,
             self.hpss_path,
             self.test_dir,
         )

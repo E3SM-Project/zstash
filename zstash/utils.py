@@ -7,7 +7,7 @@ import subprocess
 from fnmatch import fnmatch
 from typing import Any, List, Tuple
 
-from .settings import config, logger
+from .settings import TupleTarsRow, config, logger
 
 
 def exclude_files(exclude: str, files: List[str]) -> List[str]:
@@ -103,3 +103,25 @@ def update_config(cur: sqlite3.Cursor):
             value = cur.fetchone()[0]
             # Update config with the new attribute-value pair
             setattr(config, attr, value)
+
+
+def create_tars_table(cur: sqlite3.Cursor, con: sqlite3.Connection):
+    # Create 'tars' table
+    cur.execute(
+        u"""
+create table tars (
+id integer primary key,
+name text,
+size integer,
+md5 text
+);
+    """
+    )
+    con.commit()
+
+
+def tars_table_exists(cur: sqlite3.Cursor) -> bool:
+    # https://stackoverflow.com/questions/1601151/how-do-i-check-in-sqlite-whether-a-table-exists
+    cur.execute(u"PRAGMA table_info(tars);")
+    table_info_list: List[TupleTarsRow] = cur.fetchall()
+    return True if table_info_list != [] else False

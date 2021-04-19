@@ -11,13 +11,18 @@ from typing import Any, List, Tuple
 from .hpss import hpss_put
 from .hpss_utils import add_files
 from .settings import DEFAULT_CACHE, config, get_db_filename, logger
-from .utils import get_files_to_archive, run_command
+from .utils import (
+    create_tars_table,
+    get_files_to_archive,
+    run_command,
+    tars_table_exists,
+)
 
 
 def create():
     cache: str
     exclude: str
-    cache, exclude = setup_create()
+    cache, args = setup_create()
 
     # Check config fields
     if config.path is not None:
@@ -73,7 +78,7 @@ def create():
     # TODO: Verify that cache is empty
 
     # Create and set up the database
-    failures: List[str] = create_database(cache, exclude)
+    failures: List[str] = create_database(cache, args)
 
     # Transfer to HPSS. Always keep a local copy.
     hpss_put(hpss, get_db_filename(cache), cache, keep=True)
@@ -85,7 +90,7 @@ def create():
             logger.error("Failed to archive {}".format(file_path))
 
 
-def setup_create() -> Tuple[str, str]:
+def setup_create() -> Tuple[str, argparse.Namespace]:
     # Parser
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         usage="zstash create [<args>] path", description="Create a new zstash archive"
@@ -125,6 +130,11 @@ def setup_create() -> Tuple[str, str]:
     optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
+    optional.add_argument(
+        "--no_tars_md5",
+        action="store_true",
+        help="For testing/debugging only. Will not create the tars table or compute the hashes of the tars.",
+    )
     # Now that we're inside a subcommand, ignore the first two argvs
     # (zstash create)
     args: argparse.Namespace = parser.parse_args(sys.argv[2:])
@@ -144,10 +154,10 @@ def setup_create() -> Tuple[str, str]:
     else:
         cache = DEFAULT_CACHE
 
-    return cache, args.exclude
+    return cache, args
 
 
-def create_database(cache: str, exclude: str) -> List[str]:
+def create_database(cache: str, args: argparse.Namespace) -> List[str]:
     # Create new database
     logger.debug("Creating index database")
     if os.path.exists(get_db_filename(cache)):
@@ -185,6 +195,11 @@ create table files (
     )
     con.commit()
 
+    if not args.no_tars_md5:
+        create_tars_table(cur, con)
+    elif tars_table_exists(cur):
+        raise Exception("tars table exists but it should not")
+
     # Store configuration in database
     # Loop through all attributes of config.
     for attr in dir(config):
@@ -198,10 +213,12 @@ create table files (
             cur.execute(u"insert into config values (?,?)", (attr, value))
     con.commit()
 
-    files: List[str] = get_files_to_archive(cache, exclude)
+    files: List[str] = get_files_to_archive(cache, args.exclude)
 
     # Add files to archive
-    failures: List[str] = add_files(cur, con, -1, files, cache)
+    failures: List[str] = add_files(
+        cur, con, -1, files, cache, skip_tars_md5=args.no_tars_md5
+    )
 
     # Close database
     con.commit()

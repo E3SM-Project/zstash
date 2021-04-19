@@ -12,7 +12,45 @@ import _hashlib
 import _io
 
 from .hpss import hpss_put
-from .settings import BLOCK_SIZE, TupleFilesRowNoId, config, logger
+from .settings import BLOCK_SIZE, TupleFilesRowNoId, TupleTarsRowNoId, config, logger
+from .utils import create_tars_table, tars_table_exists
+
+
+# Minimum output file object
+class HashIO(object):
+    def __init__(self, name: str, mode: str, do_hash: bool):
+        self.f: _io.BufferedWriter = open(name, mode)
+        self.hash: Optional[_hashlib.HASH]
+        if do_hash:
+            self.hash = hashlib.md5()
+        else:
+            self.hash = None
+        self.closed: bool = False
+        self.position: int = 0
+
+    def tell(self) -> int:
+        return self.position
+
+    def write(self, s):
+        self.f.write(s)
+        if self.hash:
+            self.hash.update(s)
+        self.position += len(s)
+
+    def md5(self) -> Optional[str]:
+        md5: Optional[str]
+        if self.hash:
+            md5 = self.hash.hexdigest()
+        else:
+            md5 = None
+        return md5
+
+    def close(self):
+        if self.closed:
+            return
+
+        self.f.close()
+        self.closed = True
 
 
 def add_files(
@@ -21,22 +59,24 @@ def add_files(
     itar: int,
     files: List[str],
     cache: str,
+    skip_tars_md5: bool = False,
 ) -> List[str]:
 
     # Now, perform the actual archiving
     failures: List[str] = []
-    newtar: bool = True
+    create_new_tar: bool = True
     nfiles: int = len(files)
     archived: List[TupleFilesRowNoId]
     tarsize: int
     tname: str
     tfname: str
+    tarFileObject: HashIO
     tar: tarfile.TarFile
     for i in range(nfiles):
 
-        # New tar archive in the local cache
-        if newtar:
-            newtar = False
+        # New tar in the local cache
+        if create_new_tar:
+            create_new_tar = False
             archived = []
             tarsize = 0
             itar += 1
@@ -46,7 +86,15 @@ def add_files(
             tfname = "{}.tar".format(tname)
             logger.info("Creating new tar archive {}".format(tfname))
             # Open that tar file in the cache
-            tar = tarfile.open(os.path.join(cache, tfname), "w")
+            do_hash: bool
+            if not skip_tars_md5:
+                # If we're not skipping tars, we want to calculate the hash of the tars.
+                do_hash = True
+            else:
+                do_hash = False
+            tarFileObject = HashIO(os.path.join(cache, tfname), "wb", do_hash)
+            # FIXME: error: Argument "fileobj" to "open" has incompatible type "HashIO"; expected "Optional[IO[bytes]]"
+            tar = tarfile.open(mode="w", fileobj=tarFileObject)  # type: ignore
 
         # Add current file to tar archive
         current_file: str = files[i]
@@ -66,8 +114,9 @@ def add_files(
                 offset,
             )
             archived.append(t)
-            # Increase tarsize by the size of the current file
-            tarsize += size
+            # Increase tarsize by the size of the current file.
+            # Use `tell()` to also include the tar's metadata in the size.
+            tarsize = tarFileObject.tell()
         except Exception:
             # Catch all exceptions here.
             traceback.print_exc()
@@ -87,7 +136,19 @@ def add_files(
             logger.debug("Closing tar archive {}".format(tfname))
             tar.close()
 
-            # Transfer tar archive to HPSS
+            tarsize = tarFileObject.tell()
+            tar_md5: Optional[str] = tarFileObject.md5()
+            tarFileObject.close()
+            if not skip_tars_md5:
+                tar_tuple: TupleTarsRowNoId = (tfname, tarsize, tar_md5)
+                logger.info("tar name={}, tar size={}, tar md5={}".format(*tar_tuple))
+                if not tars_table_exists(cur):
+                    # Need to create tars table
+                    create_tars_table(cur, con)
+                cur.execute(u"insert into tars values (NULL,?,?,?)", tar_tuple)
+                con.commit()
+
+            # Transfer tar to HPSS
             if config.hpss is not None:
                 hpss: str = config.hpss
             else:
@@ -104,8 +165,8 @@ def add_files(
             cur.executemany(u"insert into files values (NULL,?,?,?,?,?,?)", archived)
             con.commit()
 
-            # Open new archive next time
-            newtar = True
+            # Open new tar next time
+            create_new_tar = True
 
     return failures
 

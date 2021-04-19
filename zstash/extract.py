@@ -337,7 +337,7 @@ def extractFiles(  # noqa: C901
     the contents of what's in its print queue.
     """
     failures: List[FilesRow] = []
-    tfname: Optional[str] = None
+    tfname: str
     newtar: bool = True
     nfiles: int = len(files)
     if multiprocess_worker:
