@@ -177,8 +177,11 @@ class TestZstash(unittest.TestCase):
         """
         Set up directories for testing.
         """
-        # FIXME: Item "None" of "Optional[Any]" has no attribute "lower"mypy(error)
-        if self.hpss_path.lower() == "none":  # type: ignore
+        if self.hpss_path:
+            hpss_path = self.hpss_path
+        else:
+            raise ValueError("Invalid self.hpss_path={}".format(self.hpss_path))
+        if hpss_path.lower() == "none":
             use_hpss = False
         else:
             use_hpss = True

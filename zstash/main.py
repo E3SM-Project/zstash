@@ -31,7 +31,7 @@ def main():
     signal(SIGINT, handler)
 
     # Parser
-    parser = argparse.ArgumentParser(
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
         usage="""For {}, zstash <command> [<args>]
 
 Available zstash commands:
@@ -52,7 +52,7 @@ For help with a specific command
     parser.add_argument("command", help="command to run (create, update, extract, ...)")
     # parse_args defaults to [1:] for args, but you need to
     # exclude the rest of the args too, or validation will fail
-    args = parser.parse_args(sys.argv[1:2])
+    args: argparse.Namespace = parser.parse_args(sys.argv[1:2])
 
     if args.command == "version":
         print(__version__)
