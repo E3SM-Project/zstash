@@ -4,7 +4,8 @@
 <html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8" />
-  
+  <meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>Database &mdash; zstash  documentation</title>
@@ -86,7 +87,7 @@
               
             
             
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
@@ -169,14 +170,14 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="database">
+  <section id="database">
 <h1>Database<a class="headerlink" href="#database" title="Permalink to this headline">¶</a></h1>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Directly interacting with the database is not recommened
 unless you understand the consequences of what you are doing!</p>
 </div>
-<div class="section" id="structure">
+<section id="structure">
 <h2>Structure<a class="headerlink" href="#structure" title="Permalink to this headline">¶</a></h2>
 <p>Metadata from zstash archives is stored in a sqlite3 database
 in <cite>zstash/index.db</cite>. The database schema consists of
@@ -214,8 +215,8 @@ sqlite&gt; .quit
 <li><p><strong>tar</strong>: tar file in which file is archived (e.g. 00000a.tar)</p></li>
 <li><p><strong>offset</strong>: offset in bytes where the file is located within its tar file.</p></li>
 </ul>
-</div>
-<div class="section" id="exploring-content">
+</section>
+<section id="exploring-content">
 <h2>Exploring content<a class="headerlink" href="#exploring-content" title="Permalink to this headline">¶</a></h2>
 <p>Direct interaction with the database can be useful to explore content
 of an archive, beyond what might be available with <a class="reference internal" href="usage.html#zstash-list"><span class="std std-ref">zstash list</span></a>.</p>
@@ -236,8 +237,8 @@ $ sqlite3 zstash/index.db &quot;select * from files;&quot;
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db &quot;select * from files where tar is &#39;00000a.tar&#39;;&quot;
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
            </div>

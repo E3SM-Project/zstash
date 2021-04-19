@@ -4,7 +4,8 @@
 <html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8" />
-  
+  <meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>Tutorial &mdash; zstash  documentation</title>
@@ -86,7 +87,7 @@
               
             
             
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
@@ -190,12 +191,12 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="tutorial">
+  <section id="tutorial">
 <h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
 <p>Some statements on this tutorial have been pulled from other pages of the
 documentation. This is done to provide a comprehensive tutorial on a single page.
 There is also an <a class="reference external" href="https://youtu.be/kmdBdXa3rXo">accompanying video tutorial</a>.</p>
-<div class="section" id="what-is-zstash">
+<section id="what-is-zstash">
 <h2>What is Zstash?<a class="headerlink" href="#what-is-zstash" title="Permalink to this headline">¶</a></h2>
 <p>Zstash is an <strong>HPSS long-term archiving</strong> solution for E3SM.</p>
 <p>Zstash is written entirely in Python using standard libraries.
@@ -204,15 +205,15 @@ long-term HPSS archiving solution without creating an overly complicated
 (and hard to maintain) tool. For more information, see <a class="reference internal" href="index.html#index-label"><span class="std std-ref">Zstash documentation</span></a>,
 <a class="reference external" href="https://e3sm.org/resources/tools/data-management/zstash-hpss-archive/">https://e3sm.org/resources/tools/data-management/zstash-hpss-archive/</a>,
 or <a class="reference external" href="https://e3sm.org/new-zstash-capabilities">https://e3sm.org/new-zstash-capabilities</a>.</p>
-<div class="section" id="terminology">
+<section id="terminology">
 <h3>Terminology<a class="headerlink" href="#terminology" title="Permalink to this headline">¶</a></h3>
 <p><strong>zstash archive</strong>:  A set of files {index.db, nnnnnn.tar where  nnnnnn=000000, 000001, …}</p>
 <p><strong>HPSS</strong>:  A long-term tape storage system.</p>
 <p><strong>HPSS archive</strong>: The zstash archive on HPSS.</p>
 <p><strong>Local archive (or cache)</strong>:  The zstash archive on our local file system. The default name is <code class="docutils literal notranslate"><span class="pre">zstash</span></code>.</p>
 <p><strong>Source directory</strong>: the directory whose contents we are archiving.</p>
-</div>
-<div class="section" id="commands">
+</section>
+<section id="commands">
 <h3>Commands<a class="headerlink" href="#commands" title="Permalink to this headline">¶</a></h3>
 <p><strong>Create</strong>: create a new cache (local archive), create a tar file of the source directory’s contents,
 and if using HPSS, then store it on the HPSS archive.</p>
@@ -222,8 +223,8 @@ and if using HPSS, then store it on the HPSS archive.</p>
 <p><strong>Extract</strong>: extract files from an existing zstash archive into current directory.</p>
 <p><strong>List (ls)</strong>: view files in an existing zstash archive.</p>
 <p><strong>Version</strong>: show version number.</p>
-</div>
-<div class="section" id="options">
+</section>
+<section id="options">
 <h3>Options<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">--cache</span></code>, <code class="docutils literal notranslate"><span class="pre">--hpss</span></code>, and <code class="docutils literal notranslate"><span class="pre">--keep</span></code> are covered in this tutorial.</p>
 <p>A “x” indicates that the <code class="docutils literal notranslate"><span class="pre">zstash</span></code> command supports the given option.</p>
@@ -312,12 +313,12 @@ and if using HPSS, then store it on the HPSS archive.</p>
 </tr>
 </tbody>
 </table>
-</div>
-</div>
-<div class="section" id="installation">
+</section>
+</section>
+<section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
 <p>Below is a basic guide to installation. For more information, see <a class="reference internal" href="getting_started.html#getting-started"><span class="std std-ref">Getting started</span></a>.</p>
-<div class="section" id="e3sm-unified-environment">
+<section id="e3sm-unified-environment">
 <h3>E3SM Unified Environment<a class="headerlink" href="#e3sm-unified-environment" title="Permalink to this headline">¶</a></h3>
 <p>Zstash is available in the E3SM unified environment.
 This is the recommended method of installation.</p>
@@ -330,8 +331,8 @@ This is the recommended method of installation.</p>
 </pre></div>
 </div>
 <p>For more information, see <a class="reference external" href="https://acme-climate.atlassian.net/wiki/spaces/EIDMG/pages/780271950/Diagnostics+and+Analysis+Quickstart">https://acme-climate.atlassian.net/wiki/spaces/EIDMG/pages/780271950/Diagnostics+and+Analysis+Quickstart</a>.</p>
-</div>
-<div class="section" id="installation-with-conda">
+</section>
+<section id="installation-with-conda">
 <h3>Installation with Conda<a class="headerlink" href="#installation-with-conda" title="Permalink to this headline">¶</a></h3>
 <p>On Cori/NERSC:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ module load python/3.7-anaconda-2019.10
@@ -351,9 +352,9 @@ $ conda activate zstash_env
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ conda install zstash -c e3sm -c conda-forge
 </pre></div>
 </div>
-</div>
-</div>
-<div class="section" id="hpss">
+</section>
+</section>
+<section id="hpss">
 <h2>HPSS<a class="headerlink" href="#hpss" title="Permalink to this headline">¶</a></h2>
 <p>NERSC machines have HPSS access. We can choose to use HPSS by setting
 <code class="docutils literal notranslate"><span class="pre">--hpss</span></code> (or <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code> if we do not wish to archive to HPSS).</p>
@@ -366,13 +367,13 @@ Compy does not have HPSS access. Therefore, you’ll need to set
 created locally on Compy should be transferred to an off-site HPSS storage using Globus
 (<a class="reference internal" href="best_practices.html#globus-compy"><span class="std std-ref">Transfer to NERSC HPSS</span></a>)</p>
 </div>
-</div>
-<div class="section" id="examples">
+</section>
+<section id="examples">
 <h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
 <p>We will use NERSC so that we have access to HPSS. The commands remain the same on Compy,
 with the exception that <code class="docutils literal notranslate"><span class="pre">--hpss</span></code> will have to be set to <code class="docutils literal notranslate"><span class="pre">none</span></code> in all cases.</p>
 <p>Open a NERSC terminal in two windows.</p>
-<div class="section" id="setup">
+<section id="setup">
 <h3>Setup<a class="headerlink" href="#setup" title="Permalink to this headline">¶</a></h3>
 <p>We’ll create a <code class="docutils literal notranslate"><span class="pre">tutorial</span></code> directory in <code class="docutils literal notranslate"><span class="pre">$CSCRATCH</span></code> on NERSC. We can create our tutorial
 directory anywhere but <code class="docutils literal notranslate"><span class="pre">CSCRATCH</span></code> is a useful workspace.</p>
@@ -453,8 +454,8 @@ If you haven’t used HPSS before, <code class="docutils literal notranslate"><s
 </div>
 <p>After every example, we’ll want to remove the directories we created both in our workspace
 (<code class="docutils literal notranslate"><span class="pre">$CSCRATCH/tutorial</span></code>) and on HPSS.</p>
-</div>
-<div class="section" id="simple-case">
+</section>
+<section id="simple-case">
 <h3>Simple Case<a class="headerlink" href="#simple-case" title="Permalink to this headline">¶</a></h3>
 <p>This simple case will illustrate <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and <code class="docutils literal notranslate"><span class="pre">extract</span></code>.</p>
 <p>Set up the directory structure:</p>
@@ -552,8 +553,8 @@ $ rm -r zstash_demo/ zstash_extraction/
 $ rmdir zstash_archive
 </pre></div>
 </div>
-</div>
-<div class="section" id="no-hpss">
+</section>
+<section id="no-hpss">
 <h3>No HPSS<a class="headerlink" href="#no-hpss" title="Permalink to this headline">¶</a></h3>
 <p>This example will again illustrate <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and <code class="docutils literal notranslate"><span class="pre">extract</span></code>,
 but this time without using HPSS.</p>
@@ -643,8 +644,8 @@ $ rm -rf zstash_demo/ zstash_extraction/
 </pre></div>
 </div>
 <p>There’s nothing to clean up in our HPSS window.</p>
-</div>
-<div class="section" id="change-cache-name">
+</section>
+<section id="change-cache-name">
 <h3>Change Cache Name<a class="headerlink" href="#change-cache-name" title="Permalink to this headline">¶</a></h3>
 <p>This example will again illustrate <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and <code class="docutils literal notranslate"><span class="pre">extract</span></code>,
 but this time using a different cache.</p>
@@ -734,8 +735,8 @@ $ rm -r zstash_demo/ zstash_extraction/
 $ rmdir zstash_archive
 </pre></div>
 </div>
-</div>
-<div class="section" id="keep-files">
+</section>
+<section id="keep-files">
 <h3>Keep Files<a class="headerlink" href="#keep-files" title="Permalink to this headline">¶</a></h3>
 <p>This example will again illustrate <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and <code class="docutils literal notranslate"><span class="pre">extract</span></code>,
 but this time storing the tar files in the local archive (the cache) in addition to the
@@ -825,8 +826,8 @@ $ rm -r zstash_demo/ zstash_extraction/
 $ rmdir zstash_archive
 </pre></div>
 </div>
-</div>
-<div class="section" id="check-file-integrity">
+</section>
+<section id="check-file-integrity">
 <h3>Check File Integrity<a class="headerlink" href="#check-file-integrity" title="Permalink to this headline">¶</a></h3>
 <p>This example will demonstrate how to check that files haven’t been damaged during archive or transfer.</p>
 <p><strong>Create</strong>:</p>
@@ -870,8 +871,8 @@ $ rm -r zstash_demo/
 $ rmdir zstash_archive
 </pre></div>
 </div>
-</div>
-<div class="section" id="list-files-in-hpss-archive">
+</section>
+<section id="list-files-in-hpss-archive">
 <h3>List Files in HPSS Archive<a class="headerlink" href="#list-files-in-hpss-archive" title="Permalink to this headline">¶</a></h3>
 <p>This example will demonstrate how to list the files contained in the tar files in the HPSS archive.</p>
 <p><strong>Create</strong>:</p>
@@ -960,8 +961,8 @@ $ rm -r zstash_demo/ zstash_extraction/
 $ rmdir zstash_archive
 </pre></div>
 </div>
-</div>
-<div class="section" id="archiving-e3sm-data-output">
+</section>
+<section id="archiving-e3sm-data-output">
 <h3>Archiving E3SM Data Output<a class="headerlink" href="#archiving-e3sm-data-output" title="Permalink to this headline">¶</a></h3>
 <p>Now, instead of using placeholder data, let’s archive actual data from E3SM. Archiving large amounts
 of data can take several days, so we’ll use a data transfer node to improve performance and
@@ -1004,9 +1005,9 @@ $ rm -r e3sm_output
 $ rmdir zstash_archive
 </pre></div>
 </div>
-</div>
-</div>
-</div>
+</section>
+</section>
+</section>
 
 
            </div>
