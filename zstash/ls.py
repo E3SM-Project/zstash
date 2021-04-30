@@ -5,18 +5,20 @@ import logging
 import os
 import sqlite3
 import sys
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from .hpss import hpss_get
 from .settings import (
     DEFAULT_CACHE,
     FilesRow,
+    TarsRow,
     TupleFilesRow,
+    TupleTarsRow,
     config,
     get_db_filename,
     logger,
 )
-from .utils import update_config
+from .utils import tars_table_exists, update_config
 
 
 def ls():
@@ -31,17 +33,11 @@ def ls():
 
     matches: List[FilesRow] = ls_database(args, cache)
 
-    # Print the results
-    match: FilesRow
-    for match in matches:
-        if args.long:
-            # Print all contents of each match
-            for col in match.to_tuple():
-                print(col, end="\t")
-            print("")
-        else:
-            # Just print the file name
-            print(match.name)
+    print_matches(args, matches)
+
+    if args.tars:
+        tar_matches: List[TarsRow] = ls_tars_database(args, cache)
+        print_matches(args, tar_matches)
 
 
 def setup_ls() -> Tuple[argparse.Namespace, str]:
@@ -65,6 +61,7 @@ def setup_ls() -> Tuple[argparse.Namespace, str]:
         type=str,
         help='the path to the zstash archive on the local file system. The default name is "zstash".',
     )
+    optional.add_argument("--tars", action="store_true", help="Display tars")
     optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
@@ -157,3 +154,55 @@ def ls_database(args: argparse.Namespace, cache: str) -> List[FilesRow]:
     con.close()
 
     return matches
+
+
+def ls_tars_database(args: argparse.Namespace, cache: str) -> List[TarsRow]:
+    con: sqlite3.Connection = sqlite3.connect(
+        get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES
+    )
+    cur: sqlite3.Cursor = con.cursor()
+
+    if not tars_table_exists(cur):
+        print("\ntars table does not exist")
+        return []
+
+    # Find matching files
+    cur.execute(u"select * from tars")
+    matches_: List[TupleTarsRow] = cur.fetchall()
+
+    # Remove duplicates
+    matches_ = list(set(matches_))
+    matches: List[TarsRow] = list(map(TarsRow, matches_))
+
+    # Sort by name
+    matches = sorted(matches, key=lambda t: (t.name))
+
+    if matches != []:
+        print("\nTars:")
+        if args.long:
+            # Get the names of the columns
+            cur.execute(u"PRAGMA table_info(tars);")
+            cols = [str(col_info[1]) for col_info in cur.fetchall()]
+            print("\t".join(cols))
+
+    # Close database
+    con.commit()
+    con.close()
+
+    return matches
+
+
+def print_matches(
+    args: argparse.Namespace, matches: Union[List[FilesRow], List[TarsRow]]
+):
+    # Print the results
+    match: Union[FilesRow, TarsRow]
+    for match in matches:
+        if args.long:
+            # Print all contents of each match
+            for col in match.to_tuple():
+                print(col, end="\t")
+            print("")
+        else:
+            # Just print the name
+            print(match.name)
