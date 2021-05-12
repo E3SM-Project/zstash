@@ -178,6 +178,10 @@ Note: in the event that an update includes revisions to files previously archive
 will archive the new revisions. ``zstah extract`` will only extract the latest revision, but all
 file versions will still be listed with the ``zstash ls`` and ``zstash ls -l`` commands.
 
+Starting with ``zstash v1.1.0`` the md5 hash for the tars will be computed on ``zstash create``.
+If you're using an existing database, then ``zstash update`` will begin keeping track
+of the tars automatically.
+
 Example
 -------
 
@@ -336,13 +340,14 @@ Note: Most of the commands for this are the same for ``zstash extract`` and ``zs
 
 You can view the files in an existing zstash archive:  ::
 
-   $ zstash ls --hpss=<path to HPSS> [-l] [--cache=<cache>] [-v] [files]
+   $ zstash ls --hpss=<path to HPSS> [-l] [--cache=<cache>] [--tars] [-v] [files]
 
 where
 
 * ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system,
 * ``-l`` an optional argument to display more information.
 * ``--cache`` to use a cache other than the default of ``zstash``.
+* ``--tars`` to list the tars in addition to the files.
 * ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to be listed (standard wildcards supported).
 
@@ -361,6 +366,25 @@ Below is an example. Note the names of the columns:  ::
    id	name	size	mtime	md5	tar	offset
    30482	archive/logs/atm.log.8229335.180130-143234.gz	20156521	2018-02-01 10:02:35	e8161bba53500848dc917258d1d8f56a	000018.tar	131697281536	
    51608	case_scripts/logs/atm.log.8229335.180130-143234.gz	20156521	2018-02-01 10:02:52	e8161bba53500848dc917258d1d8f56a	000047.tar	202381473280	
+
+Below is an example of using ``ls`` to look at the tars in addition to the files: ::
+
+    $ mkdir source_directory
+    $ touch source_directory/file0.txt
+    $ zstash create --hpss=hpss_archive source_directory
+    INFO: Gathering list of files to archive
+    INFO: Creating new tar archive 000000.tar
+    INFO: Archiving file0.txt
+    INFO: tar name=000000.tar, tar size=10240, tar md5=97d3e0ffaff4880251c77699d7438fe2
+    INFO: Transferring file to HPSS: zstash/000000.tar
+    INFO: Transferring file to HPSS: zstash/index.db
+
+    $ zstash ls --hpss=hpss_archive --tars
+    INFO: Transferring file from HPSS: zstash/index.db
+    file0.txt
+
+    Tars:
+    000000.tar
 
 .. warning::
     Running ``zstash ls`` outside the source directory (the directory you're archiving)

@@ -2,6 +2,9 @@
 Tutorial
 ********
 
+.. note::
+    This tutorial uses ``zstash v0.4.2``. Some features have been added/changed since.
+
 Some statements on this tutorial have been pulled from other pages of the
 documentation. This is done to provide a comprehensive tutorial on a single page.
 There is also an `accompanying video tutorial <https://youtu.be/kmdBdXa3rXo>`_.
@@ -786,7 +789,6 @@ Now, let's extract the files. ::
 
 This will output the following: ::
 
-    INFO: You're using the version at /global/homes/f/forsyth/zstash/zstash/main.py
     INFO: Transferring file from HPSS: zstash/index.db
     INFO: Transferring file from HPSS: zstash/000000.tar
     INFO: Opening tar archive zstash/000000.tar
