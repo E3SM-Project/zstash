@@ -13,15 +13,14 @@ Structure
 =========
 
 Metadata from zstash archives is stored in a sqlite3 database
-in `zstash/index.db`. The database schema consists of
+in ``<cache>/index.db``, where ``<cache>`` is ``zstash`` by default.
+The database schema consists of
 two tables, one to store configuration parameters (``config``) 
 and the other one for metadata for each archived file (``files``). ::
 
     $ sqlite3 zstash/index.db
-    SQLite version 3.7.17 2013-05-20 00:56:22
-    Enter ".help" for instructions
-    Enter SQL statements terminated with a ";"
-
+    SQLite version 3.34.0 2020-12-01 16:14:00
+    Enter ".help" for usage hints.
     sqlite> .schema
     CREATE TABLE config (
       arg text primary key,
@@ -36,7 +35,12 @@ and the other one for metadata for each archived file (``files``). ::
       tar text,
       offset integer
     );
-
+    CREATE TABLE tars (
+    id integer primary key,
+    name text,
+    size integer,
+    md5 text
+    );
     sqlite> .quit
 
 
