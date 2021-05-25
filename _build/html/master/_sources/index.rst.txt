@@ -26,6 +26,7 @@ long-term HPSS archiving solution without creating an overly complicated
 * **Checksums (md5)** of input files are computed *on-the-fly* during
   archiving. For large files, this saves a considerable amount of
   time compared to separate checksumming and archiving steps.
+  Checksums are also computed *on-the-fly* for tars.
 * Checksums and additional metadata (size, modification time, tar file and offset)
   are stored in a sqlite3 **index database**.
 * **Database enables faster retrieval** of individual files by locating in which tar

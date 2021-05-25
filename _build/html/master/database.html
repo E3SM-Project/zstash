@@ -180,14 +180,13 @@ unless you understand the consequences of what you are doing!</p>
 <section id="structure">
 <h2>Structure<a class="headerlink" href="#structure" title="Permalink to this headline">¶</a></h2>
 <p>Metadata from zstash archives is stored in a sqlite3 database
-in <cite>zstash/index.db</cite>. The database schema consists of
+in <code class="docutils literal notranslate"><span class="pre">&lt;cache&gt;/index.db</span></code>, where <code class="docutils literal notranslate"><span class="pre">&lt;cache&gt;</span></code> is <code class="docutils literal notranslate"><span class="pre">zstash</span></code> by default.
+The database schema consists of
 two tables, one to store configuration parameters (<code class="docutils literal notranslate"><span class="pre">config</span></code>)
 and the other one for metadata for each archived file (<code class="docutils literal notranslate"><span class="pre">files</span></code>).</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db
-SQLite version 3.7.17 2013-05-20 00:56:22
-Enter &quot;.help&quot; for instructions
-Enter SQL statements terminated with a &quot;;&quot;
-
+SQLite version 3.34.0 2020-12-01 16:14:00
+Enter &quot;.help&quot; for usage hints.
 sqlite&gt; .schema
 CREATE TABLE config (
   arg text primary key,
@@ -202,7 +201,12 @@ CREATE TABLE files (
   tar text,
   offset integer
 );
-
+CREATE TABLE tars (
+id integer primary key,
+name text,
+size integer,
+md5 text
+);
 sqlite&gt; .quit
 </pre></div>
 </div>

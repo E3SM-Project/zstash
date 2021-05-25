@@ -180,7 +180,8 @@ long-term HPSS archiving solution without creating an overly complicated
 <li><p>Tar files are first created locally, then transferred to HPSS.</p></li>
 <li><p><strong>Checksums (md5)</strong> of input files are computed <em>on-the-fly</em> during
 archiving. For large files, this saves a considerable amount of
-time compared to separate checksumming and archiving steps.</p></li>
+time compared to separate checksumming and archiving steps.
+Checksums are also computed <em>on-the-fly</em> for tars.</p></li>
 <li><p>Checksums and additional metadata (size, modification time, tar file and offset)
 are stored in a sqlite3 <strong>index database</strong>.</p></li>
 <li><p><strong>Database enables faster retrieval</strong> of individual files by locating in which tar
