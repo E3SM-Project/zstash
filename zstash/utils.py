@@ -9,6 +9,16 @@ from typing import Any, List, Tuple
 
 from .settings import TupleTarsRow, config, logger
 
+def get_machine() -> str:
+    hostname: str = os.environ["HOSTNAME"]
+    machine: str
+    if hostname.startswith("chr"):
+        machine = "chrysalis"
+    else:
+        # Add other machines
+        machine = "other"
+    return machine
+
 
 def exclude_files(exclude: str, files: List[str]) -> List[str]:
 
@@ -49,6 +59,7 @@ def run_command(command: str, error_str: str):
             error_str = "{}. This command includes `hsi`. Be sure that you have logged into `hsi`.".format(
                 error_str
             )
+        # TODO: do users need to log into `archive` first too?
         logger.error(error_str)
         logger.debug("stdout:\n{!r}".format(stdout))
         logger.debug("stderr:\n{!r}".format(stderr))

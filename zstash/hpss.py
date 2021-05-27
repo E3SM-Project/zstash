@@ -70,8 +70,17 @@ def hpss_transfer(
             # For `get`, this directory is where the file we get from HPSS will go.
             os.chdir(path)
 
-        # Transfer file using `hsi`
-        command: str = 'hsi -q "cd {}; {} {}"'.format(hpss, transfer_command, name)
+        machine: str = get_machine()
+        hpss_command: str
+        if machine == "chrysalis":
+            # Transfer file using `archive`
+            hpss_command = "archive --query"
+        elif machine == "cori":
+            # Transfer file using `hsi`
+            hpss_command = "hsi -q"
+        else:
+            raise ValueError("Invalid machine={}".format(machine))
+        command: str = '{} "cd {}; {} {}"'.format(hpss_command, hpss, transfer_command, name)
         error_str: str = "Transferring file {} HPSS: {}".format(transfer_word, name)
         run_command(command, error_str)
 
@@ -111,6 +120,14 @@ def hpss_chgrp(hpss: str, group: str, recurse: bool = False):
             recurse_str = "-R "
         else:
             recurse_str = ""
-        command: str = "hsi chgrp {}{} {}".format(recurse_str, group, hpss)
+        machine: str = get_machine()
+        hpss_command: str
+        if machine == "chrysalis":
+            hpss_command = "archive"
+        elif machine == "cori":
+            hpss_command = "hsi"
+        else:
+            raise ValueError("Invalid machine={}".format(machine))
+        command: str = "{} chgrp {}{} {}".format(hpss_command, recurse_str, group, hpss)
         error_str: str = "Changing group of HPSS archive {} to {}".format(hpss, group)
         run_command(command, error_str)

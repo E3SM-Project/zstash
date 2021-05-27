@@ -14,6 +14,7 @@ from .settings import DEFAULT_CACHE, config, get_db_filename, logger
 from .utils import (
     create_tars_table,
     get_files_to_archive,
+    get_machine,
     run_command,
     tars_table_exists,
 )
@@ -52,15 +53,22 @@ def create():
     if hpss != "none":
         # config.hpss is not "none", so we need to
         # create target HPSS directory
+        machine: str = get_machine()
+        if machine == "chrysalis":
+            hpss_command = "archive --query"
+        elif machine == "cori":
+            hpss_command = "hsi -q"
+        else:
+            raise ValueError("Invalid machine={}".format(machine))
         logger.debug("Creating target HPSS directory")
-        mkdir_command: str = "hsi -q mkdir -p {}".format(hpss)
+        mkdir_command: str = "{} mkdir -p {}".format(hpss_command, hpss)
         mkdir_error_str: str = "Could not create HPSS directory: {}".format(hpss)
         run_command(mkdir_command, mkdir_error_str)
 
         # Make sure it is exists and is empty
         logger.debug("Making sure target HPSS directory exists and is empty")
 
-        ls_command: str = 'hsi -q "cd {}; ls -l"'.format(hpss)
+        ls_command: str = '{} "cd {}; ls -l"'.format(hpss_command, hpss)
         ls_error_str: str = "Target HPSS directory is not empty"
         run_command(ls_command, ls_error_str)
 
