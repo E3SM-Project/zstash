@@ -6,8 +6,8 @@ package:
   version: {{ version }}
 
 source:
-  url: https://github.com/E3SM-Project/{{ name }}/archive/v{{ version }}.tar.gz
-  sha256: 6228df2ce320b71a36d90bf0b0da08a476f184439994f767de0371f6d59c8844
+  git_url: https://github.com/E3SM-Project/zstash.git
+  git_rev: v{{ version }}
 
 build:
   number: 0
