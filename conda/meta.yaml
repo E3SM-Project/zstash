@@ -6,7 +6,7 @@ package:
   version: {{ version }}
 
 source:
-  git_url: https://github.com/E3SM-Project/zstash.git
+  git_url: https://github.com/tomvothecoder/zstash.git
   git_rev: v{{ version }}
 
 build:
