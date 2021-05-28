@@ -111,7 +111,17 @@ jobs:
       - name: Build Conda Package
         run: conda build -c conda-forge --output-folder . .
 
-      - name: Publish to Anaconda
+      - name: Publish to Anaconda (e3sm channel)
         env:
           ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
-        run: anaconda upload --label main noarch/*.tar.bz2 --force
+        run: |
+          label="main"
+
+          for file in noarch/*.tar.bz2; do
+            if [[ "$file" == noarch/*"rc"*.tar.bz2 ]]; then
+               label="e3sm_dev"
+            fi
+          done
+
+          echo Uploading to conda-forge with \'$label\' label
+          anaconda upload --label $label noarch/*.tar.bz2 --force
