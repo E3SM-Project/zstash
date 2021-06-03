@@ -1,3 +1,4 @@
+import os
 import unittest
 
 from tests.base import HPSS_ARCHIVE, ZSTASH_PATH, TestZstash, run_cmd
@@ -32,7 +33,13 @@ class TestChgrp(TestZstash):
             if use_hpss:
                 self.check_strings(cmd, output + err, [], ["ERROR"])
                 print("Now check that the files are in the {} group".format(GROUP))
-                cmd = "hsi ls -l {}".format(self.hpss_path)
+                if os.system("which hsi") == 0:
+                    hpss_command = "hsi"
+                elif os.system("which archive") == 0:
+                    hpss_command = "archive"
+                else:
+		    raise RuntimeError("No HPSS command")
+                cmd = "{} ls -l {}".format(hpss_command, self.hpss_path)
                 output, err = run_cmd(cmd)
                 expected_present = "e3sm"
             else:

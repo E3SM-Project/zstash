@@ -55,7 +55,7 @@ def create():
         # create target HPSS directory
         machine: str = get_machine()
         if machine == "chrysalis":
-            hpss_command = "archive --query"
+            hpss_command = "archive"
         elif machine == "cori":
             hpss_command = "hsi -q"
         else:

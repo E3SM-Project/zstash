@@ -5,6 +5,7 @@ If running on Cori, it is preferable to run from $CSCRATCH rather than
 /global/homes. Running from the latter may result in a
 'Resource temporarily unavailable' error.
 """
+# TESTING WITH: pip install .. && python test_create.py TestCreate.testCreateVerboseHPSS
 
 import os
 import shutil
@@ -111,15 +112,21 @@ class TestZstash(unittest.TestCase):
             if os.path.exists(d):
                 shutil.rmtree(d)
         if self.hpss_path and self.hpss_path.lower() != "none":
-            cmd = "hsi rm -R {}".format(self.hpss_path)
+            if os.system("which hsi") == 0:
+                hpss_command = "hsi rm -R"
+            elif os.system("which archive") == 0:
+                hpss_command = "archive --delete"
+            else:
+                raise RuntimeError("No HPSS command")
+            cmd = "{} {}".format(hpss_command, self.hpss_path)
             run_cmd(cmd)
 
     def conditional_hpss_skip(self):
         skip_str = "Skipping HPSS tests."
         if SKIP_HPSS:
             self.skipTest("SKIP_HPSS is True. {}".format(skip_str))
-        elif os.system("which hsi") != 0:
-            self.skipTest("This system does not have hsi. {}".format(skip_str))
+        elif (os.system("which hsi") != 0) and (os.system("which archive") != 0):
+            self.skipTest("This system does not have hsi or archive. {}".format(skip_str))
 
     def stop(self, error_message):
         """

@@ -74,7 +74,7 @@ def hpss_transfer(
         hpss_command: str
         if machine == "chrysalis":
             # Transfer file using `archive`
-            hpss_command = "archive --query"
+            hpss_command = "archive"
         elif machine == "cori":
             # Transfer file using `hsi`
             hpss_command = "hsi -q"
