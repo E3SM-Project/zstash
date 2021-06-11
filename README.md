@@ -11,3 +11,15 @@
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 
 See [documentation](https://e3sm-project.github.io/zstash) for more details.
+
+## License
+
+Copyright (c) 2018-2021, Energy Exascale Earth System Model Project
+All rights reserved
+
+SPDX-License-Identifier: (BSD-3-Clause)
+
+See [LICENSE](./LICENSE) for details
+
+Unlimited Open Source - BSD 3-clause Distribution
+`LLNL-CODE-819717`
