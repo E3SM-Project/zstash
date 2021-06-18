@@ -4,6 +4,7 @@ import argparse
 import errno
 import logging
 import os.path
+from six.moves.urllib.parse import urlparse
 import sqlite3
 import sys
 from typing import Any, List, Tuple
@@ -50,19 +51,21 @@ def create():
         raise NotADirectoryError(input_path_error_str)
 
     if hpss != "none":
-        # config.hpss is not "none", so we need to
-        # create target HPSS directory
-        logger.debug("Creating target HPSS directory")
-        mkdir_command: str = "hsi -q mkdir -p {}".format(hpss)
-        mkdir_error_str: str = "Could not create HPSS directory: {}".format(hpss)
-        run_command(mkdir_command, mkdir_error_str)
+        url = urlparse(hpss)
+        if url.scheme != "globus":
+            # config.hpss is not "none", so we need to
+            # create target HPSS directory
+            logger.debug("Creating target HPSS directory")
+            mkdir_command: str = "hsi -q mkdir -p {}".format(hpss)
+            mkdir_error_str: str = "Could not create HPSS directory: {}".format(hpss)
+            run_command(mkdir_command, mkdir_error_str)
 
-        # Make sure it is exists and is empty
-        logger.debug("Making sure target HPSS directory exists and is empty")
+            # Make sure it is exists and is empty
+            logger.debug("Making sure target HPSS directory exists and is empty")
 
-        ls_command: str = 'hsi -q "cd {}; ls -l"'.format(hpss)
-        ls_error_str: str = "Target HPSS directory is not empty"
-        run_command(ls_command, ls_error_str)
+            ls_command: str = 'hsi -q "cd {}; ls -l"'.format(hpss)
+            ls_error_str: str = "Target HPSS directory is not empty"
+            run_command(ls_command, ls_error_str)
 
     # Create cache directory
     logger.debug("Creating local cache directory")
@@ -102,7 +105,7 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     required.add_argument(
         "--hpss",
         type=str,
-        help='path to storage on HPSS. Set to "none" for local archiving. Must be set to "none" if the machine does not have HPSS access.',
+        help='path to storage on HPSS. Set to "none" for local archiving. Must be set to "none" if the machine does not have HPSS access. It also can be a Globus URL, e.g. globus://<UUID>/<PATH>. Names "alcf" and "nersc" are recognized as referring to the ALCF HPSS and NERSC HPSS endpoints.',
         required=True,
     )
     optional: argparse._ArgumentGroup = parser.add_argument_group(

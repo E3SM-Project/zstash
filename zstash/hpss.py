@@ -3,9 +3,13 @@ from __future__ import absolute_import, print_function
 import os.path
 import subprocess
 from typing import List
+from six.moves.urllib.parse import urlparse
+from fair_research_login.client import NativeClient
+from globus_sdk import TransferClient, TransferData
 
 from .settings import get_db_filename, logger
 from .utils import run_command
+from .globus import globus_transfer
 
 
 def hpss_transfer(
@@ -53,8 +57,16 @@ def hpss_transfer(
         else:
             raise ValueError("Invalid transfer_type={}".format(transfer_type))
         logger.info("Transferring file {} HPSS: {}".format(transfer_word, file_path))
+        scheme: str
+        endpoint: str
         path: str
         name: str
+
+        url = urlparse(hpss)
+        scheme = url.scheme
+        endpoint = url.netloc
+        url_path = url.path
+
         path, name = os.path.split(file_path)
 
         # Need to be in local directory for `hsi` to work
@@ -70,10 +82,14 @@ def hpss_transfer(
             # For `get`, this directory is where the file we get from HPSS will go.
             os.chdir(path)
 
-        # Transfer file using `hsi`
-        command: str = 'hsi -q "cd {}; {} {}"'.format(hpss, transfer_command, name)
-        error_str: str = "Transferring file {} HPSS: {}".format(transfer_word, name)
-        run_command(command, error_str)
+        if scheme == "globus":
+            # Transfer file using the Globus Transfer Service
+            globus_transfer(endpoint, url_path, name, transfer_type)
+        else:
+            # Transfer file using `hsi`
+            command: str = 'hsi -q "cd {}; {} {}"'.format(hpss, transfer_command, name)
+            error_str: str = "Transferring file {} HPSS: {}".format(transfer_word, name)
+            run_command(command, error_str)
 
         # Return to original working directory
         if path != "":
