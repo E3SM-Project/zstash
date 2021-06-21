@@ -4,8 +4,6 @@ import os.path
 import subprocess
 from typing import List
 from six.moves.urllib.parse import urlparse
-from fair_research_login.client import NativeClient
-from globus_sdk import TransferClient, TransferData
 
 from .settings import get_db_filename, logger
 from .utils import run_command
