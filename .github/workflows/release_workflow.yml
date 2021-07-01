@@ -37,7 +37,7 @@ jobs:
       # Low risk trade-off with mismatching dependencies in `conda/zstash_dev.yml`
       - name: Install Dependencies
         run: |
-          pip install sphinx==3.5.1 sphinx_rtd_theme==0.5.1 sphinx-multiversion==0.2.4
+          pip install sphinx==3.5.1 sphinx_rtd_theme==0.5.1 sphinx-multiversion==0.2.4 docutils==0.16
 
       - name: Build Sphinx Docs
         run: |
