@@ -1,5 +1,5 @@
 """
-Run the test suite with `pip install .. && python -m unittest`
+Run the test suite with `python -m unittest tests/test_*.py`
 
 If running on Cori, it is preferable to run from $CSCRATCH rather than
 /global/homes. Running from the latter may result in a
@@ -12,10 +12,14 @@ import subprocess
 import unittest
 from collections import Counter
 
+# https://bugs.python.org/issue43743
+# error: Module has no attribute "_USE_CP_SENDFILE"
+shutil._USE_CP_SENDFILE = False  # type: ignore
+
 # The directory `zstash` is in. Set this if `zstash` is not in your PATH.
 ZSTASH_PATH = ""
 
-# Top level directory. Should end in `zstash/tests`.
+# Top level directory. Should end in `zstash`.
 # This is used to ensure we are changing into the correct subdirectories and parent directories.
 TOP_LEVEL = os.getcwd()
 
@@ -91,6 +95,7 @@ class TestZstash(unittest.TestCase):
         """
         Set up a test. This is run before every test method.
         """
+        os.chdir(TOP_LEVEL)
         self.hpss_path = None
         self.cache = "zstash"
         self.test_dir = "zstash_test"
@@ -103,6 +108,7 @@ class TestZstash(unittest.TestCase):
 
         After the script has failed or completed, remove all created files, even those on the HPSS repo.
         """
+        os.chdir(TOP_LEVEL)
         print("Removing test files, both locally and at the HPSS repo")
         # self.cache may appear in any of these directories,
         # but should not appear at the same level as these.
@@ -137,7 +143,7 @@ class TestZstash(unittest.TestCase):
         Assert that the code is being run from the correct directory.
         """
         actual = os.getcwd()
-        expected = "zstash/tests"
+        expected = "zstash"
         if not actual.endswith(expected):
             self.stop(
                 "Current_directory={} does not end in {}".format(actual, expected)
