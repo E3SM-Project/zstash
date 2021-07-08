@@ -5,7 +5,6 @@ In this guide, we'll cover:
 
 * Preparing The Code For Release
 * Creating A Release On GitHub
-* Updating The sha256
 * Releasing The Software On Anaconda
 * Creating a New Version of the Documentation
 
@@ -106,48 +105,6 @@ Remember to write a description.
 
 3. Click "Publish release".
 
-Updating The sha256
---------------------
-
-1. Download "Source code (.tar.gz)" from the `GitHub releases page <https://github.com/E3SM-Project/zstash/releases>`_.
-
-2. Run ``shasum -a 256`` on this file. For example:
-
-    ::
-
-        shasum -a 256 zstash-0.4.1.tar.gz
-
-3. On your machine, pull the latest version of the code.
-This will have the ``conda/meta.yaml`` we edited in the first section.
-
-    ::
-
-        git checkout master
-        git pull <upstream-origin> master
-
-Or:
-    ::
-
-        git fetch <upstream-origin> master
-        git checkout -b <branch-name> <upstream-origin>/master
-
-4. Change ``sha256`` in ``conda/meta.yaml`` to the result of step 2.
-
-5. Commit and push your changes.
-
-    ::
-
-        git commit -am 'Edit sha256 for v0.4.1'
-        git push <upstream-origin> master
-
-Or:
-
-    ::
-
-        git commit -am 'Edit sha256 for v0.4.1'
-        git push <fork-origin> <branch-name>
-        # Create pull request for the master branch
-
 Releasing The Software On Anaconda
 ----------------------------------
 
@@ -157,6 +114,9 @@ This triggers the CI/CD workflow that handles Anaconda releases.
 2. Wait until the CI/CD build is successful. You can view all workflows at `All Workflows <https://github.com/E3SM-Project/zstash/actions>`_.
 
 3. Check the https://anaconda.org/e3sm/zstash page to view the newly updated package.
+
+   * Release candidates are assigned the ``e3sm_dev`` label
+   * Production releases are assigned the ``main`` label
 
 4. Notify the maintainers of the unified E3SM environment about the new release on the
 `E3SM Confluence site <https://acme-climate.atlassian.net/wiki/spaces/WORKFLOW/pages/129732419/E3SM+Unified+Anaconda+Environment>`_.

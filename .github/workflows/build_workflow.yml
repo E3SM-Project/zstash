@@ -47,8 +47,7 @@ jobs:
 
       - name: Run Tests
         run: |
-          cd tests
-          python -m unittest
+          python -m unittest tests/test_*.py
 
   publish-docs:
     if: github.event_name == 'push'

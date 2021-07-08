@@ -11,6 +11,10 @@ from tests.base import (
     run_cmd,
 )
 
+# https://bugs.python.org/issue43743
+# error: Module has no attribute "_USE_CP_SENDFILE"
+shutil._USE_CP_SENDFILE = False  # type: ignore
+
 
 class TestExtractParallel(TestZstash):
     """
