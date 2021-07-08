@@ -11,6 +11,7 @@ If running on Cori, it is preferable to run from ``$CSCRATCH`` rather than
 .. note::
     If you have not logged into HSI before, you will have to do so before running ``zstash`` with HPSS.
     On NERSC machines, just run ``hsi`` on the command line and enter your credentials.
+    Note that ``hsi`` is only available on the log-in nodes, not the compute nodes.
 
 .. warning::
     When specifying files, wildcards should be enclosed in double quotes (e.g., ``"a*"``).

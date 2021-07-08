@@ -1,0 +1,1077 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Tutorial &mdash; zstash  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Usage" href="usage.html" />
+    <link rel="prev" title="Getting started" href="getting_started.html" />
+    <link href="_static/style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> zstash
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#what-is-zstash">What is Zstash?</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#terminology">Terminology</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#commands">Commands</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#options">Options</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#e3sm-unified-environment">E3SM Unified Environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#installation-with-conda">Installation with Conda</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#hpss">HPSS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#setup">Setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#simple-case">Simple Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#no-hpss">No HPSS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#change-cache-name">Change Cache Name</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#keep-files">Keep Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#check-file-integrity">Check File Integrity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#list-files-in-hpss-archive">List Files in HPSS Archive</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#archiving-e3sm-data-output">Archiving E3SM Data Output</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best practices for E3SM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="support.html">Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev_guide/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to This Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">zstash</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Tutorial</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/tutorial.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="tutorial">
+<h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This tutorial uses <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">v0.4.2</span></code>. Some features have been added/changed since.</p>
+</div>
+<p>Some statements on this tutorial have been pulled from other pages of the
+documentation. This is done to provide a comprehensive tutorial on a single page.
+There is also an <a class="reference external" href="https://youtu.be/kmdBdXa3rXo">accompanying video tutorial</a>.</p>
+<section id="what-is-zstash">
+<h2>What is Zstash?<a class="headerlink" href="#what-is-zstash" title="Permalink to this headline">¶</a></h2>
+<p>Zstash is an <strong>HPSS long-term archiving</strong> solution for E3SM.</p>
+<p>Zstash is written entirely in Python using standard libraries.
+Its design is intentionally minimalistic to provide an effective
+long-term HPSS archiving solution without creating an overly complicated
+(and hard to maintain) tool. For more information, see <a class="reference internal" href="index.html#index-label"><span class="std std-ref">Zstash documentation</span></a>,
+<a class="reference external" href="https://e3sm.org/resources/tools/data-management/zstash-hpss-archive/">https://e3sm.org/resources/tools/data-management/zstash-hpss-archive/</a>,
+or <a class="reference external" href="https://e3sm.org/new-zstash-capabilities">https://e3sm.org/new-zstash-capabilities</a>.</p>
+<section id="terminology">
+<h3>Terminology<a class="headerlink" href="#terminology" title="Permalink to this headline">¶</a></h3>
+<p><strong>zstash archive</strong>:  A set of files {index.db, nnnnnn.tar where  nnnnnn=000000, 000001, …}</p>
+<p><strong>HPSS</strong>:  A long-term tape storage system.</p>
+<p><strong>HPSS archive</strong>: The zstash archive on HPSS.</p>
+<p><strong>Local archive (or cache)</strong>:  The zstash archive on our local file system. The default name is <code class="docutils literal notranslate"><span class="pre">zstash</span></code>.</p>
+<p><strong>Source directory</strong>: the directory whose contents we are archiving.</p>
+</section>
+<section id="commands">
+<h3>Commands<a class="headerlink" href="#commands" title="Permalink to this headline">¶</a></h3>
+<p><strong>Create</strong>: create a new cache (local archive), create a tar file of the source directory’s contents,
+and if using HPSS, then store it on the HPSS archive.</p>
+<p><strong>Check</strong>: verify integrity of zstash archive (e.g., if using HPSS, check that files were uploaded on HPSS successfully.)</p>
+<p><strong>Update</strong>: add new or modified files to an existing zstash archive
+(ignoring unmodified files).</p>
+<p><strong>Extract</strong>: extract files from an existing zstash archive into current directory.</p>
+<p><strong>List (ls)</strong>: view files in an existing zstash archive.</p>
+<p><strong>Version</strong>: show version number.</p>
+</section>
+<section id="options">
+<h3>Options<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">--cache</span></code>, <code class="docutils literal notranslate"><span class="pre">--hpss</span></code>, and <code class="docutils literal notranslate"><span class="pre">--keep</span></code> are covered in this tutorial.</p>
+<p>A “x” indicates that the <code class="docutils literal notranslate"><span class="pre">zstash</span></code> command supports the given option.</p>
+<table class="docutils align-default" id="id1">
+<caption><span class="caption-text">zstash options</span><a class="headerlink" href="#id1" title="Permalink to this table">¶</a></caption>
+<colgroup>
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Create</p></th>
+<th class="head"><p>Check</p></th>
+<th class="head"><p>Update</p></th>
+<th class="head"><p>Extract</p></th>
+<th class="head"><p>List</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--cache</span></code></p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code></p></td>
+<td></td>
+<td></td>
+<td><p>x</p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--exclude</span></code></p></td>
+<td><p>x</p></td>
+<td></td>
+<td><p>x</p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--hpss</span></code></p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--keep</span></code></p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-l</span></code></p></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td><p>x</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--maxsize</span></code></p></td>
+<td><p>x</p></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-v</span></code></p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+<td><p>x</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--workers</span></code></p></td>
+<td></td>
+<td><p>x</p></td>
+<td></td>
+<td><p>x</p></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>Below is a basic guide to installation. For more information, see <a class="reference internal" href="getting_started.html#getting-started"><span class="std std-ref">Getting started</span></a>.</p>
+<section id="e3sm-unified-environment">
+<h3>E3SM Unified Environment<a class="headerlink" href="#e3sm-unified-environment" title="Permalink to this headline">¶</a></h3>
+<p>Zstash is available in the E3SM unified environment.
+This is the recommended method of installation.</p>
+<p>On Cori/NERSC:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ source /global/cfs/cdirs/e3sm/software/anaconda_envs/load_latest_e3sm_unified.sh
+</pre></div>
+</div>
+<p>On Compy:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ source /share/apps/E3SM/conda_envs/load_latest_e3sm_unified.sh
+</pre></div>
+</div>
+<p>For more information, see <a class="reference external" href="https://acme-climate.atlassian.net/wiki/spaces/EIDMG/pages/780271950/Diagnostics+and+Analysis+Quickstart">https://acme-climate.atlassian.net/wiki/spaces/EIDMG/pages/780271950/Diagnostics+and+Analysis+Quickstart</a>.</p>
+</section>
+<section id="installation-with-conda">
+<h3>Installation with Conda<a class="headerlink" href="#installation-with-conda" title="Permalink to this headline">¶</a></h3>
+<p>On Cori/NERSC:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ module load python/3.7-anaconda-2019.10
+$ source /global/common/cori_cle7/software/python/3.7-anaconda-2019.10/etc/profile.d/conda.sh
+$ conda create -n zstash_env -c e3sm -c conda-forge zstash
+$ conda activate zstash_env
+</pre></div>
+</div>
+<p>On Compy:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ module load anaconda3/2019.03
+$ source /share/apps/anaconda3/2019.03/etc/profile.d/conda.sh
+$ conda create -n zstash_env -c e3sm -c conda-forge zstash
+$ conda activate zstash_env
+</pre></div>
+</div>
+<p>On either machine, to install in an existing environment:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ conda install zstash -c e3sm -c conda-forge
+</pre></div>
+</div>
+</section>
+</section>
+<section id="hpss">
+<h2>HPSS<a class="headerlink" href="#hpss" title="Permalink to this headline">¶</a></h2>
+<p>NERSC machines have HPSS access. We can choose to use HPSS by setting
+<code class="docutils literal notranslate"><span class="pre">--hpss</span></code> (or <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code> if we do not wish to archive to HPSS).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Before using zstash with HPSS for the first time, run <code class="docutils literal notranslate"><span class="pre">hsi</span></code> on NERSC
+and enter your credentials. Then, <code class="docutils literal notranslate"><span class="pre">zstash</span></code> will be able to access HPSS.
+Compy does not have HPSS access. Therefore, you’ll need to set
+<code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code> when using it. For long term storage, zstash archives
+created locally on Compy should be transferred to an off-site HPSS storage using Globus
+(<a class="reference internal" href="best_practices.html#globus-compy"><span class="std std-ref">Transfer to NERSC HPSS</span></a>)</p>
+</div>
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<p>We will use NERSC so that we have access to HPSS. The commands remain the same on Compy,
+with the exception that <code class="docutils literal notranslate"><span class="pre">--hpss</span></code> will have to be set to <code class="docutils literal notranslate"><span class="pre">none</span></code> in all cases.</p>
+<p>Open a NERSC terminal in two windows.</p>
+<section id="setup">
+<h3>Setup<a class="headerlink" href="#setup" title="Permalink to this headline">¶</a></h3>
+<p>We’ll create a <code class="docutils literal notranslate"><span class="pre">tutorial</span></code> directory in <code class="docutils literal notranslate"><span class="pre">$CSCRATCH</span></code> on NERSC. We can create our tutorial
+directory anywhere but <code class="docutils literal notranslate"><span class="pre">CSCRATCH</span></code> is a useful workspace.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd $CSCRATCH
+$ mkdir tutorial
+$ cd tutorial
+</pre></div>
+</div>
+<p>Each example that follows is independent of the others. Therefore, we’ll need to set up the
+directory structure before each example. We’ll call the following script <code class="docutils literal notranslate"><span class="pre">setup.sh</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="n">zstash_demo</span>
+<span class="n">mkdir</span> <span class="n">zstash_demo</span><span class="o">/</span><span class="n">empty_dir</span>
+<span class="n">mkdir</span> <span class="n">zstash_demo</span><span class="o">/</span><span class="nb">dir</span>
+<span class="n">echo</span> <span class="s1">&#39;file0 stuff&#39;</span> <span class="o">&gt;</span> <span class="n">zstash_demo</span><span class="o">/</span><span class="n">file0</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">echo</span> <span class="s1">&#39;&#39;</span> <span class="o">&gt;</span> <span class="n">zstash_demo</span><span class="o">/</span><span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">echo</span> <span class="s1">&#39;file1 stuff&#39;</span> <span class="o">&gt;</span> <span class="n">zstash_demo</span><span class="o">/</span><span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+<p>In one NERSC window, create this script and run it (<code class="docutils literal notranslate"><span class="pre">./setup.sh</span></code>).
+That will create the following directory structure:</p>
+<ul>
+<li><p>zstash_demo/</p>
+<blockquote>
+<div><ul>
+<li><p>dir/</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>file1.txt (contains ‘file1 stuff’)</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>empty_dir/</p></li>
+<li><p>file0.txt (contains ‘file0 stuff’)</p></li>
+<li><p>file_empty.txt (empty)</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>In some examples, we’ll also want to add files after running some <code class="docutils literal notranslate"><span class="pre">zstash</span></code> commands.
+We’ll call the following script <code class="docutils literal notranslate"><span class="pre">add_files.sh</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="n">zstash_demo</span><span class="o">/</span><span class="n">dir2</span>
+<span class="n">echo</span> <span class="s1">&#39;file2 stuff&#39;</span> <span class="o">&gt;</span> <span class="n">zstash_demo</span><span class="o">/</span><span class="n">dir2</span><span class="o">/</span><span class="n">file2</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">echo</span> <span class="s1">&#39;file1 stuff with changes&#39;</span> <span class="o">&gt;</span> <span class="n">zstash_demo</span><span class="o">/</span><span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+<p>If this is run (<code class="docutils literal notranslate"><span class="pre">./add_files.sh</span></code>) immediately after running <code class="docutils literal notranslate"><span class="pre">setup.sh</span></code>, then we would have the
+following directory structure:</p>
+<ul>
+<li><p>zstash_demo/</p>
+<blockquote>
+<div><ul>
+<li><p>dir/</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>file1.txt (contains ‘file1 stuff with changes’)</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>dir2/</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>file2.txt (contains ‘file2 stuff’)</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>empty_dir/</p></li>
+<li><p>file0.txt (contains ‘file0 stuff’)</p></li>
+<li><p>file_empty.txt (empty)</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>In our second window, we’ll log into HPSS with <code class="docutils literal notranslate"><span class="pre">hsi</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If this is your first time using HPSS, you’ll have to enter your credentials.
+If you haven’t used HPSS before, <code class="docutils literal notranslate"><span class="pre">ls</span></code> should print nothing.</p>
+</div>
+<p>After every example, we’ll want to remove the directories we created both in our workspace
+(<code class="docutils literal notranslate"><span class="pre">$CSCRATCH/tutorial</span></code>) and on HPSS.</p>
+</section>
+<section id="simple-case">
+<h3>Simple Case<a class="headerlink" href="#simple-case" title="Permalink to this headline">¶</a></h3>
+<p>This simple case will illustrate <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and <code class="docutils literal notranslate"><span class="pre">extract</span></code>.</p>
+<p>Set up the directory structure:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./setup.sh
+</pre></div>
+</div>
+<p><strong>Create</strong>:</p>
+<p>Now, we will create the <code class="docutils literal notranslate"><span class="pre">zstash</span></code> archives – both locally and on HPSS.
+Note that the path passed to <code class="docutils literal notranslate"><span class="pre">--hpss</span></code> can be a <strong>relative</strong> path from <code class="docutils literal notranslate"><span class="pre">/home/f/&lt;username&gt;</span></code> or
+an absolute path <cite>on HPSS, not the local file system</cite>.
+<code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code> is the source directory whose contents we want to archive.
+This is just a directory path; it can be a relative path and can contain <code class="docutils literal notranslate"><span class="pre">..</span></code> or
+it can be an absolute path.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ zstash create --hpss=zstash_archive zstash_demo
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Gathering</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">files</span> <span class="n">to</span> <span class="n">archive</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Creating</span> <span class="n">new</span> <span class="n">tar</span> <span class="n">archive</span> <span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">file0</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">empty_dir</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">db</span>
+</pre></div>
+</div>
+<p>The “cache” is our local archive. HPSS is our long-term archive.
+Our cache is given the default name <code class="docutils literal notranslate"><span class="pre">zstash</span></code> and can be found in the source directory,
+<code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code>. We’ve also created an archive in HPSS named <code class="docutils literal notranslate"><span class="pre">zstash_archive</span></code>.</p>
+<p>The cache <code class="docutils literal notranslate"><span class="pre">zstash_demo/zstash</span></code> now contains <code class="docutils literal notranslate"><span class="pre">index.db</span></code>,
+which is the sqlite database used by <code class="docutils literal notranslate"><span class="pre">zstash</span></code>.</p>
+<p>In our HPSS window, <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">zstash_archive</span></code> will show <code class="docutils literal notranslate"><span class="pre">000000.tar</span></code> in addition to <code class="docutils literal notranslate"><span class="pre">index.db</span></code>.
+The former is the tar file created from the files and directories in <code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code>.</p>
+<p>Note that the maximum size of tar files will default to 256 GB, unless <code class="docutils literal notranslate"><span class="pre">--maxsize</span></code> is passed in
+with a different value to <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">create</span></code>.</p>
+<p><strong>Update</strong>:</p>
+<p>Now, let’s add some files to our source directory, <code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code>.
+We want to update our HPSS archive with these
+changes, so we will enter the directory <code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code> and tell <code class="docutils literal notranslate"><span class="pre">zstash</span></code> to update it.
+Note that we have to be inside the source directory to run <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">update</span></code>.
+We also have to specify <code class="docutils literal notranslate"><span class="pre">--hpss</span></code> so that <code class="docutils literal notranslate"><span class="pre">zstash</span></code> will know which HPSS archive to update.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./add_files.sh
+$ cd zstash_demo
+$ zstash update --hpss=zstash_archive
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Gathering</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">files</span> <span class="n">to</span> <span class="n">archive</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Creating</span> <span class="n">new</span> <span class="n">tar</span> <span class="n">archive</span> <span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">dir2</span><span class="o">/</span><span class="n">file2</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">db</span>
+</pre></div>
+</div>
+<p>In our HPSS window, notice that <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">zstash_archive</span></code> now includes a new tar file <code class="docutils literal notranslate"><span class="pre">000001.tar</span></code>.
+<code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">update</span></code> produces a new tar file for each update.
+Nothing will have changed in <code class="docutils literal notranslate"><span class="pre">zstash_demo/zstash</span></code>, however.</p>
+<p><strong>Extract</strong>:</p>
+<p>Now, we will extract the files from the HPSS archive. We will extract into a new directory
+because <code class="docutils literal notranslate"><span class="pre">zstash</span></code> will not extract files that are already present. So, we will exit the
+<code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code> directory and create a new directory. Extraction will always occur
+in the current directory.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ..
+$ mkdir zstash_extraction
+$ cd zstash_extraction
+$ zstash extract --hpss=zstash_archive
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="kn">from</span> <span class="nn">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">db</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="kn">from</span> <span class="nn">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Opening</span> <span class="n">tar</span> <span class="n">archive</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">file0</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">empty_dir</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="kn">from</span> <span class="nn">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Opening</span> <span class="n">tar</span> <span class="n">archive</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">dir2</span><span class="o">/</span><span class="n">file2</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">No</span> <span class="n">failures</span> <span class="n">detected</span> <span class="n">when</span> <span class="n">extracting</span> <span class="n">the</span> <span class="n">files</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>The contents of <code class="docutils literal notranslate"><span class="pre">zstash_extraction</span></code> will be identical to those of <code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code>.</p>
+<p><strong>Cleanup</strong>:</p>
+<p>Now, we will clean up for the next example.</p>
+<p>In our NERSC window:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ..
+$ rm -r zstash_demo/ zstash_extraction/
+</pre></div>
+</div>
+<p>In our HPSS window (<code class="docutils literal notranslate"><span class="pre">rm</span> <span class="pre">-r</span></code> doesn’t work on HPSS):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rm zstash_archive/000000.tar zstash_archive/000001.tar zstash_archive/index.db
+$ rmdir zstash_archive
+</pre></div>
+</div>
+</section>
+<section id="no-hpss">
+<h3>No HPSS<a class="headerlink" href="#no-hpss" title="Permalink to this headline">¶</a></h3>
+<p>This example will again illustrate <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and <code class="docutils literal notranslate"><span class="pre">extract</span></code>,
+but this time without using HPSS.</p>
+<p>Set up the directory structure:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./setup.sh
+</pre></div>
+</div>
+<p><strong>Create</strong>:</p>
+<p>Now, we will create the local <code class="docutils literal notranslate"><span class="pre">zstash</span></code> archive, but skip creating a HPSS archive.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ zstash create --hpss=none zstash_demo
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Gathering</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">files</span> <span class="n">to</span> <span class="n">archive</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Creating</span> <span class="n">new</span> <span class="n">tar</span> <span class="n">archive</span> <span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">file0</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">empty_dir</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">put</span><span class="p">:</span> <span class="n">HPSS</span> <span class="ow">is</span> <span class="n">unavailable</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">put</span><span class="p">:</span> <span class="n">Keeping</span> <span class="n">tar</span> <span class="n">files</span> <span class="n">locally</span> <span class="ow">and</span> <span class="n">removing</span> <span class="n">write</span> <span class="n">permissions</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span> <span class="n">original</span> <span class="n">mode</span><span class="o">=</span><span class="sa">b</span><span class="s2">&quot;&#39;660&#39;&quot;</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span> <span class="n">new</span> <span class="n">mode</span><span class="o">=</span><span class="sa">b</span><span class="s2">&quot;&#39;440&#39;&quot;</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">put</span><span class="p">:</span> <span class="n">HPSS</span> <span class="ow">is</span> <span class="n">unavailable</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">zstash_demo/zstash</span></code> (the cache, located in the source directory) is our only archive now.
+It contains both <code class="docutils literal notranslate"><span class="pre">index.db</span></code> and <code class="docutils literal notranslate"><span class="pre">000000.tar</span></code>.
+In our HPSS window, <code class="docutils literal notranslate"><span class="pre">ls</span></code> will not show <code class="docutils literal notranslate"><span class="pre">zstash_archive</span></code>.
+Our cache has completely replaced the HPSS archive we used in the simple case.</p>
+<p><strong>Update</strong>:</p>
+<p>Now, we can add some more files and update this local archive.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./add_files.sh
+$ cd zstash_demo
+$ zstash update --hpss=none
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Gathering</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">files</span> <span class="n">to</span> <span class="n">archive</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Creating</span> <span class="n">new</span> <span class="n">tar</span> <span class="n">archive</span> <span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">dir2</span><span class="o">/</span><span class="n">file2</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">put</span><span class="p">:</span> <span class="n">HPSS</span> <span class="ow">is</span> <span class="n">unavailable</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">put</span><span class="p">:</span> <span class="n">Keeping</span> <span class="n">tar</span> <span class="n">files</span> <span class="n">locally</span> <span class="ow">and</span> <span class="n">removing</span> <span class="n">write</span> <span class="n">permissions</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000001.</span><span class="n">tar</span> <span class="n">original</span> <span class="n">mode</span><span class="o">=</span><span class="sa">b</span><span class="s2">&quot;&#39;660&#39;&quot;</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000001.</span><span class="n">tar</span> <span class="n">new</span> <span class="n">mode</span><span class="o">=</span><span class="sa">b</span><span class="s2">&quot;&#39;440&#39;&quot;</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">put</span><span class="p">:</span> <span class="n">HPSS</span> <span class="ow">is</span> <span class="n">unavailable</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">000001.tar</span></code> has been added to <code class="docutils literal notranslate"><span class="pre">zstash_demo/zstash</span></code>.
+In our HPSS window, <code class="docutils literal notranslate"><span class="pre">ls</span></code> still shows no archive created from this example.</p>
+<p><strong>Extract</strong>:</p>
+<p>Now, we will extract the files from this local archive. Again, we will extract into a new directory
+because <code class="docutils literal notranslate"><span class="pre">zstash</span></code> will not extract files that are already present. So, we will exit the
+<code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code> directory and create a new directory. Unlike in the simple case however,
+we will need to copy the cache <code class="docutils literal notranslate"><span class="pre">zstash_demo/zstash</span></code> into this new directory. We have
+to do this because with <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code>, <code class="docutils literal notranslate"><span class="pre">zstash</span></code> simply extracts from the cache
+in the current directory, rather than extracting from an HPSS archive. We could also
+pass in <code class="docutils literal notranslate"><span class="pre">--cache=../zstash_demo/zstash</span></code>; <code class="docutils literal notranslate"><span class="pre">--cache</span></code> will be discussed in the next section.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ..
+$ mkdir zstash_extraction
+$ cd zstash_extraction
+$ cp -r ../zstash_demo/zstash/ zstash
+$ zstash extract --hpss=none
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Opening</span> <span class="n">tar</span> <span class="n">archive</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">file0</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">empty_dir</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Opening</span> <span class="n">tar</span> <span class="n">archive</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">dir2</span><span class="o">/</span><span class="n">file2</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">No</span> <span class="n">failures</span> <span class="n">detected</span> <span class="n">when</span> <span class="n">extracting</span> <span class="n">the</span> <span class="n">files</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>As with the simple case, the contents of <code class="docutils literal notranslate"><span class="pre">zstash_extraction</span></code>
+will be identical to those of <code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code>. We still had to specify <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code> because
+if we had kept <code class="docutils literal notranslate"><span class="pre">--hpss=hpss_archive</span></code>, then <code class="docutils literal notranslate"><span class="pre">zstash</span></code> would have tried to extract from a HPSS
+archive that doesn’t exist.</p>
+<p><strong>Cleanup</strong>:</p>
+<p>Now, we will clean up for the next example.</p>
+<p>In our NERSC window (use the <code class="docutils literal notranslate"><span class="pre">-f</span></code> option to force deletion of tar files):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ..
+$ rm -rf zstash_demo/ zstash_extraction/
+</pre></div>
+</div>
+<p>There’s nothing to clean up in our HPSS window.</p>
+</section>
+<section id="change-cache-name">
+<h3>Change Cache Name<a class="headerlink" href="#change-cache-name" title="Permalink to this headline">¶</a></h3>
+<p>This example will again illustrate <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and <code class="docutils literal notranslate"><span class="pre">extract</span></code>,
+but this time using a different cache.</p>
+<p>Set up the directory structure:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./setup.sh
+</pre></div>
+</div>
+<p><strong>Create</strong>:</p>
+<p>Now, we will create the <code class="docutils literal notranslate"><span class="pre">zstash</span></code> archives – both locally and on HPSS.
+This time, however, our local archive will be named <code class="docutils literal notranslate"><span class="pre">my_cache</span></code> instead <code class="docutils literal notranslate"><span class="pre">zstash</span></code>.
+<code class="docutils literal notranslate"><span class="pre">--cache</span></code> just takes a directory path; it can
+be a relative path and can contain <code class="docutils literal notranslate"><span class="pre">..</span></code> or it can be an absolute path. <cite>However,</cite> it
+is recommended that however the path is written, it places the cache in the source
+directory (in this case, <code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code>).</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ zstash create --hpss=zstash_archive --cache=my_cache zstash_demo
+zstash create --hpss=zstash_archive --cache=/global/cscratch1/sd/forsyth/tutorial/zstash_demo/my_cache zstash_demo
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Gathering</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">files</span> <span class="n">to</span> <span class="n">archive</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Creating</span> <span class="n">new</span> <span class="n">tar</span> <span class="n">archive</span> <span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">file0</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">empty_dir</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">my_cache</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">my_cache</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">db</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">zstash_demo/my_cache</span></code> will now contain <code class="docutils literal notranslate"><span class="pre">index.db</span></code> just as <code class="docutils literal notranslate"><span class="pre">zstash_demo/zstash</span></code>
+did in the simple case.</p>
+<p>As in the simple case, in our HPSS window, <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">zstash_archive</span></code> shows both
+<code class="docutils literal notranslate"><span class="pre">000000.tar</span></code> and <code class="docutils literal notranslate"><span class="pre">index.db</span></code>.</p>
+<p><strong>Update</strong>:</p>
+<p>We will now add more files and update the archives.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./add_files.sh
+$ cd zstash_demo
+$ zstash update --hpss=zstash_archive --cache=my_cache
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Gathering</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">files</span> <span class="n">to</span> <span class="n">archive</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Creating</span> <span class="n">new</span> <span class="n">tar</span> <span class="n">archive</span> <span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">dir2</span><span class="o">/</span><span class="n">file2</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">my_cache</span><span class="o">/</span><span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">my_cache</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">db</span>
+</pre></div>
+</div>
+<p>In our HPSS window, notice that <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">zstash_archive</span></code> now includes a new tar file <code class="docutils literal notranslate"><span class="pre">000001.tar</span></code>.
+As in the simple case, nothing will have changed in the cache
+(named <code class="docutils literal notranslate"><span class="pre">zstash_demo/my_cache</span></code> here).</p>
+<p><strong>Extract</strong>:</p>
+<p>Now we will extract the files:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ..
+$ mkdir zstash_extraction
+$ cd zstash_extraction
+$ zstash extract --hpss=zstash_archive --cache=my_cache
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="kn">from</span> <span class="nn">HPSS</span><span class="p">:</span> <span class="n">my_cache</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">db</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="kn">from</span> <span class="nn">HPSS</span><span class="p">:</span> <span class="n">my_cache</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Opening</span> <span class="n">tar</span> <span class="n">archive</span> <span class="n">my_cache</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">file0</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">empty_dir</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="kn">from</span> <span class="nn">HPSS</span><span class="p">:</span> <span class="n">my_cache</span><span class="o">/</span><span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Opening</span> <span class="n">tar</span> <span class="n">archive</span> <span class="n">my_cache</span><span class="o">/</span><span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">dir2</span><span class="o">/</span><span class="n">file2</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">No</span> <span class="n">failures</span> <span class="n">detected</span> <span class="n">when</span> <span class="n">extracting</span> <span class="n">the</span> <span class="n">files</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>As in the simple case, the contents of <code class="docutils literal notranslate"><span class="pre">zstash_extraction</span></code> will be identical to those of
+<code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code>. The difference is that this time the cache will be named <code class="docutils literal notranslate"><span class="pre">my_cache</span></code> in both
+<code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code> and <code class="docutils literal notranslate"><span class="pre">zstash_extraction</span></code>.</p>
+<p><strong>Cleanup</strong>:</p>
+<p>Now, we will clean up for the next example.</p>
+<p>In our NERSC window:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ..
+$ rm -r zstash_demo/ zstash_extraction/
+</pre></div>
+</div>
+<p>In our HPSS window (<code class="docutils literal notranslate"><span class="pre">rm</span> <span class="pre">-r</span></code> doesn’t work on HPSS):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rm zstash_archive/000000.tar zstash_archive/000001.tar zstash_archive/index.db
+$ rmdir zstash_archive
+</pre></div>
+</div>
+</section>
+<section id="keep-files">
+<h3>Keep Files<a class="headerlink" href="#keep-files" title="Permalink to this headline">¶</a></h3>
+<p>This example will again illustrate <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and <code class="docutils literal notranslate"><span class="pre">extract</span></code>,
+but this time storing the tar files in the local archive (the cache) in addition to the
+HPSS archive. In the <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code> example, we saw that when there was no HPSS archive
+being used, the cache contained tar files. The <code class="docutils literal notranslate"><span class="pre">--keep</span></code> option allows us to store these files
+locally even if we’re using HPSS. If <code class="docutils literal notranslate"><span class="pre">--keep</span></code> is used with <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code>, there won’t be a
+noticeable effect since the latter keeps tar files by default.</p>
+<p>Set up the directory structure:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./setup.sh
+</pre></div>
+</div>
+<p><strong>Create</strong>:</p>
+<p>Now, we will create the <code class="docutils literal notranslate"><span class="pre">zstash</span></code> archives – both locally and on HPSS.
+This time, however, we will specify that the cache should keep the tar file created
+by <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">create</span></code>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ zstash create --hpss=zstash_archive --keep zstash_demo
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Gathering</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">files</span> <span class="n">to</span> <span class="n">archive</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Creating</span> <span class="n">new</span> <span class="n">tar</span> <span class="n">archive</span> <span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">file0</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">empty_dir</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">db</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">zstash_demo/zstash</span></code> and our HPSS archive <code class="docutils literal notranslate"><span class="pre">zstash_archive</span></code> now have identical contents:
+<code class="docutils literal notranslate"><span class="pre">000000.tar</span></code> and <code class="docutils literal notranslate"><span class="pre">index.db</span></code>. In the simple case, the former would not have contained
+the tar file.</p>
+<p><strong>Update</strong>:</p>
+<p>Now, we will add more files and update the archives.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./add_files.sh
+$ cd zstash_demo
+$ zstash update --hpss=zstash_archive --keep
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Gathering</span> <span class="nb">list</span> <span class="n">of</span> <span class="n">files</span> <span class="n">to</span> <span class="n">archive</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Creating</span> <span class="n">new</span> <span class="n">tar</span> <span class="n">archive</span> <span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Archiving</span> <span class="n">dir2</span><span class="o">/</span><span class="n">file2</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="n">to</span> <span class="n">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">db</span>
+</pre></div>
+</div>
+<p>Again, <code class="docutils literal notranslate"><span class="pre">zstash_demo/zstash</span></code> and our HPSS archive <code class="docutils literal notranslate"><span class="pre">zstash_archive</span></code>
+will have identical contents: <code class="docutils literal notranslate"><span class="pre">000001.tar</span></code> in addition to <code class="docutils literal notranslate"><span class="pre">000000.tar</span></code> and <code class="docutils literal notranslate"><span class="pre">index.db</span></code>.
+In the simple case, the former would not have the tar file added.</p>
+<p><strong>Extract</strong>:</p>
+<p>Now, we will extract the files from the HPSS archive.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ..
+$ mkdir zstash_extraction
+$ cd zstash_extraction
+$ zstash extract --hpss=zstash_archive --keep
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="kn">from</span> <span class="nn">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">db</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="kn">from</span> <span class="nn">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Opening</span> <span class="n">tar</span> <span class="n">archive</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">file0</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">empty_dir</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="kn">from</span> <span class="nn">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Opening</span> <span class="n">tar</span> <span class="n">archive</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000001.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">dir2</span><span class="o">/</span><span class="n">file2</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">No</span> <span class="n">failures</span> <span class="n">detected</span> <span class="n">when</span> <span class="n">extracting</span> <span class="n">the</span> <span class="n">files</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>As in the simple case, the contents of <code class="docutils literal notranslate"><span class="pre">zstash_extraction</span></code> will be identical to those of
+<code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code>. The difference is that this time <code class="docutils literal notranslate"><span class="pre">zstash_demo/zstash</span></code> contains tar files
+and thus so too does <code class="docutils literal notranslate"><span class="pre">zstash_extraction/zstash</span></code>, whereas this was not the case in
+the simple case.</p>
+<p><strong>Cleanup</strong>:</p>
+<p>Now, we will clean up for the next example.</p>
+<p>In our NERSC window:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ..
+$ rm -r zstash_demo/ zstash_extraction/
+</pre></div>
+</div>
+<p>In our HPSS window (<code class="docutils literal notranslate"><span class="pre">rm</span> <span class="pre">-r</span></code> doesn’t work on HPSS):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rm zstash_archive/000000.tar zstash_archive/000001.tar zstash_archive/index.db
+$ rmdir zstash_archive
+</pre></div>
+</div>
+</section>
+<section id="check-file-integrity">
+<h3>Check File Integrity<a class="headerlink" href="#check-file-integrity" title="Permalink to this headline">¶</a></h3>
+<p>This example will demonstrate how to check that files haven’t been damaged during archive or transfer.</p>
+<p><strong>Create</strong>:</p>
+<p>First, let’s create local and HPSS archives as in the simple case:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./setup.sh
+$ zstash create --hpss=zstash_archive zstash_demo
+</pre></div>
+</div>
+<p><strong>Check</strong>:</p>
+<p>Now, we will check the file integrity. Note that we’ll want to enter the directory where our
+local cache (<code class="docutils literal notranslate"><span class="pre">zstash</span></code>) is. If we run <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> in another directory,
+a local cache (named <code class="docutils literal notranslate"><span class="pre">zstash</span></code>) will be created in that directory.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd zstash_demo
+$ zstash check --hpss=zstash_archive
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="kn">from</span> <span class="nn">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Opening</span> <span class="n">tar</span> <span class="n">archive</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Checking</span> <span class="n">file0</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Checking</span> <span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Checking</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Checking</span> <span class="n">empty_dir</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">No</span> <span class="n">failures</span> <span class="n">detected</span> <span class="n">when</span> <span class="n">checking</span> <span class="n">the</span> <span class="n">files</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>No failures were detected, so the file integrity has been confirmed. This was done by verifying their md5 checksums
+against the original ones stored in the database.</p>
+<p><code class="docutils literal notranslate"><span class="pre">zstash_demo/zstash</span></code> will still only contain <code class="docutils literal notranslate"><span class="pre">index.db</span></code> and no files will have been added to
+<code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code>.</p>
+<p>In our HPSS window, <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">zstash</span> <span class="pre">archive</span></code> will show <code class="docutils literal notranslate"><span class="pre">000000.tar</span></code> and <code class="docutils literal notranslate"><span class="pre">index.db</span></code>.</p>
+<p><strong>Cleanup</strong>:</p>
+<p>Now, we will clean up for the next example.</p>
+<p>In our NERSC window:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ..
+$ rm -r zstash_demo/
+</pre></div>
+</div>
+<p>In our HPSS window (<code class="docutils literal notranslate"><span class="pre">rm</span> <span class="pre">-r</span></code> doesn’t work on HPSS):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rm zstash_archive/000000.tar zstash_archive/index.db
+$ rmdir zstash_archive
+</pre></div>
+</div>
+</section>
+<section id="list-files-in-hpss-archive">
+<h3>List Files in HPSS Archive<a class="headerlink" href="#list-files-in-hpss-archive" title="Permalink to this headline">¶</a></h3>
+<p>This example will demonstrate how to list the files contained in the tar files in the HPSS archive.</p>
+<p><strong>Create</strong>:</p>
+<p>First, let’s create local and HPSS archives as in the simple case:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./setup.sh
+$ zstash create --hpss=zstash_archive zstash_demo
+</pre></div>
+</div>
+<p>Recall from the simple case that the cache <code class="docutils literal notranslate"><span class="pre">zstash_demo/zstash</span></code> now contains <code class="docutils literal notranslate"><span class="pre">index.db</span></code> and
+that <code class="docutils literal notranslate"><span class="pre">zstash_archive</span></code> will contain <code class="docutils literal notranslate"><span class="pre">000000.tar</span></code> in addition to <code class="docutils literal notranslate"><span class="pre">index.db</span></code>.</p>
+<p><strong>List</strong>:</p>
+<p>We can check the contents of the tar file by running the following.
+Note that it’s good to be in the directory with the cache
+(in this case <code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code> contains the cache <code class="docutils literal notranslate"><span class="pre">zstash</span></code>).
+If we run <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">ls</span></code> in another directory, a local cache (named <code class="docutils literal notranslate"><span class="pre">zstash</span></code>) will be created
+in that directory.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd zstash_demo
+$ zstash ls --hpss=zstash_archive
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">file0</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>
+<span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">empty_dir</span>
+</pre></div>
+</div>
+<p>Compare to the output of <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">-R</span> <span class="pre">.</span></code> (i.e., list all files in <code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">dir</span>  <span class="n">empty_dir</span>  <span class="n">file0</span><span class="o">.</span><span class="n">txt</span>  <span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>  <span class="n">zstash</span>
+
+<span class="o">./</span><span class="nb">dir</span><span class="p">:</span>
+<span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+
+<span class="o">./</span><span class="n">empty_dir</span><span class="p">:</span>
+
+<span class="o">./</span><span class="n">zstash</span><span class="p">:</span>
+<span class="n">index</span><span class="o">.</span><span class="n">db</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">ls</span></code> lists the same files but excludes the cache (in this case, named <code class="docutils literal notranslate"><span class="pre">zstash</span></code>).</p>
+<p><strong>Extract</strong>:</p>
+<p>Now, let’s extract the files.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ..
+$ mkdir zstash_extraction
+$ cd zstash_extraction
+$ zstash extract --hpss=zstash_archive
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="kn">from</span> <span class="nn">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">db</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Transferring</span> <span class="n">file</span> <span class="kn">from</span> <span class="nn">HPSS</span><span class="p">:</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Opening</span> <span class="n">tar</span> <span class="n">archive</span> <span class="n">zstash</span><span class="o">/</span><span class="mf">000000.</span><span class="n">tar</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">file0</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">Extracting</span> <span class="n">empty_dir</span>
+<span class="n">INFO</span><span class="p">:</span> <span class="n">No</span> <span class="n">failures</span> <span class="n">detected</span> <span class="n">when</span> <span class="n">extracting</span> <span class="n">the</span> <span class="n">files</span><span class="o">.</span>
+</pre></div>
+</div>
+<p><strong>List</strong>:</p>
+<p>Now that we have extracted files, let’s list the files in the archive again.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ..
+$ cd zstash_demo
+$ zstash ls --hpss=zstash_archive
+</pre></div>
+</div>
+<p>This will output the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">file0</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">file_empty</span><span class="o">.</span><span class="n">txt</span>
+<span class="nb">dir</span><span class="o">/</span><span class="n">file1</span><span class="o">.</span><span class="n">txt</span>
+<span class="n">empty_dir</span>
+</pre></div>
+</div>
+<p>We can see that extraction did not alter what <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">ls</span></code> displays, since extraction does not
+change the contents of the HPSS archive.</p>
+<p><strong>Cleanup</strong>:</p>
+<p>Now, we will clean up for the next example.</p>
+<p>In our NERSC window:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ..
+$ rm -r zstash_demo/ zstash_extraction/
+</pre></div>
+</div>
+<p>In our HPSS window (<code class="docutils literal notranslate"><span class="pre">rm</span> <span class="pre">-r</span></code> doesn’t work on HPSS):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rm zstash_archive/000000.tar zstash_archive/index.db
+$ rmdir zstash_archive
+</pre></div>
+</div>
+</section>
+<section id="archiving-e3sm-data-output">
+<h3>Archiving E3SM Data Output<a class="headerlink" href="#archiving-e3sm-data-output" title="Permalink to this headline">¶</a></h3>
+<p>Now, instead of using placeholder data, let’s archive actual data from E3SM. Archiving large amounts
+of data can take several days, so we’ll use a data transfer node to improve performance and
+<code class="docutils literal notranslate"><span class="pre">screen</span></code> so that we can detatch and reattach without stopping <code class="docutils literal notranslate"><span class="pre">zstash</span></code>. For this example,
+however, we’ll use a small amount of data so <code class="docutils literal notranslate"><span class="pre">zstash</span></code> finishes in a reasonable amount of time.</p>
+<p>We’ll call our directory <code class="docutils literal notranslate"><span class="pre">e3sm_output</span></code> this time instead of <code class="docutils literal notranslate"><span class="pre">zstash_demo</span></code>. We’ll enter this
+directory and copy over a couple <code class="docutils literal notranslate"><span class="pre">nc</span></code> files from the data repository on NERSC.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ mkdir e3sm_output
+$ cd e3sm_output
+$ cp /global/cfs/cdirs/e3smpub/E3SM_simulations/20180215.DECKv1b_H1.ne30_oEC.edison/archive/atm/hist/20180215.DECKv1b_H1.ne30_oEC.edison.cam.h0.1850-01.nc .
+$ cp /global/cfs/cdirs/e3smpub/E3SM_simulations/20180215.DECKv1b_H1.ne30_oEC.edison/archive/atm/hist/20180215.DECKv1b_H1.ne30_oEC.edison.cam.h0.1850-02.nc .
+</pre></div>
+</div>
+<p><strong>Create</strong>:</p>
+<p>Now, let’s enter the data transfer node, use <code class="docutils literal notranslate"><span class="pre">screen</span></code>, install <code class="docutils literal notranslate"><span class="pre">zstash</span></code>, and begin archiving.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
+$ screen
+$ bash
+$ source /global/cfs/cdirs/e3sm/software/anaconda_envs/load_latest_e3sm_unified.sh
+$ cd $CSCRATCH/tutorial
+$ zstash create --hpss=zstash_archive e3sm_output
+</pre></div>
+</div>
+<p>If the archiving is taking a long time, we could enter the keys <code class="docutils literal notranslate"><span class="pre">CTRL-A</span></code> and then <code class="docutils literal notranslate"><span class="pre">CTRL-D</span></code> to
+detach and <code class="docutils literal notranslate"><span class="pre">exit</span></code> to get out of the data transfer node. We could reattach with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
+$ screen -r
+</pre></div>
+</div>
+<p>For more information on archiving E3SM output, see <a class="reference internal" href="best_practices.html#best-practices"><span class="std std-ref">Best practices for E3SM</span></a>.</p>
+<p><strong>Cleanup</strong>:</p>
+<p>Now, we will clean up.</p>
+<p>In our NERSC window (not on the data transfer node):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ..
+$ rm -r e3sm_output
+</pre></div>
+</div>
+<p>In our HPSS window (<code class="docutils literal notranslate"><span class="pre">rm</span> <span class="pre">-r</span></code> doesn’t work on HPSS):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rm zstash_archive/000000.tar zstash_archive/index.db
+$ rmdir zstash_archive
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="usage.html" class="btn btn-neutral float-right" title="Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="getting_started.html" class="btn btn-neutral float-left" title="Getting started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, E3SM.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: license
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../master/tutorial.html">master</a></dd>
+      <dd><a href="tutorial.html">license</a></dd>
+    </dl>
+  </div>
+</div>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

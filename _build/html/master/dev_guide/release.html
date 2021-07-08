@@ -102,7 +102,6 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">How to Prepare a Release</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#preparing-the-code-for-release">Preparing The Code For Release</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#creating-a-release-on-github">Creating A Release On GitHub</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#updating-the-sha256">Updating The sha256</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#releasing-the-software-on-anaconda">Releasing The Software On Anaconda</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#creating-a-new-version-of-the-documentation">Creating a New Version of the Documentation</a></li>
 </ul>
@@ -185,7 +184,6 @@
 <ul class="simple">
 <li><p>Preparing The Code For Release</p></li>
 <li><p>Creating A Release On GitHub</p></li>
-<li><p>Updating The sha256</p></li>
 <li><p>Releasing The Software On Anaconda</p></li>
 <li><p>Creating a New Version of the Documentation</p></li>
 </ul>
@@ -279,60 +277,18 @@ this is specified after the tag (&#64; Target: <code class="docutils literal not
 <li><p>Click “Publish release”.</p></li>
 </ol>
 </section>
-<section id="updating-the-sha256">
-<h2>Updating The sha256<a class="headerlink" href="#updating-the-sha256" title="Permalink to this headline">¶</a></h2>
-<ol class="arabic">
-<li><p>Download “Source code (.tar.gz)” from the <a class="reference external" href="https://github.com/E3SM-Project/zstash/releases">GitHub releases page</a>.</p></li>
-<li><p>Run <code class="docutils literal notranslate"><span class="pre">shasum</span> <span class="pre">-a</span> <span class="pre">256</span></code> on this file. For example:</p>
-<blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">shasum</span> <span class="o">-</span><span class="n">a</span> <span class="mi">256</span> <span class="n">zstash</span><span class="o">-</span><span class="mf">0.4.1</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span>
-</pre></div>
-</div>
-</div></blockquote>
-</li>
-</ol>
-<p>3. On your machine, pull the latest version of the code.
-This will have the <code class="docutils literal notranslate"><span class="pre">conda/meta.yaml</span></code> we edited in the first section.</p>
-<blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">checkout</span> <span class="n">master</span>
-<span class="n">git</span> <span class="n">pull</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">master</span>
-</pre></div>
-</div>
-</div></blockquote>
-<dl>
-<dt>Or:</dt><dd><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">master</span>
-<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;/</span><span class="n">master</span>
-</pre></div>
-</div>
-</dd>
-</dl>
-<ol class="arabic" start="4">
-<li><p>Change <code class="docutils literal notranslate"><span class="pre">sha256</span></code> in <code class="docutils literal notranslate"><span class="pre">conda/meta.yaml</span></code> to the result of step 2.</p></li>
-<li><p>Commit and push your changes.</p>
-<blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">am</span> <span class="s1">&#39;Edit sha256 for v0.4.1&#39;</span>
-<span class="n">git</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">master</span>
-</pre></div>
-</div>
-</div></blockquote>
-</li>
-</ol>
-<p>Or:</p>
-<blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">am</span> <span class="s1">&#39;Edit sha256 for v0.4.1&#39;</span>
-<span class="n">git</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">fork</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
-<span class="c1"># Create pull request for the master branch</span>
-</pre></div>
-</div>
-</div></blockquote>
-</section>
 <section id="releasing-the-software-on-anaconda">
 <h2>Releasing The Software On Anaconda<a class="headerlink" href="#releasing-the-software-on-anaconda" title="Permalink to this headline">¶</a></h2>
 <p>1. Be sure to have already completed <a class="reference internal" href="#github-release"><span class="std std-ref">Creating A Release On GitHub</span></a>.
 This triggers the CI/CD workflow that handles Anaconda releases.</p>
 <ol class="arabic simple" start="2">
 <li><p>Wait until the CI/CD build is successful. You can view all workflows at <a class="reference external" href="https://github.com/E3SM-Project/zstash/actions">All Workflows</a>.</p></li>
-<li><p>Check the <a class="reference external" href="https://anaconda.org/e3sm/zstash">https://anaconda.org/e3sm/zstash</a> page to view the newly updated package.</p></li>
+<li><p>Check the <a class="reference external" href="https://anaconda.org/e3sm/zstash">https://anaconda.org/e3sm/zstash</a> page to view the newly updated package.</p>
+<ul class="simple">
+<li><p>Release candidates are assigned the <code class="docutils literal notranslate"><span class="pre">e3sm_dev</span></code> label</p></li>
+<li><p>Production releases are assigned the <code class="docutils literal notranslate"><span class="pre">main</span></code> label</p></li>
+</ul>
+</li>
 </ol>
 <p>4. Notify the maintainers of the unified E3SM environment about the new release on the
 <a class="reference external" href="https://acme-climate.atlassian.net/wiki/spaces/WORKFLOW/pages/129732419/E3SM+Unified+Anaconda+Environment">E3SM Confluence site</a>.
@@ -397,6 +353,7 @@ This triggers the CI/CD workflow that handles publishing documentation versions.
     <dl>
       <dt>Branches</dt>
       <dd><a href="release.html">master</a></dd>
+      <dd><a href="../../license/dev_guide/release.html">license</a></dd>
     </dl>
   </div>
 </div>
