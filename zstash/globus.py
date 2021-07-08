@@ -28,7 +28,7 @@ def globus_transfer(remote_endpoint, remote_path, name, transfer_type, local_end
     """
     Read the local globus endpoint UUID from ~/.zstash.ini.
     If the ini file does not exist, create an ini file with empty values,
-    and try to find the local endpoint UUID based on the FQDN 
+    and try to find the local endpoint UUID based on the FQDN
     """
     ini_path = os.path.expanduser("~/.zstash.ini")
     ini = configparser.ConfigParser()
