@@ -1,0 +1,377 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>How to Prepare a Release &mdash; zstash  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Contributing to This Documentation" href="../contributing.html" />
+    <link rel="prev" title="Project Standards" href="project-standards.html" />
+    <link href="../_static/style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> zstash
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Zstash documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best practices for E3SM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design.html">Design considerations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../support.html">Support</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Developer Guide</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="project-standards.html">Project Standards</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">How to Prepare a Release</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#preparing-the-code-for-release">Preparing The Code For Release</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#creating-a-release-on-github">Creating A Release On GitHub</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#releasing-the-software-on-anaconda">Releasing The Software On Anaconda</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#creating-a-new-version-of-the-documentation">Creating a New Version of the Documentation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing to This Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">zstash</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">Developer Guide</a> &raquo;</li>
+        
+      <li>How to Prepare a Release</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/dev_guide/release.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <section id="how-to-prepare-a-release">
+<h1>How to Prepare a Release<a class="headerlink" href="#how-to-prepare-a-release" title="Permalink to this headline">¶</a></h1>
+<p>In this guide, we’ll cover:</p>
+<ul class="simple">
+<li><p>Preparing The Code For Release</p></li>
+<li><p>Creating A Release On GitHub</p></li>
+<li><p>Releasing The Software On Anaconda</p></li>
+<li><p>Creating a New Version of the Documentation</p></li>
+</ul>
+<section id="preparing-the-code-for-release">
+<h2>Preparing The Code For Release<a class="headerlink" href="#preparing-the-code-for-release" title="Permalink to this headline">¶</a></h2>
+<p>These steps entail modifying files before a release is made.</p>
+<p>1. Pull the lastest code from whatever branch you want to release from.
+It’s usually <code class="docutils literal notranslate"><span class="pre">master</span></code>.</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="n">master</span>
+<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">upstream</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;/</span><span class="n">master</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>2. Edit the <code class="docutils literal notranslate"><span class="pre">version</span></code> argument in <code class="docutils literal notranslate"><span class="pre">setup.py</span></code> to the new version.
+Don’t prefix this with a “v”.</p>
+<blockquote>
+<div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">setup</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;zstash&quot;</span><span class="p">,</span>
+    <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0.1&quot;</span><span class="p">,</span>
+    <span class="n">author</span><span class="o">=</span><span class="s2">&quot;Ryan Forsyth, Chris Golaz, Zeshawn Shaheen&quot;</span><span class="p">,</span>
+    <span class="n">author_email</span><span class="o">=</span><span class="s2">&quot;forsyth2@llnl.gov, golaz1@llnl.gov, shaheen2@llnl.gov&quot;</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Long term HPSS archiving software for E3SM&quot;</span><span class="p">,</span>
+    <span class="n">packages</span><span class="o">=</span><span class="n">find_packages</span><span class="p">(</span><span class="n">exclude</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*.test&quot;</span><span class="p">,</span> <span class="s2">&quot;*.test.*&quot;</span><span class="p">,</span> <span class="s2">&quot;test.*&quot;</span><span class="p">,</span> <span class="s2">&quot;test&quot;</span><span class="p">]),</span>
+    <span class="n">entry_points</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;console_scripts&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;zstash=zstash.main:main&quot;</span><span class="p">]},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>3. Edit <code class="docutils literal notranslate"><span class="pre">__version__</span></code> in <code class="docutils literal notranslate"><span class="pre">zstash/__init__.py</span></code>.
+We use <code class="docutils literal notranslate"><span class="pre">__version__</span></code> when generating the webpages.</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__version__</span> <span class="o">=</span> <span class="s1">&#39;v1.0.1&#39;</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>4. Change the <code class="docutils literal notranslate"><span class="pre">version</span></code> and <code class="docutils literal notranslate"><span class="pre">git_rev</span></code> tag in <code class="docutils literal notranslate"><span class="pre">conda/meta.yaml</span></code>.
+<code class="docutils literal notranslate"><span class="pre">version</span></code> is what the version of the software will be on Anaconda and
+<code class="docutils literal notranslate"><span class="pre">git_rev</span></code> is the tag that we’ll setup on GitHub in the next section.</p>
+<blockquote>
+<div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When running <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">build</span></code>, <code class="docutils literal notranslate"><span class="pre">conda</span></code> will download the code tagged by <code class="docutils literal notranslate"><span class="pre">git_rev</span></code>.
+Even though <code class="docutils literal notranslate"><span class="pre">meta.yaml</span></code> is in your local clone of the repo, running <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">build</span></code>
+from here <strong>does not</strong> build the package based on your local code.</p>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">package</span><span class="p">:</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">zstash</span>
+    <span class="n">version</span><span class="p">:</span> <span class="mf">1.0.1</span>
+
+<span class="n">source</span><span class="p">:</span>
+    <span class="n">git_url</span><span class="p">:</span> <span class="n">git</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">E3SM</span><span class="o">-</span><span class="n">Project</span><span class="o">/</span><span class="n">zstash</span>
+    <span class="n">git_rev</span><span class="p">:</span> <span class="n">v1</span><span class="mf">.0.1</span>
+</pre></div>
+</div>
+</div></blockquote>
+<ol class="arabic" start="5">
+<li><p>Commit and push your changes.</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">am</span> <span class="s1">&#39;Changes before release.&#39;</span>
+<span class="n">git</span> <span class="n">push</span> <span class="o">&lt;</span><span class="n">fork</span><span class="o">-</span><span class="n">origin</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>Create a pull request to the main repo and merge it.</p></li>
+</ol>
+</section>
+<section id="creating-a-release-on-github">
+<span id="github-release"></span><h2>Creating A Release On GitHub<a class="headerlink" href="#creating-a-release-on-github" title="Permalink to this headline">¶</a></h2>
+<p>1. Go to the Releases on the GitHub repo of the project
+<a class="reference external" href="https://github.com/E3SM-Project/zstash/releases">here</a>.
+and draft a new release.</p>
+<p>2. <code class="docutils literal notranslate"><span class="pre">Tag</span> <span class="pre">version</span></code> and <code class="docutils literal notranslate"><span class="pre">Release</span> <span class="pre">title</span></code> should both be the version, including the “v”.
+(They should match <code class="docutils literal notranslate"><span class="pre">git_rev</span></code> in step 4 of the previous section).
+<code class="docutils literal notranslate"><span class="pre">Target</span></code> should be <code class="docutils literal notranslate"><span class="pre">master</span></code>. Use <code class="docutils literal notranslate"><span class="pre">Describe</span> <span class="pre">this</span> <span class="pre">release</span></code> to write what features
+the release adds. You can scroll through
+<a class="reference external" href="https://github.com/E3SM-Project/zstash/commits/master">Zstash commits</a> to see
+what features have been added recently.</p>
+<p>Note that you can also change the branch which you want to release from,
+this is specified after the tag (&#64; Target: <code class="docutils literal notranslate"><span class="pre">master</span></code>).</p>
+<p>The title of a release is often the same as the tag, but you can set it to whatever you want.</p>
+<p>Remember to write a description.</p>
+<figure class="align-center" id="id2" style="width: 100%">
+<a class="reference external image-reference" href="github_release.png"><img alt="../_images/github_release.png" src="../_images/github_release.png" /></a>
+<figcaption>
+<p><span class="caption-text">An example of a completed page to release the code</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
+</figcaption>
+</figure>
+<ol class="arabic simple" start="3">
+<li><p>Click “Publish release”.</p></li>
+</ol>
+</section>
+<section id="releasing-the-software-on-anaconda">
+<h2>Releasing The Software On Anaconda<a class="headerlink" href="#releasing-the-software-on-anaconda" title="Permalink to this headline">¶</a></h2>
+<p>1. Be sure to have already completed <a class="reference internal" href="#github-release"><span class="std std-ref">Creating A Release On GitHub</span></a>.
+This triggers the CI/CD workflow that handles Anaconda releases.</p>
+<ol class="arabic simple" start="2">
+<li><p>Wait until the CI/CD build is successful. You can view all workflows at <a class="reference external" href="https://github.com/E3SM-Project/zstash/actions">All Workflows</a>.</p></li>
+<li><p>Check the <a class="reference external" href="https://anaconda.org/e3sm/zstash">https://anaconda.org/e3sm/zstash</a> page to view the newly updated package.</p>
+<ul class="simple">
+<li><p>Release candidates are assigned the <code class="docutils literal notranslate"><span class="pre">e3sm_dev</span></code> label</p></li>
+<li><p>Production releases are assigned the <code class="docutils literal notranslate"><span class="pre">main</span></code> label</p></li>
+</ul>
+</li>
+</ol>
+<p>4. Notify the maintainers of the unified E3SM environment about the new release on the
+<a class="reference external" href="https://acme-climate.atlassian.net/wiki/spaces/WORKFLOW/pages/129732419/E3SM+Unified+Anaconda+Environment">E3SM Confluence site</a>.
+Be sure to only update the <code class="docutils literal notranslate"><span class="pre">zstash</span></code> version number in the correct version(s) of
+the E3SM Unified environment. This is almost certainly one of the versions listed under
+“Next versions”. If you are uncertain of which to update, leave a comment on the page
+asking.</p>
+</section>
+<section id="creating-a-new-version-of-the-documentation">
+<h2>Creating a New Version of the Documentation<a class="headerlink" href="#creating-a-new-version-of-the-documentation" title="Permalink to this headline">¶</a></h2>
+<p>1. Be sure to have already completed <a class="reference internal" href="#github-release"><span class="std std-ref">Creating A Release On GitHub</span></a>.
+This triggers the CI/CD workflow that handles publishing documentation versions.</p>
+<p>2. Wait until the CI/CD build is successful. You can view all workflows at
+<a class="reference external" href="https://github.com/E3SM-Project/zstash/actions">All Workflows</a>.</p>
+<p>3. Changes will be available on the
+<a class="reference external" href="https://e3sm-project.github.io/zstash/">zstash documentation page</a>.</p>
+</section>
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="../contributing.html" class="btn btn-neutral float-right" title="Contributing to This Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="project-standards.html" class="btn btn-neutral float-left" title="Project Standards" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, E3SM.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.1.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="release.html">v1.1.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../../license/dev_guide/release.html">license</a></dd>
+      <dd><a href="../../master/dev_guide/release.html">master</a></dd>
+    </dl>
+  </div>
+</div>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
