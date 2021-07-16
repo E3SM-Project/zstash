@@ -113,7 +113,7 @@ class TestZstash(unittest.TestCase):
         # self.cache may appear in any of these directories,
         # but should not appear at the same level as these.
         # Therefore, there is no need to explicitly remove it.
-        for d in [self.test_dir, self.backup_dir, self.copy_dir]:
+        for d in [self.test_dir, self.backup_dir]:
             if os.path.exists(d):
                 shutil.rmtree(d)
         if self.hpss_path and self.hpss_path.lower() != "none":
