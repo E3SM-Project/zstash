@@ -4,8 +4,7 @@
 <html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
-
+  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>How to Prepare a Release &mdash; zstash  documentation</title>
@@ -87,7 +86,7 @@
               
             
             
-              <p><span class="caption-text">Contents:</span></p>
+              <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting started</a></li>
@@ -179,7 +178,7 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <section id="how-to-prepare-a-release">
+  <div class="section" id="how-to-prepare-a-release">
 <h1>How to Prepare a Release<a class="headerlink" href="#how-to-prepare-a-release" title="Permalink to this headline">¶</a></h1>
 <p>In this guide, we’ll cover:</p>
 <ul class="simple">
@@ -189,7 +188,7 @@
 <li><p>Releasing The Software On Anaconda</p></li>
 <li><p>Creating a New Version of the Documentation</p></li>
 </ul>
-<section id="preparing-the-code-for-release">
+<div class="section" id="preparing-the-code-for-release">
 <h2>Preparing The Code For Release<a class="headerlink" href="#preparing-the-code-for-release" title="Permalink to this headline">¶</a></h2>
 <p>These steps entail modifying files before a release is made.</p>
 <p>1. Pull the lastest code from whatever branch you want to release from.
@@ -253,8 +252,8 @@ from here <strong>does not</strong> build the package based on your local code.<
 </li>
 <li><p>Create a pull request to the main repo and merge it.</p></li>
 </ol>
-</section>
-<section id="creating-a-release-on-github">
+</div>
+<div class="section" id="creating-a-release-on-github">
 <span id="github-release"></span><h2>Creating A Release On GitHub<a class="headerlink" href="#creating-a-release-on-github" title="Permalink to this headline">¶</a></h2>
 <p>1. Go to the Releases on the GitHub repo of the project
 <a class="reference external" href="https://github.com/E3SM-Project/zstash/releases">here</a>.
@@ -269,17 +268,15 @@ what features have been added recently.</p>
 this is specified after the tag (&#64; Target: <code class="docutils literal notranslate"><span class="pre">master</span></code>).</p>
 <p>The title of a release is often the same as the tag, but you can set it to whatever you want.</p>
 <p>Remember to write a description.</p>
-<figure class="align-center" id="id2" style="width: 100%">
+<div class="figure align-center" id="id2" style="width: 100%">
 <a class="reference external image-reference" href="github_release.png"><img alt="../_images/github_release.png" src="../_images/github_release.png" /></a>
-<figcaption>
-<p><span class="caption-text">An example of a completed page to release the code</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
-</figcaption>
-</figure>
+<p class="caption"><span class="caption-text">An example of a completed page to release the code</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
+</div>
 <ol class="arabic simple" start="3">
 <li><p>Click “Publish release”.</p></li>
 </ol>
-</section>
-<section id="updating-the-sha256">
+</div>
+<div class="section" id="updating-the-sha256">
 <h2>Updating The sha256<a class="headerlink" href="#updating-the-sha256" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic">
 <li><p>Download “Source code (.tar.gz)” from the <a class="reference external" href="https://github.com/E3SM-Project/zstash/releases">GitHub releases page</a>.</p></li>
@@ -325,8 +322,8 @@ This will have the <code class="docutils literal notranslate"><span class="pre">
 </pre></div>
 </div>
 </div></blockquote>
-</section>
-<section id="releasing-the-software-on-anaconda">
+</div>
+<div class="section" id="releasing-the-software-on-anaconda">
 <h2>Releasing The Software On Anaconda<a class="headerlink" href="#releasing-the-software-on-anaconda" title="Permalink to this headline">¶</a></h2>
 <p>1. Be sure to have already completed <a class="reference internal" href="#github-release"><span class="std std-ref">Creating A Release On GitHub</span></a>.
 This triggers the CI/CD workflow that handles Anaconda releases.</p>
@@ -340,8 +337,8 @@ Be sure to only update the <code class="docutils literal notranslate"><span clas
 the E3SM Unified environment. This is almost certainly one of the versions listed under
 “Next versions”. If you are uncertain of which to update, leave a comment on the page
 asking.</p>
-</section>
-<section id="creating-a-new-version-of-the-documentation">
+</div>
+<div class="section" id="creating-a-new-version-of-the-documentation">
 <h2>Creating a New Version of the Documentation<a class="headerlink" href="#creating-a-new-version-of-the-documentation" title="Permalink to this headline">¶</a></h2>
 <p>1. Be sure to have already completed <a class="reference internal" href="#github-release"><span class="std std-ref">Creating A Release On GitHub</span></a>.
 This triggers the CI/CD workflow that handles publishing documentation versions.</p>
@@ -349,8 +346,8 @@ This triggers the CI/CD workflow that handles publishing documentation versions.
 <a class="reference external" href="https://github.com/E3SM-Project/zstash/actions">All Workflows</a>.</p>
 <p>3. Changes will be available on the
 <a class="reference external" href="https://e3sm-project.github.io/zstash/">zstash documentation page</a>.</p>
-</section>
-</section>
+</div>
+</div>
 
 
            </div>
@@ -400,8 +397,8 @@ This triggers the CI/CD workflow that handles publishing documentation versions.
     </dl>
     <dl>
       <dt>Branches</dt>
-      <dd><a href="release.html">license</a></dd>
       <dd><a href="../../master/dev_guide/release.html">master</a></dd>
+      <dd><a href="release.html">license</a></dd>
     </dl>
   </div>
 </div>

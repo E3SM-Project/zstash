@@ -4,8 +4,7 @@
 <html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
-
+  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <title>Design considerations &mdash; zstash  documentation</title>
@@ -87,7 +86,7 @@
               
             
             
-              <p><span class="caption-text">Contents:</span></p>
+              <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
@@ -171,9 +170,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <section id="design-considerations">
+  <div class="section" id="design-considerations">
 <h1>Design considerations<a class="headerlink" href="#design-considerations" title="Permalink to this headline">¶</a></h1>
-<section id="why-zstash">
+<div class="section" id="why-zstash">
 <h2>Why zstash?<a class="headerlink" href="#why-zstash" title="Permalink to this headline">¶</a></h2>
 <p>NERSC HPSS and other similar tape storage systems are optimized
 for file sizes of 100 to 500 GB. The retrieval of a large number
@@ -220,8 +219,8 @@ time compared to separate checksumming and archiving steps.</p></li>
 <li><p><strong>File integrity</strong> is verified by computing checksums on-the-fly while <strong>extracting</strong>
 files.</p></li>
 </ul>
-</section>
-<section id="why-not-use-htar">
+</div>
+<div class="section" id="why-not-use-htar">
 <h2>Why not use ‘htar’?<a class="headerlink" href="#why-not-use-htar" title="Permalink to this headline">¶</a></h2>
 <p>Htar is an HPSS utility with many nice features. From the NERSC <a class="reference external" href="http://docs.nersc.gov/filesystems/archive_access/#htar">htar documentation page</a>:</p>
 <blockquote>
@@ -249,8 +248,8 @@ Member files within an HTAR aggregate are limited to approximately <strong>68GB<
 <p>Both the member file path length and file size were simply too restrictive
 for archiving output from E3SM simulations. Furthermore, htar lacks the ability
 to compute checksums of member files.</p>
-</section>
-<section id="why-not-just-use-cput-r">
+</div>
+<div class="section" id="why-not-just-use-cput-r">
 <h2>Why not just use ‘cput -R’?<a class="headerlink" href="#why-not-just-use-cput-r" title="Permalink to this headline">¶</a></h2>
 <p>This is the brute force approach: recursive conditional put. It will recursively
 transfer all your files to tape and only do so if the file isn’t already on tape.</p>
@@ -265,8 +264,8 @@ and positioning the tape. Storing many small files in HPSS without
 bundling them together will result in extremely long retrieval times
 for these files and will slow down the HPSS system for all users.</em></p>
 </div></blockquote>
-</section>
-</section>
+</div>
+</div>
 
 
            </div>
@@ -316,8 +315,8 @@ for these files and will slow down the HPSS system for all users.</em></p>
     </dl>
     <dl>
       <dt>Branches</dt>
-      <dd><a href="../license/design.html">license</a></dd>
       <dd><a href="design.html">master</a></dd>
+      <dd><a href="../license/design.html">license</a></dd>
     </dl>
   </div>
 </div>
