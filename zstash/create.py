@@ -105,7 +105,9 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     required.add_argument(
         "--hpss",
         type=str,
-        help='path to storage on HPSS. Set to "none" for local archiving. Must be set to "none" if the machine does not have HPSS access. It also can be a Globus URL, e.g. globus://<UUID>/<PATH>. Names "alcf" and "nersc" are recognized as referring to the ALCF HPSS and NERSC HPSS endpoints.',
+        help=('path to storage on HPSS. Set to "none" for local archiving. It also can be a Globus URL, '
+              'globus://<GLOBUS_ENDPOINT_UUID>/<PATH>. Names "alcf" and "nersc" are recognized as referring to the ALCF HPSS '
+              'and NERSC HPSS endpoints, e.g. globus://nersc/~/my_archive.'),
         required=True,
     )
     optional: argparse._ArgumentGroup = parser.add_argument_group(

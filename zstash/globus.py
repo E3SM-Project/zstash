@@ -77,7 +77,7 @@ def globus_transfer(remote_endpoint, remote_path, name, transfer_type, local_end
 
     for ep_id in [src_ep, dst_ep]:
         ep = tc.get_endpoint(ep_id)
-        if ep.get("activated") is False:
+        if not ep.get("activated"):
             logger.error("The {} endpoint is not activated. Please go to https://app.globus.org/file-manager/collections/{} and activate the endpoint.".format(ep_id, ep_id))
             sys.exit(1)
 
