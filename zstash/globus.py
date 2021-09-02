@@ -75,6 +75,12 @@ def globus_transfer(remote_endpoint, remote_path, name, transfer_type, local_end
     transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
     tc = TransferClient(transfer_authorizer)
 
+    for ep_id in [src_ep, dst_ep]:
+        ep = tc.get_endpoint(ep_id)
+        if ep.get("activated") is False:
+            logger.error("The {} endpoint is not activated. Please go to https://app.globus.org/file-manager/collections/{} and activate the endpoint.".format(ep_id, ep_id))
+            sys.exit(1)
+
     td = TransferData(tc, src_ep, dst_ep, sync_level="checksum", verify_checksum=True, fail_on_quota_errors=True)
     td.add_item(src_path, dst_path)
     try:
@@ -120,7 +126,7 @@ def globus_transfer(remote_endpoint, remote_path, name, transfer_type, local_end
             logger.error("Transfer FAILED")
     except TransferAPIError as e:
         if e.code == "NoCredException":
-            logger.error("{}. Please go to https://app.globus.org/ and activate the endpoint.".format(e.message))
+            logger.error("{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(e.message))
         else:
             logger.error(e)
         sys.exit(1)
