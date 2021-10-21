@@ -182,10 +182,9 @@ NERSC machines have HPSS access. We can choose to use HPSS by setting
 .. note::
     Before using zstash with HPSS for the first time, run ``hsi`` on NERSC
     and enter your credentials. Then, ``zstash`` will be able to access HPSS.
-    Compy does not have HPSS access. Therefore, you’ll need to set
-    ``--hpss=none`` when using it. For long term storage, zstash archives
-    created locally on Compy should be transferred to an off-site HPSS storage using Globus
-    (:ref:`globus-compy`)
+    Compy and Anvil do not have HPSS access. Therefore, you’ll need to use a Globus URL
+    that points to a remote HPSS storage ``--hpss=globus://<Globus endpoint UUID/<path>``
+    or set ``--hpss=none``.
 
 
 Examples

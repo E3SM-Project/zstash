@@ -33,7 +33,10 @@ where
   system where the archive files will be stored. This directory should be **unique** for each 
   zstash archive. If ``--hpss=none``, then files will be archived locally instead of being
   transferred to HPSS. The ``none`` option should be used when running Zstash on a machine
-  without HPSS.
+  without HPSS. The option also accepts a Globus URL, ``globus://<Globus endpoint UUID/<path to archive>``.
+  Then zstash will use [Globus](https://globus.org/) to store a new zstash archive on a Globus endpoint.
+  Names ``alcf`` and ``nersc`` are recognized as referring to the ALCF HPSS and NERSC HPSS endpoints,
+  e.g. ``globus://nersc/~/my_archive``.
 * ``<local path>`` specifies the path to the local directory that should be archived.
 
 Additional optional arguments:
@@ -94,6 +97,22 @@ to conserve storage space: ::
 
 This exclude pattern will skip all restart subdirectories under the short-term archive,
 except for those with years ending in '0' or '5'.
+
+Example with Globus
+-------------------
+If you run zstash on the system without the HPSS file system, but has a [Globus](https://globus.org) endpoint set up,
+you can use a Globus URL: ::
+
+  $ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.anvil
+  $ zstash create --hpss=globus://9cd89cfd-6d04-11e5-ba46-22000b92c6ec/~/test/E3SM_simulations/20170731.F20TR.ne30_ne30.anvil
+
+9cd89cfd-6d04-11e5-ba46-22000b92c6ec is the NERSC HPSS Globus endpoint UUID. Two names ``nersc`` and ``alcf``
+are recognized by zstash and substituted internally with a corresponding Globus UUID
+for the NERSC HPSS Globus endpoint (9cd89cfd-6d04-11e5-ba46-22000b92c6ec) and
+the ALCF HPSS Globus endpoint (de463ec4-6d04-11e5-ba46-22000b92c6ec) endpoint.
+If you want to store zstash archive on these two remote HPSS file systems, you can use the names instead of UUIDs: ::
+
+  $ zstash create --hpss=globus://nersc/~/test/E3SM_simulations/20170731.F20TR.ne30_ne30.anvil
 
 
 Check
