@@ -4,10 +4,11 @@ import argparse
 import errno
 import logging
 import os.path
-from six.moves.urllib.parse import urlparse
 import sqlite3
 import sys
 from typing import Any, List, Tuple
+
+from six.moves.urllib.parse import urlparse
 
 from .hpss import hpss_put
 from .hpss_utils import add_files
@@ -105,9 +106,11 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     required.add_argument(
         "--hpss",
         type=str,
-        help=('path to storage on HPSS. Set to "none" for local archiving. It also can be a Globus URL, '
-              'globus://<GLOBUS_ENDPOINT_UUID>/<PATH>. Names "alcf" and "nersc" are recognized as referring to the ALCF HPSS '
-              'and NERSC HPSS endpoints, e.g. globus://nersc/~/my_archive.'),
+        help=(
+            'path to storage on HPSS. Set to "none" for local archiving. It also can be a Globus URL, '
+            'globus://<GLOBUS_ENDPOINT_UUID>/<PATH>. Names "alcf" and "nersc" are recognized as referring to the ALCF HPSS '
+            "and NERSC HPSS endpoints, e.g. globus://nersc/~/my_archive."
+        ),
         required=True,
     )
     optional: argparse._ArgumentGroup = parser.add_argument_group(

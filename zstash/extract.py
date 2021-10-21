@@ -70,9 +70,11 @@ def setup_extract() -> Tuple[argparse.Namespace, str]:
     optional.add_argument(
         "--hpss",
         type=str,
-        help=('path to storage on HPSS. Set to "none" for local archiving. It also can be a Globus URL, '
-              'globus://<GLOBUS_ENDPOINT_UUID>/<PATH>. Names "alcf" and "nersc" are recognized as referring to the ALCF HPSS '
-              'and NERSC HPSS endpoints, e.g. globus://nersc/~/my_archive.'),
+        help=(
+            'path to storage on HPSS. Set to "none" for local archiving. It also can be a Globus URL, '
+            'globus://<GLOBUS_ENDPOINT_UUID>/<PATH>. Names "alcf" and "nersc" are recognized as referring to the ALCF HPSS '
+            "and NERSC HPSS endpoints, e.g. globus://nersc/~/my_archive."
+        ),
     )
     optional.add_argument(
         "--workers", type=int, default=1, help="num of multiprocess workers"

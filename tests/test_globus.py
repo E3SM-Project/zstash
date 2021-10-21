@@ -1,36 +1,28 @@
-import os
-import shutil
 import configparser
-import socket
+import os
 import re
+import shutil
+import socket
 import unittest
+
 from fair_research_login.client import NativeClient
-from globus_sdk import TransferClient, DeleteData
+from globus_sdk import DeleteData, TransferClient
 from globus_sdk.exc import TransferAPIError
 
-
-from tests.base import (
-    HPSS_ARCHIVE,
-    TOP_LEVEL,
-    ZSTASH_PATH,
-    TestZstash,
-    print_starred,
-    run_cmd,
-)
+from tests.base import TOP_LEVEL, ZSTASH_PATH, TestZstash, print_starred, run_cmd
 
 # Use 'Globus Tutorial Endpoint 1' to simulate an HPSS Globus endpoint
 hpss_globus_endpoint = "ddb59aef-6d04-11e5-ba46-22000b92c6ec"
 
 regex_endpoint_map = {
-    "theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
-    "blueslogin.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
-    "chr.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
-    "cori.*\.nersc\.gov": "9d6d99eb-6d04-11e5-ba46-22000b92c6ec",
+    r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
+    r"blueslogin.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
+    r"chr.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
+    r"cori.*\.nersc\.gov": "9d6d99eb-6d04-11e5-ba46-22000b92c6ec",
 }
 
 
 class TestGlobus(TestZstash):
-
     def preactivate_globus(self):
         """
         Read the local globus endpoint UUID from ~/.zstash.ini.
@@ -60,23 +52,34 @@ class TestGlobus(TestZstash):
             self.fail("{} does not have the local Globus endpoint set".format(ini_path))
 
         native_client = NativeClient(
-                client_id = "6c1629cf-446c-49e7-af95-323c6412397f",
-                app_name="Zstash",
-                default_scopes = "openid urn:globus:auth:scope:transfer.api.globus.org:all")
+            client_id="6c1629cf-446c-49e7-af95-323c6412397f",
+            app_name="Zstash",
+            default_scopes="openid urn:globus:auth:scope:transfer.api.globus.org:all",
+        )
         native_client.login(no_local_server=True, refresh_tokens=True)
-        transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
+        transfer_authorizer = native_client.get_authorizers().get(
+            "transfer.api.globus.org"
+        )
         self.transfer_client = TransferClient(transfer_authorizer)
 
         for ep_id in [hpss_globus_endpoint, local_endpoint]:
             ep = self.transfer_client.get_endpoint(ep_id)
             if not ep.get("activated"):
-                self.fail("The {} endpoint is not activated. Please go to https://app.globus.org/file-manager/collections/{} and activate the endpoint.".format(ep_id, ep_id))
-
+                self.fail(
+                    "The {} endpoint is not activated. Please go to https://app.globus.org/file-manager/collections/{} and activate the endpoint.".format(
+                        ep_id, ep_id
+                    )
+                )
 
     def delete_files_globus(self):
-        ep = self.transfer_client.get_endpoint(hpss_globus_endpoint)
+        ep_id = hpss_globus_endpoint
+        ep = self.transfer_client.get_endpoint(ep_id)
         if not ep.get("activated"):
-            self.fail("The {} endpoint is not activated. Please go to https://app.globus.org/file-manager/collections/{} and activate the endpoint.".format(ep_id, ep_id))
+            self.fail(
+                "The {} endpoint is not activated. Please go to https://app.globus.org/file-manager/collections/{} and activate the endpoint.".format(
+                    ep_id, ep_id
+                )
+            )
 
         ddata = DeleteData(self.transfer_client, hpss_globus_endpoint, recursive=True)
         ddata.add_item("/~/zstash_test/")
@@ -107,20 +110,22 @@ class TestGlobus(TestZstash):
                     paused_rules = pause_info.get("pause_rules")
                     reason = paused_rules[0].get("message")
                     message = "The task was paused. Reason: {}".format(reason)
-                    status = PAUSED
                     print(message)
                 else:
-                    message = "The task reached a {} second deadline\n".format(24*3600)
-                    events = self.transfer_client.task_event_list(task_id, num_results=5, filter="is_error:1")
-                    message += self.get_error_events(tc, task_id)
-                    status = DEADLINE
+                    message = "The task reached a {} second deadline\n".format(
+                        24 * 3600
+                    )
                     print(message)
-                self.tranasfer_client.cancel_task(task_id)
+                self.transfer_client.cancel_task(task_id)
             else:
                 print("Globus delete FAILED")
         except TransferAPIError as e:
             if e.code == "NoCredException":
-                self.fail("{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(e.message))
+                self.fail(
+                    "{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(
+                        e.message
+                    )
+                )
             else:
                 self.fail(e)
         except Exception as e:
@@ -170,7 +175,9 @@ class TestGlobus(TestZstash):
         os.chdir(TOP_LEVEL)
 
     def testLs(self):
-        self.helperLsGlobus("testLsGlobus", f"globus://{hpss_globus_endpoint}/~/zstash_test/")
+        self.helperLsGlobus(
+            "testLsGlobus", f"globus://{hpss_globus_endpoint}/~/zstash_test/"
+        )
 
 
 if __name__ == "__main__":

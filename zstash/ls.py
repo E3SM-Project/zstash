@@ -51,9 +51,11 @@ def setup_ls() -> Tuple[argparse.Namespace, str]:
     optional.add_argument(
         "--hpss",
         type=str,
-        help=('path to storage on HPSS. Set to "none" for local archiving. It also can be a Globus URL, '
-              'globus://<GLOBUS_ENDPOINT_UUID>/<PATH>. Names "alcf" and "nersc" are recognized as referring to the ALCF HPSS '
-              'and NERSC HPSS endpoints, e.g. globus://nersc/~/my_archive.'),
+        help=(
+            'path to storage on HPSS. Set to "none" for local archiving. It also can be a Globus URL, '
+            'globus://<GLOBUS_ENDPOINT_UUID>/<PATH>. Names "alcf" and "nersc" are recognized as referring to the ALCF HPSS '
+            "and NERSC HPSS endpoints, e.g. globus://nersc/~/my_archive."
+        ),
     )
     optional.add_argument(
         "-l",

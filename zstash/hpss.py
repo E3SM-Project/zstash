@@ -3,11 +3,12 @@ from __future__ import absolute_import, print_function
 import os.path
 import subprocess
 from typing import List
+
 from six.moves.urllib.parse import urlparse
 
+from .globus import globus_transfer
 from .settings import get_db_filename, logger
 from .utils import run_command
-from .globus import globus_transfer
 
 
 def hpss_transfer(

@@ -1,16 +1,16 @@
 from __future__ import absolute_import, print_function
 
-import sys
+import configparser
 import os.path
 import re
 import socket
-import configparser
+import sys
+
 from fair_research_login.client import NativeClient
 from globus_sdk import TransferClient, TransferData
 from globus_sdk.exc import TransferAPIError
 
 from .settings import logger
-
 
 hpss_endpoint_map = {
     "ALCF": "de463ec4-6d04-11e5-ba46-22000b92c6ec",
@@ -18,13 +18,16 @@ hpss_endpoint_map = {
 }
 
 regex_endpoint_map = {
-    "theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
-    "blueslogin.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
-    "chr.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
-    "cori.*\.nersc\.gov": "9d6d99eb-6d04-11e5-ba46-22000b92c6ec",
+    r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
+    r"blueslogin.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
+    r"chr.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
+    r"cori.*\.nersc\.gov": "9d6d99eb-6d04-11e5-ba46-22000b92c6ec",
 }
 
-def globus_transfer(remote_endpoint, remote_path, name, transfer_type, local_endpoint=None):
+
+def globus_transfer(  # noqa: C901
+    remote_endpoint, remote_path, name, transfer_type, local_endpoint=None
+):
     """
     Read the local globus endpoint UUID from ~/.zstash.ini.
     If the ini file does not exist, create an ini file with empty values,
@@ -68,9 +71,10 @@ def globus_transfer(remote_endpoint, remote_path, name, transfer_type, local_end
         dst_path = os.path.join(remote_path, name)
 
     native_client = NativeClient(
-            client_id = "6c1629cf-446c-49e7-af95-323c6412397f",
-            app_name="Zstash",
-            default_scopes = "openid urn:globus:auth:scope:transfer.api.globus.org:all")
+        client_id="6c1629cf-446c-49e7-af95-323c6412397f",
+        app_name="Zstash",
+        default_scopes="openid urn:globus:auth:scope:transfer.api.globus.org:all",
+    )
     native_client.login(no_local_server=True, refresh_tokens=True)
     transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
     tc = TransferClient(transfer_authorizer)
@@ -78,10 +82,21 @@ def globus_transfer(remote_endpoint, remote_path, name, transfer_type, local_end
     for ep_id in [src_ep, dst_ep]:
         ep = tc.get_endpoint(ep_id)
         if not ep.get("activated"):
-            logger.error("The {} endpoint is not activated. Please go to https://app.globus.org/file-manager/collections/{} and activate the endpoint.".format(ep_id, ep_id))
+            logger.error(
+                "The {} endpoint is not activated. Please go to https://app.globus.org/file-manager/collections/{} and activate the endpoint.".format(
+                    ep_id, ep_id
+                )
+            )
             sys.exit(1)
 
-    td = TransferData(tc, src_ep, dst_ep, sync_level="checksum", verify_checksum=True, fail_on_quota_errors=True)
+    td = TransferData(
+        tc,
+        src_ep,
+        dst_ep,
+        sync_level="checksum",
+        verify_checksum=True,
+        fail_on_quota_errors=True,
+    )
     td.add_item(src_path, dst_path)
     try:
         task = tc.submit_transfer(td)
@@ -103,33 +118,36 @@ def globus_transfer(remote_endpoint, remote_path, name, transfer_type, local_end
         """
         task = tc.get_task(task_id)
         if task["status"] == "SUCCEEDED":
-            bps = task.get("effective_bytes_per_second")
-            logger.info("Globus transfer {}, from {}{} to {}{} succeeded".format(
-                    task_id, src_ep, src_path, dst_ep, dst_path))
-            faults = task.get("faults")
+            logger.info(
+                "Globus transfer {}, from {}{} to {}{} succeeded".format(
+                    task_id, src_ep, src_path, dst_ep, dst_path
+                )
+            )
         elif task.get("status") == "ACTIVE":
             if task.get("is_paused"):
                 pause_info = tc.task_pause_info(task_id)
                 paused_rules = pause_info.get("pause_rules")
                 reason = paused_rules[0].get("message")
                 message = "The task was paused. Reason: {}".format(reason)
-                status = PAUSED
-                logger.info("{} - {}".format(self, message))
+                logger.info(message)
             else:
-                message = "The task reached a {} second deadline\n".format(GlobusTransfer.deadline)
-                events = tc.task_event_list(task_id, num_results=5, filter="is_error:1")
-                message += self.get_error_events(tc, task_id)
-                status = DEADLINE
-                logger.warning("{} - faults: {}, error: {}".format(self, task.get("faults"), message))
+                message = "The task reached a {} second deadline\n".format(24 * 3600)
+                logger.warning(
+                    "faults: {}, error: {}".format(task.get("faults"), message)
+                )
             tc.cancel_task(task_id)
         else:
             logger.error("Transfer FAILED")
     except TransferAPIError as e:
         if e.code == "NoCredException":
-            logger.error("{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(e.message))
+            logger.error(
+                "{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(
+                    e.message
+                )
+            )
         else:
             logger.error(e)
         sys.exit(1)
     except Exception as e:
-        logger.error("{} - exception: {}".format(self, e))
+        logger.error("Exception: {}".format(e))
         sys.exit(1)
