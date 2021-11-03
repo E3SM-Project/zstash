@@ -80,7 +80,6 @@ def globus_transfer(  # noqa: C901
     tc = TransferClient(transfer_authorizer)
 
     for ep_id in [src_ep, dst_ep]:
-        ep = tc.get_endpoint(ep_id)
         r = tc.endpoint_autoactivate(ep_id, if_expires_in=600)
         if r.get("code") == "AutoActivationFailed":
             logger.error(
