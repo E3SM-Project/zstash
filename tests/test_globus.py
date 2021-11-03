@@ -64,9 +64,10 @@ class TestGlobus(TestZstash):
 
         for ep_id in [hpss_globus_endpoint, local_endpoint]:
             ep = self.transfer_client.get_endpoint(ep_id)
-            if not ep.get("activated"):
+            r = self.transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
+            if r.get("code") == "AutoActivationFailed":
                 self.fail(
-                    "The {} endpoint is not activated. Please go to https://app.globus.org/file-manager/collections/{} and activate the endpoint.".format(
+                    "The {} endpoint is not activated or the current activation expires soon. Please go to https://app.globus.org/file-manager/collections/{} and (re)-activate the endpoint.".format(
                         ep_id, ep_id
                     )
                 )
@@ -74,7 +75,8 @@ class TestGlobus(TestZstash):
     def delete_files_globus(self):
         ep_id = hpss_globus_endpoint
         ep = self.transfer_client.get_endpoint(ep_id)
-        if not ep.get("activated"):
+        r = self.transfer_client.endpoint_autoactivate(ep_id, if_expires_in=60)
+        if r.get("code") == "AutoActivationFailed":
             self.fail(
                 "The {} endpoint is not activated. Please go to https://app.globus.org/file-manager/collections/{} and activate the endpoint.".format(
                     ep_id, ep_id
