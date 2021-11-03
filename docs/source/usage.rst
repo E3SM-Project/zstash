@@ -34,7 +34,7 @@ where
   zstash archive. If ``--hpss=none``, then files will be archived locally instead of being
   transferred to HPSS. The ``none`` option should be used when running Zstash on a machine
   without HPSS. The option also accepts a Globus URL, ``globus://<Globus endpoint UUID/<path to archive>``.
-  Then zstash will use [Globus](https://globus.org/) to store a new zstash archive on a Globus endpoint.
+  Then zstash will use `Globus <https://globus.org/>`_ to store a new zstash archive on a Globus endpoint.
   Names ``alcf`` and ``nersc`` are recognized as referring to the ALCF HPSS and NERSC HPSS endpoints,
   e.g. ``globus://nersc/~/my_archive``.
 * ``<local path>`` specifies the path to the local directory that should be archived.
@@ -100,7 +100,7 @@ except for those with years ending in '0' or '5'.
 
 Example with Globus
 -------------------
-If you run zstash on the system without the HPSS file system, but has a [Globus](https://globus.org) endpoint set up,
+If you run zstash on the system without the HPSS file system, but has a `Globus <https://app.globus.org/endpoints>`_ endpoint set up,
 you can use a Globus URL: ::
 
   $ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.anvil
