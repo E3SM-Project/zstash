@@ -95,6 +95,7 @@ def globus_transfer(  # noqa: C901
         dst_ep,
         sync_level="checksum",
         verify_checksum=True,
+        preserve_timestamp=True,
         fail_on_quota_errors=True,
     )
     td.add_item(src_path, dst_path)
@@ -105,16 +106,14 @@ def globus_transfer(  # noqa: C901
         A Globus transfer job (task) can be in one of the three states:
         ACTIVE, SUCCEEDED, FAILED. The script every 20 seconds polls a
         status of the transfer job (task) from the Globus Transfer service,
-        with 60 second timeout limit. If the task is ACTIVE after time runs
+        with 20 second timeout limit. If the task is ACTIVE after time runs
         out 'task_wait' returns False, and True otherwise.
         """
         while not tc.task_wait(task_id, 20, 20):
-            task = tc.get_task(task_id)
-            if task.get("is_paused"):
-                break
+            pass
         """
-        The Globus transfer job (task) has been finished (SUCCEEDED or FAILED),
-        or is still active (ACTIVE). Check if the transfer SUCCEEDED or FAILED.
+        The Globus transfer job (task) has been finished (SUCCEEDED or FAILED).
+        Check if the transfer SUCCEEDED or FAILED.
         """
         task = tc.get_task(task_id)
         if task["status"] == "SUCCEEDED":
@@ -123,19 +122,6 @@ def globus_transfer(  # noqa: C901
                     task_id, src_ep, src_path, dst_ep, dst_path
                 )
             )
-        elif task.get("status") == "ACTIVE":
-            if task.get("is_paused"):
-                pause_info = tc.task_pause_info(task_id)
-                paused_rules = pause_info.get("pause_rules")
-                reason = paused_rules[0].get("message")
-                message = "The task was paused. Reason: {}".format(reason)
-                logger.info(message)
-            else:
-                message = "The task reached a {} second deadline\n".format(24 * 3600)
-                logger.warning(
-                    "faults: {}, error: {}".format(task.get("faults"), message)
-                )
-            tc.cancel_task(task_id)
         else:
             logger.error("Transfer FAILED")
     except TransferAPIError as e:

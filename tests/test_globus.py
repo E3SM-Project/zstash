@@ -103,7 +103,7 @@ class TestGlobus(TestZstash):
             """
             task = self.transfer_client.get_task(task_id)
             if task["status"] == "SUCCEEDED":
-                print("G")
+                pass
             elif task.get("status") == "ACTIVE":
                 if task.get("is_paused"):
                     pause_info = self.transfer_client.task_pause_info(task_id)
