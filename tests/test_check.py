@@ -181,7 +181,7 @@ class TestCheck(TestZstash):
         )
         self.assertEqualOrStop(
             output + err,
-            "INFO: Opening tar archive {}/000000.tar\nINFO: Checking file1.txt\nINFO: Checking file2.txt\nINFO: No failures detected when checking the files.\n".format(
+            'INFO: Opening tar archive {}/000000.tar\nINFO: Checking file1.txt\nINFO: Checking file2.txt\nINFO: No failures detected when checking the files. If you have a log file, run "grep -i Exception <log-file>" to double check.\n'.format(
                 self.cache
             ),
         )

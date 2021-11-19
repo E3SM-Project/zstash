@@ -56,7 +56,11 @@ def extract(keep_files: bool = True):
             logger.error(tar)
     else:
         verb: str = "extracting" if keep_files else "checking"
-        logger.info("No failures detected when {} the files.".format(verb))
+        logger.info(
+            'No failures detected when {} the files. If you have a log file, run "grep -i Exception <log-file>" to double check.'.format(
+                verb
+            )
+        )
 
 
 def setup_extract() -> Tuple[argparse.Namespace, str]:
@@ -293,7 +297,9 @@ def multiprocess_extract(
             monitor, tars_for_this_worker, failure_queue
         )
         process: multiprocessing.Process = multiprocessing.Process(
-            target=extractFiles, args=(matches, keep_files, keep_tars, cache, worker)
+            target=extractFiles,
+            args=(matches, keep_files, keep_tars, cache, worker),
+            daemon=True,
         )
         process.start()
         processes.append(process)
