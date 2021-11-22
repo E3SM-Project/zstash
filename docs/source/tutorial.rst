@@ -3,7 +3,9 @@ Tutorial
 ********
 
 .. note::
-    This tutorial uses ``zstash v0.4.2``. Some features have been added/changed since.
+    This tutorial is specifically for ``zstash v0.4.2``.
+    Some features have been added/changed since.
+    Paths for E3SM Unified have also changed.
 
 Some statements on this tutorial have been pulled from other pages of the
 documentation. This is done to provide a comprehensive tutorial on a single page.
@@ -150,7 +152,7 @@ On Compy: ::
 
     $ source /share/apps/E3SM/conda_envs/load_latest_e3sm_unified.sh
 
-For more information, see `<https://acme-climate.atlassian.net/wiki/spaces/EIDMG/pages/780271950/Diagnostics+and+Analysis+Quickstart>`_.
+For more information, see :ref:`getting-started`.
 
 Installation with Conda
 -----------------------
