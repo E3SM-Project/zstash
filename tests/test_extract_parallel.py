@@ -10,6 +10,7 @@ from tests.base import (
     print_starred,
     run_cmd,
 )
+from tests.test_extract import helperExtractTars
 
 # https://bugs.python.org/issue43743
 # error: Module has no attribute "_USE_CP_SENDFILE"
@@ -23,12 +24,13 @@ class TestExtractParallel(TestZstash):
 
     # `zstash extract` is tested in TestExtract and TestExtractParallel.
     # x = on, no mark = off, b = both on and off tested
-    # option | ExtractVerbose | Extract | ExtractCache | ExtractParallel |
-    # --hpss    |x|x|x|x|
-    # --workers | | | |x|
-    # --cache   | | |x| |
-    # --keep    | |x| | |
-    # -v        |x| | |b|
+    # option | ExtractVerbose | Extract | ExtractCache | ExtractTars | ExtractParallel | ExtractParallelTars |
+    # --hpss    |x|x|x|x|x|x|
+    # --workers | | | | |x|x|
+    # --cache   | | |x| | | |
+    # --keep    | |x| | | | |
+    # --tars    | | | |x| |x|
+    # -v        |x| | | |b| |
 
     def helperExtractParallel(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
         """
@@ -115,6 +117,15 @@ class TestExtractParallel(TestZstash):
     def testExtractParallelHPSS(self):
         self.conditional_hpss_skip()
         self.helperExtractParallel("testExtractParallelHPSS", HPSS_ARCHIVE)
+
+    def testExtractParallelTars(self):
+        helperExtractTars(self, "testExtractParallelTars", "none", " --workers=2")
+
+    def testExtractParallelTarsHPSS(self):
+        self.conditional_hpss_skip()
+        helperExtractTars(
+            self, "testExtractParallelTarsHPSS", HPSS_ARCHIVE, " --workers=2"
+        )
 
 
 if __name__ == "__main__":

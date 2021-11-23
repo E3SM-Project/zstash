@@ -24,12 +24,13 @@ class TestExtract(TestZstash):
 
     # `zstash extract` is tested in TestExtract and TestExtractParallel.
     # x = on, no mark = off, b = both on and off tested
-    # option | ExtractVerbose | ExtractKeep | ExtractCache | ExtractParallel |
-    # --hpss    |x|x|x|x|
-    # --workers | | | |x|
-    # --cache   | | |x| |
-    # --keep    | |x| | |
-    # -v        |x| | |b|
+    # option | ExtractVerbose | Extract | ExtractCache | ExtractTars | ExtractParallel | ExtractParallelTars |
+    # --hpss    |x|x|x|x|x|x|
+    # --workers | | | | |x|x|
+    # --cache   | | |x| | | |
+    # --keep    | |x| | | | |
+    # --tars    | | | |x| |x|
+    # -v        |x| | | |b| |
 
     def helperExtractVerbose(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
         """
@@ -227,6 +228,53 @@ class TestExtract(TestZstash):
     def testExtractCacheHPSS(self):
         self.conditional_hpss_skip()
         self.helperExtractCache("testExtractCacheHPSS", HPSS_ARCHIVE)
+
+    def testExtractTars(self):
+        helperExtractTars(self, "testExtractTars", "none")
+
+    def testExtractTarsHPSS(self):
+        self.conditional_hpss_skip()
+        helperExtractTars(self, "testExtractTarsHPSS", HPSS_ARCHIVE)
+
+
+def helperExtractTars(
+    tester, test_name, hpss_path, worker_str="", zstash_path=ZSTASH_PATH
+):
+    """
+    Test `zstash extract --tars`
+    """
+    tester.hpss_path = hpss_path
+    use_hpss = tester.setupDirs(test_name)
+    tester.create(use_hpss, zstash_path)
+    tester.add_files(use_hpss, zstash_path)
+
+    os.rename(tester.test_dir, tester.backup_dir)
+    os.mkdir(tester.test_dir)
+    os.chdir(tester.test_dir)
+    if not use_hpss:
+        shutil.copytree(
+            "{}/{}/{}".format(TOP_LEVEL, tester.backup_dir, tester.cache),
+            tester.copy_dir,
+        )
+
+    zstash_cmd = (
+        '{}zstash extract --hpss={} --tars="000001-00002,000003,000004-"{}'.format(
+            zstash_path, tester.hpss_path, worker_str
+        )
+    )
+    output, err = run_cmd(zstash_cmd)
+    expected_present = [
+        "INFO: Opening tar archive zstash/000001.tar",
+        "INFO: Opening tar archive zstash/000002.tar",
+        "INFO: Opening tar archive zstash/000003.tar",
+        "INFO: Opening tar archive zstash/000004.tar",
+        "INFO: No failures detected when extracting the files.",
+    ]
+    expected_absent = [
+        "INFO: Opening tar archive zstash/000000.tar",
+    ]
+    tester.check_strings(zstash_cmd, output + err, expected_present, expected_absent)
+    os.chdir(TOP_LEVEL)
 
 
 if __name__ == "__main__":

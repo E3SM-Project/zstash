@@ -26,12 +26,13 @@ class TestCheck(TestZstash):
 
     # `zstash check` is tested in TestCheck and TestCheckParallel.
     # x = on, no mark = off, b = both on and off tested
-    # option | Check | CheckMismatch | CheckKeepTars | CheckParallel | CheckParallelVerboseMismatch | CheckParallelKeepTars |
-    # --hpss    |x|x|x|x|x| |
-    # --workers | | | |x|x|x|
-    # --cache   |b| | | | | |
-    # --keep    | | | | | |b|
-    # -v        |b|x| |b|x| |
+    # option | Check | CheckMismatch | CheckKeepTars | CheckTars | CheckParallel | CheckParallelVerboseMismatch | CheckParallelKeepTars | CheckParallelTars |
+    # --hpss    |x|x|x|x|x|x| |x|
+    # --workers | | | | |x|x|x|x|
+    # --cache   |b| | | | | | | |
+    # --keep    | | | | | | |b| |
+    # --tars    | | | |x| | | |x|
+    # -v        |b|x| | |b|x| | |
 
     def helperCheck(self, test_name, hpss_path, cache=None, zstash_path=ZSTASH_PATH):
         """
@@ -142,6 +143,13 @@ class TestCheck(TestZstash):
         self.conditional_hpss_skip()
         self.helperCheckVerboseMismatch("testCheckVerboseMismatchHPSS", HPSS_ARCHIVE)
 
+    def testCheckTars(self):
+        helperCheckTars(self, "testCheckTars", "none")
+
+    def testCheckTarsHPSS(self):
+        self.conditional_hpss_skip()
+        helperCheckTars(self, "testCheckTarsHPSS", HPSS_ARCHIVE)
+
     def testCheckKeepTars(self):
         """
         Test that `zstash check` does not delete tars if `--hpss=none`.
@@ -209,6 +217,140 @@ class TestCheck(TestZstash):
             error_message = "oct_mode={} includes {}".format(oct_mode, intersection)
             self.stop(error_message)
         os.chdir(TOP_LEVEL)
+
+
+def helperCheckTars(
+    tester, test_name, hpss_path, worker_str="", zstash_path=ZSTASH_PATH
+):
+    """
+    Test `zstash check --tars`
+    """
+    tester.hpss_path = hpss_path
+    use_hpss = tester.setupDirs(test_name)
+    tester.create(use_hpss, zstash_path)
+    tester.add_files(use_hpss, zstash_path)
+
+    tester.assertWorkspace()
+    os.chdir(tester.test_dir)
+
+    # Starting at 000001 until the end
+    zstash_cmd = '{}zstash check --hpss={} --tars="000001-"{}'.format(
+        zstash_path, tester.hpss_path, worker_str
+    )
+    output, err = run_cmd(zstash_cmd)
+    expected_present = [
+        "INFO: Opening tar archive zstash/000001.tar",
+        "INFO: Opening tar archive zstash/000002.tar",
+        "INFO: Opening tar archive zstash/000003.tar",
+        "INFO: Opening tar archive zstash/000004.tar",
+        "INFO: No failures detected when checking the files.",
+    ]
+    expected_absent = [
+        "INFO: Opening tar archive zstash/000000.tar",
+    ]
+    tester.check_strings(zstash_cmd, output + err, expected_present, expected_absent)
+    # Starting from the beginning to 00003 (included)
+    zstash_cmd = '{}zstash check --hpss={} --tars="-000003"{}'.format(
+        zstash_path, tester.hpss_path, worker_str
+    )
+    output, err = run_cmd(zstash_cmd)
+    expected_present = [
+        "INFO: Opening tar archive zstash/000000.tar",
+        "INFO: Opening tar archive zstash/000001.tar",
+        "INFO: Opening tar archive zstash/000002.tar",
+        "INFO: Opening tar archive zstash/000003.tar",
+        "INFO: No failures detected when checking the files.",
+    ]
+    expected_absent = [
+        "INFO: Opening tar archive zstash/000004.tar",
+    ]
+    tester.check_strings(zstash_cmd, output + err, expected_present, expected_absent)
+    # Specific range
+    zstash_cmd = '{}zstash check --hpss={} --tars="000001-000003"{}'.format(
+        zstash_path, tester.hpss_path, worker_str
+    )
+    output, err = run_cmd(zstash_cmd)
+    expected_present = [
+        "INFO: Opening tar archive zstash/000001.tar",
+        "INFO: Opening tar archive zstash/000002.tar",
+        "INFO: Opening tar archive zstash/000003.tar",
+        "INFO: No failures detected when checking the files.",
+    ]
+    expected_absent = [
+        "INFO: Opening tar archive zstash/000000.tar",
+        "INFO: Opening tar archive zstash/000004.tar",
+    ]
+    tester.check_strings(zstash_cmd, output + err, expected_present, expected_absent)
+    # Selected tar files
+    zstash_cmd = '{}zstash check --hpss={} --tars="000001,000003"{}'.format(
+        zstash_path, tester.hpss_path, worker_str
+    )
+    output, err = run_cmd(zstash_cmd)
+    expected_present = [
+        "INFO: Opening tar archive zstash/000001.tar",
+        "INFO: Opening tar archive zstash/000003.tar",
+        "INFO: No failures detected when checking the files.",
+    ]
+    expected_absent = [
+        "INFO: Opening tar archive zstash/000000.tar",
+        "INFO: Opening tar archive zstash/000002.tar",
+        "INFO: Opening tar archive zstash/000004.tar",
+    ]
+    tester.check_strings(zstash_cmd, output + err, expected_present, expected_absent)
+    # Mix and match
+    zstash_cmd = (
+        '{}zstash check --hpss={} --tars="000001-00002,000003,000004-"{}'.format(
+            zstash_path, tester.hpss_path, worker_str
+        )
+    )
+    output, err = run_cmd(zstash_cmd)
+    expected_present = [
+        "INFO: Opening tar archive zstash/000001.tar",
+        "INFO: Opening tar archive zstash/000002.tar",
+        "INFO: Opening tar archive zstash/000003.tar",
+        "INFO: Opening tar archive zstash/000004.tar",
+        "INFO: No failures detected when checking the files.",
+    ]
+    expected_absent = [
+        "INFO: Opening tar archive zstash/000000.tar",
+    ]
+    tester.check_strings(zstash_cmd, output + err, expected_present, expected_absent)
+    # Ending with nonexistent tar
+    zstash_cmd = '{}zstash check --hpss={} --tars="000001-00007"{}'.format(
+        zstash_path, tester.hpss_path, worker_str
+    )
+    output, err = run_cmd(zstash_cmd)
+    expected_present = [
+        "INFO: Opening tar archive zstash/000001.tar",
+        "INFO: Opening tar archive zstash/000002.tar",
+        "INFO: Opening tar archive zstash/000003.tar",
+        "INFO: Opening tar archive zstash/000004.tar",
+        "INFO: No failures detected when checking the files.",
+    ]
+    expected_absent = [
+        "INFO: Opening tar archive zstash/000000.tar",
+        "INFO: Opening tar archive zstash/000005.tar",
+        "INFO: Opening tar archive zstash/000006.tar",
+        "INFO: Opening tar archive zstash/000007.tar",
+    ]
+    tester.check_strings(zstash_cmd, output + err, expected_present, expected_absent)
+    # Ending with nonexistent tar
+    zstash_cmd = '{}zstash check --hpss={} --tars="000001-00003"{} file'.format(
+        zstash_path, tester.hpss_path, worker_str
+    )
+    output, err = run_cmd(zstash_cmd)
+    expected_present = ["ValueError: If --tars is used, <files> should not be listed."]
+    expected_absent = [
+        "INFO: Opening tar archive zstash/000000.tar",
+        "INFO: Opening tar archive zstash/000001.tar",
+        "INFO: Opening tar archive zstash/000002.tar",
+        "INFO: Opening tar archive zstash/000003.tar",
+        "INFO: Opening tar archive zstash/000004.tar",
+        "INFO: No failures detected when checking the files.",
+    ]
+    tester.check_strings(zstash_cmd, output + err, expected_present, expected_absent)
+
+    os.chdir(TOP_LEVEL)
 
 
 if __name__ == "__main__":
