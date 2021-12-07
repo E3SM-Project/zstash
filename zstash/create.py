@@ -85,7 +85,9 @@ def create():
     failures: List[str] = create_database(cache, args)
 
     # Transfer to HPSS. Always keep a local copy.
-    hpss_put(hpss, get_db_filename(cache), cache, keep=True)
+    hpss_put(
+        hpss, get_db_filename(cache), cache, keep=True, non_blocking=args.non_blocking
+    )
 
     if len(failures) > 0:
         # List the failures
@@ -136,6 +138,11 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
         help='the path to the zstash archive on the local file system. The default name is "zstash".',
     )
     optional.add_argument(
+        "--non-blocking",
+        action="store_true",
+        help="do not wait for each Globus transfer until it completes.",
+    )
+    optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
     optional.add_argument(
@@ -148,6 +155,8 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     args: argparse.Namespace = parser.parse_args(sys.argv[2:])
     if args.hpss and args.hpss.lower() == "none":
         args.hpss = "none"
+    if args.non_blocking:
+        args.keep = True
     if args.verbose:
         logger.setLevel(logging.DEBUG)
 
@@ -225,7 +234,13 @@ create table files (
 
     # Add files to archive
     failures: List[str] = add_files(
-        cur, con, -1, files, cache, skip_tars_md5=args.no_tars_md5
+        cur,
+        con,
+        -1,
+        files,
+        cache,
+        skip_tars_md5=args.no_tars_md5,
+        non_blocking=args.non_blocking,
     )
 
     # Close database

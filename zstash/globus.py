@@ -26,7 +26,7 @@ regex_endpoint_map = {
 
 
 def globus_transfer(  # noqa: C901
-    remote_endpoint, remote_path, name, transfer_type, local_endpoint=None
+    remote_endpoint, remote_path, name, transfer_type, non_blocking=False
 ):
     """
     Read the local globus endpoint UUID from ~/.zstash.ini.
@@ -35,6 +35,7 @@ def globus_transfer(  # noqa: C901
     """
     ini_path = os.path.expanduser("~/.zstash.ini")
     ini = configparser.ConfigParser()
+    local_endpoint = None
     if ini.read(ini_path):
         if "local" in ini.sections():
             local_endpoint = ini["local"].get("globus_endpoint_uuid")
@@ -70,6 +71,11 @@ def globus_transfer(  # noqa: C901
         dst_ep = remote_endpoint
         dst_path = os.path.join(remote_path, name)
 
+    subdir = os.path.basename(os.path.normpath(remote_path))
+    subdir_label = re.sub("[^A-Za-z0-9_ -]", "", subdir)
+    filename = name.split(".")[0]
+    label = subdir_label + " " + filename
+
     native_client = NativeClient(
         client_id="6c1629cf-446c-49e7-af95-323c6412397f",
         app_name="Zstash",
@@ -93,6 +99,7 @@ def globus_transfer(  # noqa: C901
         tc,
         src_ep,
         dst_ep,
+        label=label,
         sync_level="checksum",
         verify_checksum=True,
         preserve_timestamp=True,
@@ -101,6 +108,24 @@ def globus_transfer(  # noqa: C901
     td.add_item(src_path, dst_path)
     try:
         task = tc.submit_transfer(td)
+    except TransferAPIError as e:
+        if e.code == "NoCredException":
+            logger.error(
+                "{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(
+                    e.message
+                )
+            )
+        else:
+            logger.error(e)
+        sys.exit(1)
+    except Exception as e:
+        logger.error("Exception: {}".format(e))
+        sys.exit(1)
+
+    if non_blocking:
+        return
+
+    try:
         task_id = task.get("task_id")
         """
         A Globus transfer job (task) can be in one of the three states:
