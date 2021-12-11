@@ -11,6 +11,7 @@ from tests.base import (
     print_starred,
     run_cmd,
 )
+from tests.test_check import helperCheckTars
 
 # https://bugs.python.org/issue43743
 # error: Module has no attribute "_USE_CP_SENDFILE"
@@ -24,12 +25,13 @@ class TestCheckParallel(TestZstash):
 
     # `zstash check` is tested in TestCheck and TestCheckParallel.
     # x = on, no mark = off, b = both on and off tested
-    # option | Check | CheckMismatch | CheckKeepTars | CheckParallel | CheckParallelVerboseMismatch | CheckParallelKeepTars |
-    # --hpss    |x|x|x|x|x| |
-    # --workers | | | |x|x|x|
-    # --cache   |b| | | | | |
-    # --keep    | | | | | |b|
-    # -v        |b|x| |b|x| |
+    # option | Check | CheckMismatch | CheckKeepTars | CheckTars | CheckParallel | CheckParallelVerboseMismatch | CheckParallelKeepTars | CheckParallelTars |
+    # --hpss    |x|x|x|x|x|x| |x|
+    # --workers | | | | |x|x|x|x|
+    # --cache   |b| | | | | | | |
+    # --keep    | | | | | | |b| |
+    # --tars    | | | |x| | | |x|
+    # -v        |b|x| | |b|x| | |
 
     def helperCheckParallel(
         self, test_name, hpss_path, zstash_path=ZSTASH_PATH, verbose=False
@@ -225,6 +227,13 @@ class TestCheckParallel(TestZstash):
     def testCheckParallelKeepTarsHPSS(self):
         self.conditional_hpss_skip()
         self.helperCheckParallelKeepTars("testCheckParallelKeepTarsHPSS", HPSS_ARCHIVE)
+
+    def testCheckParallelTars(self):
+        helperCheckTars(self, "testCheckParallelTars", "none", " --workers=2")
+
+    def testCheckParallelTarsHPSS(self):
+        self.conditional_hpss_skip()
+        helperCheckTars(self, "testCheckParallelTarsHPSS", HPSS_ARCHIVE, " --workers=2")
 
 
 if __name__ == "__main__":

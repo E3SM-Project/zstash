@@ -7,6 +7,7 @@ import heapq
 import logging
 import multiprocessing
 import os.path
+import re
 import sqlite3
 import sys
 import tarfile
@@ -85,6 +86,7 @@ def setup_extract() -> Tuple[argparse.Namespace, str]:
         type=str,
         help='path to the zstash archive on the local file system. The default name is "zstash".',
     )
+    optional.add_argument("--tars", type=str, help="specify which tars to process")
     optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
@@ -103,6 +105,44 @@ def setup_extract() -> Tuple[argparse.Namespace, str]:
         logger.setLevel(logging.DEBUG)
 
     return args, cache
+
+
+def parse_tars_option(tars: str, first_tar: str, last_tar: str) -> List[str]:
+    tar_str_list: List[str] = tars.split(",")
+    tar_list: List[str] = []
+    tar_str: str
+    for tar_str in tar_str_list:
+        if tar_str.startswith('"'):
+            tar_str = tar_str[1:]
+        if tar_str.endswith('"'):
+            tar_str = tar_str[:-1]
+        if tar_str.startswith("-"):
+            tar_str = "{}{}".format(first_tar, tar_str)
+        elif tar_str.endswith("-"):
+            tar_str = "{}{}".format(tar_str, last_tar)
+        m: Optional[re.Match]
+        m = re.match("(.*)-(.*)", tar_str)
+        if m:
+            m1: str = m.group(1)
+            m2: str = m.group(2)
+            # Remove .tar suffix
+            if m1.endswith(".tar"):
+                m1 = m1[:-4]
+            if m2.endswith(".tar"):
+                m2 = m2[:-4]
+            beginning_tar: int = int(m1, 16)
+            ending_tar: int = int(m2, 16)
+            t: int
+            for t in range(beginning_tar, ending_tar + 1):
+                tar_list.append("{:06x}".format(t))
+        else:
+            # Remove .tar suffix
+            if tar_str.endswith(".tar"):
+                tar_str = tar_str[:-4]
+            tar_list.append(tar_str)
+    # Remove duplicates and sort tar_list
+    tar_list = sorted(list(set(tar_list)))
+    return tar_list
 
 
 def extract_database(
@@ -162,14 +202,33 @@ def extract_database(
     logger.debug("Max size  : {}".format(config.maxsize))
     logger.debug("Keep local tar files  : {}".format(config.keep))
 
-    # Find matching files
     matches_: List[TupleFilesRow] = []
-    for args_file in args.files:
-        cur.execute(
-            u"select * from files where name GLOB ? or tar GLOB ?",
-            (args_file, args_file),
+    if args.tars is not None:
+        # Ignore default value for args.files ("*")
+        if args.files != ["*"]:
+            raise ValueError("If --tars is used, <files> should not be listed.")
+        tar_names_initial: List[Tuple[str]] = cur.execute(
+            u"select distinct tar from files"
+        ).fetchall()
+        tar_names: List[str] = sorted([x for (x,) in tar_names_initial])
+        # Remove `.tar` with `[:-4]` for `parse_tars_option` to work properly
+        tar_list: List[str] = parse_tars_option(
+            args.tars, tar_names[0][:-4], tar_names[-1][:-4]
         )
-        matches_ = matches_ + cur.fetchall()
+        for tar in tar_list:
+            cur.execute(
+                u"select * from files where tar GLOB ?",
+                (tar + ".tar",),
+            )
+            matches_ = matches_ + cur.fetchall()
+    else:
+        # Find matching files
+        for args_file in args.files:
+            cur.execute(
+                u"select * from files where name GLOB ? or tar GLOB ?",
+                (args_file, args_file),
+            )
+            matches_ = matches_ + cur.fetchall()
 
     matches: List[FilesRow] = list(map(lambda match: FilesRow(match), matches_))
 
