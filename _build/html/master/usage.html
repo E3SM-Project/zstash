@@ -293,6 +293,7 @@ processes to use, resulting in checking being done in parallel.
 <li><p><code class="docutils literal notranslate"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
 they have been extracted from the archive. Normally, they are deleted after
 successful transfer.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--tars</span></code> to specify specific tars to check. See below for example usage.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-v</span></code> increases output verbosity.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to check (standard wildcards supported).</p>
 <ul>
@@ -331,6 +332,19 @@ ERROR: 000029.tar
 You may need to reupload it via <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">create</span></code>.
 Please contact the zstash development team, we’re working on
 identifying what causes these issues.</p>
+<p>Example usage of <code class="docutils literal notranslate"><span class="pre">--tars</span></code>:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># Starting at 00005a until the end
+zstash check --tars=00005a-
+# Starting from the beginning to 00005a (included)
+zstash check --tars=-00005a
+# Specific range
+zstash check --tars=00005a-00005c
+# Selected tar files
+zstash check --tars=00003e,00004e,000059
+# Mix and match
+zstash check --tars=000030-00003e,00004e,00005a-
+</pre></div>
+</div>
 </div>
 <div class="section" id="update">
 <h2>Update<a class="headerlink" href="#update" title="Permalink to this headline">¶</a></h2>
@@ -413,6 +427,7 @@ processes to use, resulting in extracting being done in parallel.
 <li><p><code class="docutils literal notranslate"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
 they have been extracted from the archive. Normally, they are deleted after
 successful transfer.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--tars</span></code> to specify specific tars to check. See “Check” above for example usage.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-v</span></code> increases output verbosity.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to be extracted (standard wildcards supported).</p>
 <ul>

@@ -117,6 +117,7 @@ where
 * ``--keep`` to keep a copy of the tar files on the local file system after
   they have been extracted from the archive. Normally, they are deleted after
   successful transfer.
+* ``--tars`` to specify specific tars to check. See below for example usage.
 * ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to check (standard wildcards supported).
 
@@ -155,6 +156,19 @@ If you encounter an error, **save your original data**.
 You may need to reupload it via ``zstash create``.
 Please contact the zstash development team, we're working on
 identifying what causes these issues.
+
+Example usage of ``--tars``::
+
+  # Starting at 00005a until the end
+  zstash check --tars=00005a-
+  # Starting from the beginning to 00005a (included)
+  zstash check --tars=-00005a
+  # Specific range
+  zstash check --tars=00005a-00005c
+  # Selected tar files
+  zstash check --tars=00003e,00004e,000059
+  # Mix and match
+  zstash check --tars=000030-00003e,00004e,00005a-
 
 Update
 ======
@@ -243,6 +257,7 @@ where
 * ``--keep`` to keep a copy of the tar files on the local file system after
   they have been extracted from the archive. Normally, they are deleted after
   successful transfer.
+* ``--tars`` to	specify	specific tars to check. See "Check" above for example usage.
 * ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to be extracted (standard wildcards supported).
 
