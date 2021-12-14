@@ -114,6 +114,11 @@ If you want to store zstash archive on these two remote HPSS file systems, you c
 
   $ zstash create --hpss=globus://nersc/~/test/E3SM_simulations/20170731.F20TR.ne30_ne30.anvil .
 
+.. note::
+    If you are a new Globus user, you should first do a small transfer to test functionality.
+
+.. note::
+    Always activate Globus endpoints via the Globus web interface before running ``zstash``.
 
 Check
 =====
