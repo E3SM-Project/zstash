@@ -136,19 +136,16 @@ def update_database(args: argparse.Namespace, cache: str) -> Optional[List[str]]
     else:
         raise TypeError("Invalid config.maxsize={}".format(config.maxsize))
     config.maxsize = int(maxsize)
-    if config.keep is not None:
-        keep = config.keep
-    else:
-        raise TypeError("Invalid config.keep={}".format(config.keep))
-    config.keep = bool(int(keep))
 
+    keep: bool
     # The command line arg should always have precedence
     if args.hpss == "none":
         # If no HPSS is available, always keep the files.
-        config.keep = True
+        keep = True
     else:
         # If HPSS is used, let the user specify whether or not to keep the files.
-        config.keep = args.keep
+        keep = args.keep
+
     if args.hpss is not None:
         config.hpss = args.hpss
 
@@ -221,7 +218,7 @@ def update_database(args: argparse.Namespace, cache: str) -> Optional[List[str]]
         itar = max(itar, int(tfile_string[0:6], 16))
 
     # Add files
-    failures: List[str] = add_files(cur, con, itar, newfiles, cache)
+    failures: List[str] = add_files(cur, con, itar, newfiles, cache, keep)
 
     # Close database
     con.commit()

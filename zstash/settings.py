@@ -11,7 +11,6 @@ class Config(object):
     path: Optional[str] = None
     hpss: Optional[str] = None
     maxsize: Optional[int] = None
-    keep: Optional[bool] = None
 
 
 def get_db_filename(cache: str) -> str:
