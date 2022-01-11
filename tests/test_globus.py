@@ -49,7 +49,10 @@ class TestGlobus(TestZstash):
                     local_endpoint = regex_endpoint_map.get(pattern)
                     break
         if not local_endpoint:
-            self.fail("{} does not have the local Globus endpoint set".format(ini_path))
+            # self.fail("{} does not have the local Globus endpoint set".format(ini_path))
+            self.skipTest(
+                "{} does not have the local Globus endpoint set".format(ini_path)
+            )
 
         native_client = NativeClient(
             client_id="6c1629cf-446c-49e7-af95-323c6412397f",
