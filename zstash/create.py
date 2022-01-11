@@ -8,6 +8,8 @@ import sqlite3
 import sys
 from typing import Any, List, Tuple
 
+from six.moves.urllib.parse import urlparse
+
 from .hpss import hpss_put
 from .hpss_utils import add_files
 from .settings import DEFAULT_CACHE, config, get_db_filename, logger
@@ -50,19 +52,21 @@ def create():
         raise NotADirectoryError(input_path_error_str)
 
     if hpss != "none":
-        # config.hpss is not "none", so we need to
-        # create target HPSS directory
-        logger.debug("Creating target HPSS directory")
-        mkdir_command: str = "hsi -q mkdir -p {}".format(hpss)
-        mkdir_error_str: str = "Could not create HPSS directory: {}".format(hpss)
-        run_command(mkdir_command, mkdir_error_str)
+        url = urlparse(hpss)
+        if url.scheme != "globus":
+            # config.hpss is not "none", so we need to
+            # create target HPSS directory
+            logger.debug("Creating target HPSS directory")
+            mkdir_command: str = "hsi -q mkdir -p {}".format(hpss)
+            mkdir_error_str: str = "Could not create HPSS directory: {}".format(hpss)
+            run_command(mkdir_command, mkdir_error_str)
 
-        # Make sure it is exists and is empty
-        logger.debug("Making sure target HPSS directory exists and is empty")
+            # Make sure it is exists and is empty
+            logger.debug("Making sure target HPSS directory exists and is empty")
 
-        ls_command: str = 'hsi -q "cd {}; ls -l"'.format(hpss)
-        ls_error_str: str = "Target HPSS directory is not empty"
-        run_command(ls_command, ls_error_str)
+            ls_command: str = 'hsi -q "cd {}; ls -l"'.format(hpss)
+            ls_error_str: str = "Target HPSS directory is not empty"
+            run_command(ls_command, ls_error_str)
 
     # Create cache directory
     logger.debug("Creating local cache directory")
@@ -81,7 +85,9 @@ def create():
     failures: List[str] = create_database(cache, args)
 
     # Transfer to HPSS. Always keep a local copy.
-    hpss_put(hpss, get_db_filename(cache), cache, keep=True)
+    hpss_put(
+        hpss, get_db_filename(cache), cache, keep=True, non_blocking=args.non_blocking
+    )
 
     if len(failures) > 0:
         # List the failures
@@ -102,7 +108,11 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     required.add_argument(
         "--hpss",
         type=str,
-        help='path to storage on HPSS. Set to "none" for local archiving. Must be set to "none" if the machine does not have HPSS access.',
+        help=(
+            'path to storage on HPSS. Set to "none" for local archiving. It also can be a Globus URL, '
+            'globus://<GLOBUS_ENDPOINT_UUID>/<PATH>. Names "alcf" and "nersc" are recognized as referring to the ALCF HPSS '
+            "and NERSC HPSS endpoints, e.g. globus://nersc/~/my_archive."
+        ),
         required=True,
     )
     optional: argparse._ArgumentGroup = parser.add_argument_group(
@@ -128,6 +138,11 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
         help='the path to the zstash archive on the local file system. The default name is "zstash".',
     )
     optional.add_argument(
+        "--non-blocking",
+        action="store_true",
+        help="do not wait for each Globus transfer until it completes.",
+    )
+    optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
     optional.add_argument(
@@ -140,6 +155,8 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     args: argparse.Namespace = parser.parse_args(sys.argv[2:])
     if args.hpss and args.hpss.lower() == "none":
         args.hpss = "none"
+    if args.non_blocking:
+        args.keep = True
     if args.verbose:
         logger.setLevel(logging.DEBUG)
 
@@ -217,7 +234,13 @@ create table files (
 
     # Add files to archive
     failures: List[str] = add_files(
-        cur, con, -1, files, cache, skip_tars_md5=args.no_tars_md5
+        cur,
+        con,
+        -1,
+        files,
+        cache,
+        skip_tars_md5=args.no_tars_md5,
+        non_blocking=args.non_blocking,
     )
 
     # Close database
