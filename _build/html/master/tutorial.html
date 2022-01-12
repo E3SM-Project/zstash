@@ -367,10 +367,9 @@ $ conda activate zstash_env
 <p class="admonition-title">Note</p>
 <p>Before using zstash with HPSS for the first time, run <code class="docutils literal notranslate"><span class="pre">hsi</span></code> on NERSC
 and enter your credentials. Then, <code class="docutils literal notranslate"><span class="pre">zstash</span></code> will be able to access HPSS.
-Compy does not have HPSS access. Therefore, you’ll need to set
-<code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code> when using it. For long term storage, zstash archives
-created locally on Compy should be transferred to an off-site HPSS storage using Globus
-(<a class="reference internal" href="best_practices.html#globus-compy"><span class="std std-ref">Transfer to NERSC HPSS</span></a>)</p>
+Compy and Anvil do not have HPSS access. Therefore, you’ll need to use a Globus URL
+that points to a remote HPSS storage <code class="docutils literal notranslate"><span class="pre">--hpss=globus://&lt;Globus</span> <span class="pre">endpoint</span> <span class="pre">UUID/&lt;path&gt;</span></code>
+or set <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code>.</p>
 </div>
 </div>
 <div class="section" id="examples">

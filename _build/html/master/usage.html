@@ -95,6 +95,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#create">Create</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#basic-example">Basic example</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#examples-excluding-some-files">Examples excluding some files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-with-globus">Example with Globus</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#check">Check</a></li>
@@ -215,7 +216,10 @@ is limited. User discretion is advised.</p>
 system where the archive files will be stored. This directory should be <strong>unique</strong> for each
 zstash archive. If <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code>, then files will be archived locally instead of being
 transferred to HPSS. The <code class="docutils literal notranslate"><span class="pre">none</span></code> option should be used when running Zstash on a machine
-without HPSS.</p></li>
+without HPSS. The option also accepts a Globus URL, <code class="docutils literal notranslate"><span class="pre">globus://&lt;Globus</span> <span class="pre">endpoint</span> <span class="pre">UUID/&lt;path</span> <span class="pre">to</span> <span class="pre">archive&gt;</span></code>.
+Then zstash will use <a class="reference external" href="https://globus.org/">Globus</a> to store a new zstash archive on a Globus endpoint.
+Names <code class="docutils literal notranslate"><span class="pre">alcf</span></code> and <code class="docutils literal notranslate"><span class="pre">nersc</span></code> are recognized as referring to the ALCF HPSS and NERSC HPSS endpoints,
+e.g. <code class="docutils literal notranslate"><span class="pre">globus://nersc/~/my_archive</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;local</span> <span class="pre">path&gt;</span></code> specifies the path to the local directory that should be archived.</p></li>
 </ul>
 <p>Additional optional arguments:</p>
@@ -272,6 +276,31 @@ $ zstash create --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
 </div>
 <p>This exclude pattern will skip all restart subdirectories under the short-term archive,
 except for those with years ending in ‘0’ or ‘5’.</p>
+</div>
+<div class="section" id="example-with-globus">
+<h3>Example with Globus<a class="headerlink" href="#example-with-globus" title="Permalink to this headline">¶</a></h3>
+<p>If you run zstash on the system without the HPSS file system, but has a <a class="reference external" href="https://app.globus.org/endpoints">Globus</a> endpoint set up,
+you can use a Globus URL:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.anvil
+$ zstash create --hpss=globus://9cd89cfd-6d04-11e5-ba46-22000b92c6ec/~/test/E3SM_simulations/20170731.F20TR.ne30_ne30.anvil .
+</pre></div>
+</div>
+<p>9cd89cfd-6d04-11e5-ba46-22000b92c6ec is the NERSC HPSS Globus endpoint UUID. Two names <code class="docutils literal notranslate"><span class="pre">nersc</span></code> and <code class="docutils literal notranslate"><span class="pre">alcf</span></code>
+are recognized by zstash and substituted internally with a corresponding Globus UUID
+for the NERSC HPSS Globus endpoint (9cd89cfd-6d04-11e5-ba46-22000b92c6ec) and
+the ALCF HPSS Globus endpoint (de463ec4-6d04-11e5-ba46-22000b92c6ec) endpoint.
+If you want to store zstash archive on these two remote HPSS file systems, you can use the names instead of UUIDs:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash create --hpss=globus://nersc/~/test/E3SM_simulations/20170731.F20TR.ne30_ne30.anvil .
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you are a new Globus user, you should first do a small transfer to test functionality.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Always activate Globus endpoints via the Globus web interface before running <code class="docutils literal notranslate"><span class="pre">zstash</span></code>.</p>
+</div>
 </div>
 </div>
 <div class="section" id="check">
