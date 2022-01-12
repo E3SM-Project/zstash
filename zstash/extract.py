@@ -186,20 +186,16 @@ def extract_database(
     else:
         raise TypeError("Invalid config.maxsize={}".format(config.maxsize))
     config.maxsize = int(maxsize)
-    if config.keep is not None:
-        keep = config.keep
-    else:
-        raise TypeError("Invalid config.keep={}".format(config.keep))
-    config.keep = bool(int(keep))
 
     # The command line arg should always have precedence
     if args.hpss is not None:
         config.hpss = args.hpss
+    keep: bool
     if config.hpss == "none":
         # If no HPSS is available, always keep the files.
-        config.keep = True
+        keep = True
     else:
-        config.keep = args.keep
+        keep = args.keep
 
     # Start doing actual work
     cmd: str = "extract" if keep_files else "check"
@@ -208,7 +204,7 @@ def extract_database(
     logger.debug("Local path : {}".format(config.path))
     logger.debug("HPSS path  : {}".format(config.hpss))
     logger.debug("Max size  : {}".format(config.maxsize))
-    logger.debug("Keep local tar files  : {}".format(config.keep))
+    logger.debug("Keep local tar files : {}".format(keep))
 
     matches_: List[TupleFilesRow] = []
     if args.tars is not None:
@@ -270,11 +266,9 @@ def extract_database(
     failures: List[FilesRow]
     if args.workers > 1:
         logger.debug("Running zstash {} with multiprocessing".format(cmd))
-        failures = multiprocess_extract(
-            args.workers, matches, keep_files, config.keep, cache
-        )
+        failures = multiprocess_extract(args.workers, matches, keep_files, keep, cache)
     else:
-        failures = extractFiles(matches, keep_files, config.keep, cache)
+        failures = extractFiles(matches, keep_files, keep, cache)
 
     # Close database
     logger.debug("Closing index database")

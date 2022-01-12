@@ -41,7 +41,7 @@ def create():
     logger.debug("Local path : {}".format(path))
     logger.debug("HPSS path  : {}".format(hpss))
     logger.debug("Max size  : {}".format(config.maxsize))
-    logger.debug("Keep local tar files  : {}".format(config.keep))
+    logger.debug("Keep local tar files  : {}".format(args.keep))
 
     # Make sure input path exists and is a directory
     logger.debug("Making sure input path exists and is a directory")
@@ -164,7 +164,6 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     config.path = os.path.abspath(args.path)
     config.hpss = args.hpss
     config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)
-    config.keep = args.keep
     cache: str
     if args.cache:
         cache = args.cache
@@ -239,6 +238,7 @@ create table files (
         -1,
         files,
         cache,
+        args.keep,
         skip_tars_md5=args.no_tars_md5,
         non_blocking=args.non_blocking,
     )

@@ -121,11 +121,6 @@ def ls_database(args: argparse.Namespace, cache: str) -> List[FilesRow]:
     else:
         raise TypeError("Invalid config.maxsize={}".format(config.maxsize))
     config.maxsize = maxsize
-    if config.keep is not None:
-        keep: bool = config.keep
-    else:
-        raise TypeError("Invalid config.keep={}".format(config.keep))
-    config.keep = keep
 
     # The command line arg should always have precedence
     if args.hpss is not None:

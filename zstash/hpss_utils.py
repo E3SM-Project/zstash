@@ -59,6 +59,7 @@ def add_files(
     itar: int,
     files: List[str],
     cache: str,
+    keep: bool,
     skip_tars_md5: bool = False,
     non_blocking: bool = False,
 ) -> List[str]:
@@ -154,10 +155,6 @@ def add_files(
                 hpss: str = config.hpss
             else:
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
-            if config.keep is not None:
-                keep: bool = config.keep
-            else:
-                raise TypeError("Invalid config.keep={}".format(config.keep))
             hpss_put(hpss, os.path.join(cache, tfname), cache, keep, non_blocking)
 
             # Update database with files that have been archived
