@@ -13,6 +13,9 @@ If running on Cori, it is preferable to run from ``$CSCRATCH`` rather than
     On NERSC machines, just run ``hsi`` on the command line and enter your credentials.
     Note that ``hsi`` is only available on the log-in nodes, not the compute nodes.
 
+.. note::
+   If you set ``--hpss=none``, there is no need to set ``--keep``, as the former option includes the effects of the latter.
+
 .. warning::
     When specifying files, wildcards should be enclosed in double quotes (e.g., ``"a*"``).
 
