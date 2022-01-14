@@ -132,7 +132,8 @@ go to a **new, empty directory** and run: ::
 
 where
 
-* ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system.
+* ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system. If ``--hpss=none``,
+  then ``zstash check`` will check the cache.
 * ``--workers=<num of processes>`` an optional argument which specifies the number of
   processes to use, resulting in checking being done in parallel.
   **Using a high number will result in slow downloads for each of the tars since your bandwidth is limited.**
@@ -180,6 +181,21 @@ If you encounter an error, **save your original data**.
 You may need to reupload it via ``zstash create``.
 Please contact the zstash development team, we're working on
 identifying what causes these issues.
+
+Example using ``--hpss=none``::
+
+  $ mkdir zstash_demo
+  $ echo 'file0 stuff' > zstash_demo/file0.txt
+  $ zstash create --hpss=none zstash_demo
+  $ ls zstash_demo/
+  file0.txt  zstash
+  $ ls zstash_demo/zstash/
+  000000.tar  index.db
+  $ cd zstash_demo
+  $ zstash check --hpss=none
+  INFO: Opening tar archive zstash/000000.tar
+  INFO: Checking file0.txt
+  INFO: No failures detected when checking the files. If you have a log file, run "grep -i Exception <log-file>" to double check.
 
 Example usage of ``--tars``::
 
