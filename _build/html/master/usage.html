@@ -313,7 +313,8 @@ go to a <strong>new, empty directory</strong> and run:</p>
 </div>
 <p>where</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system. If <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code>,
+then <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> will check the cache.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--workers=&lt;num</span> <span class="pre">of</span> <span class="pre">processes&gt;</span></code> an optional argument which specifies the number of
 processes to use, resulting in checking being done in parallel.
 <strong>Using a high number will result in slow downloads for each of the tars since your bandwidth is limited.</strong>
@@ -361,6 +362,21 @@ ERROR: 000029.tar
 You may need to reupload it via <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">create</span></code>.
 Please contact the zstash development team, we’re working on
 identifying what causes these issues.</p>
+<p>Example using <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code>:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ mkdir zstash_demo
+$ echo &#39;file0 stuff&#39; &gt; zstash_demo/file0.txt
+$ zstash create --hpss=none zstash_demo
+$ ls zstash_demo/
+file0.txt  zstash
+$ ls zstash_demo/zstash/
+000000.tar  index.db
+$ cd zstash_demo
+$ zstash check --hpss=none
+INFO: Opening tar archive zstash/000000.tar
+INFO: Checking file0.txt
+INFO: No failures detected when checking the files. If you have a log file, run &quot;grep -i Exception &lt;log-file&gt;&quot; to double check.
+</pre></div>
+</div>
 <p>Example usage of <code class="docutils literal notranslate"><span class="pre">--tars</span></code>:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span># Starting at 00005a until the end
 zstash check --tars=00005a-
