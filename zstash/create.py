@@ -10,6 +10,7 @@ from typing import Any, List, Tuple
 
 from six.moves.urllib.parse import urlparse
 
+from .globus import globus_activate
 from .hpss import hpss_put
 from .hpss_utils import add_files
 from .settings import DEFAULT_CACHE, config, get_db_filename, logger
@@ -53,7 +54,9 @@ def create():
 
     if hpss != "none":
         url = urlparse(hpss)
-        if url.scheme != "globus":
+        if url.scheme == "globus":
+            globus_activate(hpss)
+        else:
             # config.hpss is not "none", so we need to
             # create target HPSS directory
             logger.debug("Creating target HPSS directory")

@@ -9,6 +9,7 @@ import sys
 from datetime import datetime
 from typing import List, Optional, Tuple
 
+from .globus import globus_activate
 from .hpss import hpss_get, hpss_put
 from .hpss_utils import add_files
 from .settings import (
@@ -116,6 +117,7 @@ def update_database(args: argparse.Namespace, cache: str) -> Optional[List[str]]
                 hpss: str = config.hpss
             else:
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
+            globus_activate(hpss)
             hpss_get(hpss, get_db_filename(cache), cache)
         else:
             error_str: str = (
