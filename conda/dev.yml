@@ -7,6 +7,9 @@ dependencies:
   # =================
   - pip=21.0.1
   - python=3.7.10
+  - six=1.16.0
+  - globus-sdk=2.0.1
+  - fair-research-login=0.2.0
   # Developer Tools
   # =================
   # If versions are updated, also update 'rev' in `.pre-commit.config.yaml`

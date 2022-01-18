@@ -21,6 +21,9 @@ requirements:
 
   run:
     - python >=3.6
+    - six
+    - globus-sdk
+    - fair-research-login
 
 test:
   imports:
