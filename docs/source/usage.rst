@@ -300,7 +300,7 @@ where
 * ``--keep`` to keep a copy of the tar files on the local file system after
   they have been extracted from the archive. Normally, they are deleted after
   successful transfer.
-* ``--tars`` to	specify	specific tars to check. See "Check" above for example usage.
+* ``--tars`` to	specify	specific tars to extract. See "Check" above for example usage.
 * ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to be extracted (standard wildcards supported).
 
