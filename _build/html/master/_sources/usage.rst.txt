@@ -292,6 +292,10 @@ where
 
 * ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system.
   Note that if ``--hpss=none``, then ``--keep`` is automatically set to ``True``.
+  The option also accepts a Globus URL, ``globus://<Globus endpoint UUID/<path to archive>``.
+  Then zstash will use `Globus <https://globus.org/>`_ to extract from a zstash archive on a Globus endpoint.
+  Names ``alcf`` and ``nersc`` are recognized as referring to the ALCF HPSS and NERSC HPSS endpoints,
+  e.g. ``globus://nersc/~/my_archive``.
 * ``--workers=<num of processes>`` an optional argument which specifies the number of
   processes to use, resulting in extracting being done in parallel.
   **Using a high number will result in slow downloads for each of the tars since your bandwidth is limited.**
@@ -300,7 +304,7 @@ where
 * ``--keep`` to keep a copy of the tar files on the local file system after
   they have been extracted from the archive. Normally, they are deleted after
   successful transfer.
-* ``--tars`` to	specify	specific tars to check. See "Check" above for example usage.
+* ``--tars`` to	specify	specific tars to extract. See "Check" above for example usage.
 * ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to be extracted (standard wildcards supported).
 
@@ -389,6 +393,13 @@ You may specify the cache with the ``--cache`` option. Notice that there is no n
   $ zstash extract --hpss=none \
   --cache=/p/user_pub/e3sm/archive/1_1/BGC-v1/20181217.BCRC_CNPCTC20TR_OIBGC.ne30_oECv3.edison \
   "*cam.h3.1906-01-*-*.nc"
+
+Example with Globus
+-------------------
+
+To extract from the archive created with Globus in the ``zstash create`` example, you would run: ::
+
+  $ zstash extract --hpss=globus://9cd89cfd-6d04-11e5-ba46-22000b92c6ec/~/test/E3SM_simulations/20170731.F20TR.ne30_ne30.anvil
 
 .. _zstash-list:
 

@@ -105,6 +105,7 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#extract">Extract</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#examples">Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">Example with Globus</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#list">List</a></li>
@@ -467,7 +468,11 @@ $ zstash extract --hpss=&lt;path to HPSS&gt; [--workers=&lt;num of processes&gt;
 <p>where</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">--hpss=&lt;path</span> <span class="pre">to</span> <span class="pre">HPSS&gt;</span></code> specifies the destination path on the HPSS file system.
-Note that if <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code>, then <code class="docutils literal notranslate"><span class="pre">--keep</span></code> is automatically set to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+Note that if <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code>, then <code class="docutils literal notranslate"><span class="pre">--keep</span></code> is automatically set to <code class="docutils literal notranslate"><span class="pre">True</span></code>.
+The option also accepts a Globus URL, <code class="docutils literal notranslate"><span class="pre">globus://&lt;Globus</span> <span class="pre">endpoint</span> <span class="pre">UUID/&lt;path</span> <span class="pre">to</span> <span class="pre">archive&gt;</span></code>.
+Then zstash will use <a class="reference external" href="https://globus.org/">Globus</a> to extract from a zstash archive on a Globus endpoint.
+Names <code class="docutils literal notranslate"><span class="pre">alcf</span></code> and <code class="docutils literal notranslate"><span class="pre">nersc</span></code> are recognized as referring to the ALCF HPSS and NERSC HPSS endpoints,
+e.g. <code class="docutils literal notranslate"><span class="pre">globus://nersc/~/my_archive</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--workers=&lt;num</span> <span class="pre">of</span> <span class="pre">processes&gt;</span></code> an optional argument which specifies the number of
 processes to use, resulting in extracting being done in parallel.
 <strong>Using a high number will result in slow downloads for each of the tars since your bandwidth is limited.</strong>
@@ -476,7 +481,7 @@ processes to use, resulting in extracting being done in parallel.
 <li><p><code class="docutils literal notranslate"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
 they have been extracted from the archive. Normally, they are deleted after
 successful transfer.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--tars</span></code> to specify specific tars to check. See “Check” above for example usage.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--tars</span></code> to specify specific tars to extract. See “Check” above for example usage.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-v</span></code> increases output verbosity.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to be extracted (standard wildcards supported).</p>
 <ul>
@@ -565,6 +570,13 @@ between <strong>years 0030 and 0069</strong> for the DECKv1 piControl simulation
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash extract --hpss=none \
 --cache=/p/user_pub/e3sm/archive/1_1/BGC-v1/20181217.BCRC_CNPCTC20TR_OIBGC.ne30_oECv3.edison \
 &quot;*cam.h3.1906-01-*-*.nc&quot;
+</pre></div>
+</div>
+</div>
+<div class="section" id="id3">
+<h3>Example with Globus<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>To extract from the archive created with Globus in the <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">create</span></code> example, you would run:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ zstash extract --hpss=globus://9cd89cfd-6d04-11e5-ba46-22000b92c6ec/~/test/E3SM_simulations/20170731.F20TR.ne30_ne30.anvil
 </pre></div>
 </div>
 </div>
@@ -729,8 +741,8 @@ v0.3.0
     </dl>
     <dl>
       <dt>Branches</dt>
-      <dd><a href="../license/usage.html">license</a></dd>
       <dd><a href="usage.html">master</a></dd>
+      <dd><a href="../license/usage.html">license</a></dd>
     </dl>
   </div>
 </div>
