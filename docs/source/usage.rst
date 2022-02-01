@@ -399,7 +399,7 @@ Example with Globus
 
 To extract from the archive created with Globus in the ``zstash create`` example, you would run: ::
 
-  $ zstash extract --hpss=globus://9cd89cfd-6d04-11e5-ba46-22000b92c6ec/~/test/E3SM_simulations/20170731.F20TR.ne30_ne30.anvil .
+  $ zstash extract --hpss=globus://9cd89cfd-6d04-11e5-ba46-22000b92c6ec/~/test/E3SM_simulations/20170731.F20TR.ne30_ne30.anvil
 
 .. _zstash-list:
 
