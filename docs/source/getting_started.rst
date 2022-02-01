@@ -26,7 +26,7 @@ The paths to ``e3sm_unified`` activation scripts are machine dependent:
 **NERSC**
     ::
 
-     source /global/cfs/cdirs/e3sm/software/anaconda_envs/load_latest_e3sm_unified_cori-haswel.sh
+     source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_cori-haswell.sh
 
 
 **Anvil**
