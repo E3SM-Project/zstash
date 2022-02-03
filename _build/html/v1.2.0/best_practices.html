@@ -1,0 +1,439 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Best practices for E3SM &mdash; zstash  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Design considerations" href="design.html" />
+    <link rel="prev" title="Usage" href="usage.html" />
+    <link href="_static/style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> zstash
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Best practices for E3SM</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#nersc">NERSC</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#archive">Archive</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#update">Update</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#check">Check</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#compy-anvil">Compy/Anvil</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Archive</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#transfer-to-nersc-hpss">Transfer to NERSC HPSS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">Check</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="design.html">Design considerations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="support.html">Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev_guide/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to This Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">zstash</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Best practices for E3SM</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/best_practices.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="best-practices-for-e3sm">
+<span id="best-practices"></span><h1>Best practices for E3SM<a class="headerlink" href="#best-practices-for-e3sm" title="Permalink to this headline">¶</a></h1>
+<p>This page summarizes the recommended best practices for archiving
+E3SM simulation output using zstash.</p>
+<div class="section" id="nersc">
+<h2>NERSC<a class="headerlink" href="#nersc" title="Permalink to this headline">¶</a></h2>
+<p>For best performance on NERSC, you should login to one
+of the data transfer nodes (dtn&lt;01..15&gt;.nersc.gov). Also, because
+archiving large amount of data with zstash can take several days,
+it is recommended to invoke zstash within a UNIX <cite>screen</cite> session
+to which you can detach and re-attach without killing zstash. You
+can access zstash on the data transfer nodes by loading the E3SM unified environment:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
+$ screen
+$ bash
+$ source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_cori-haswell.sh
+</pre></div>
+</div>
+<p>To detach from the screen session, use CTRL-A followed by D (for detach).
+You can then safely close your window. To re-attach to an existing session
+later:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
+$ screen -r
+</pre></div>
+</div>
+<div class="section" id="archive">
+<h3>Archive<a class="headerlink" href="#archive" title="Permalink to this headline">¶</a></h3>
+<p>Typically, you should consider archiving the entire directory structure
+of a simulation. The first time, this is accomplished with <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">create</span></code>.
+For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
+$ screen -r
+$ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+$ zstash create --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
+  --maxsize 128 . 2&gt;&amp;1 | tee zstash_create_20190226.log
+</pre></div>
+</div>
+<p>The command above will archive the entire directory structure under
+<cite>/global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison</cite>.
+The archive files will be stored on HPSS under <cite>2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison</cite>.
+Individual tar files in the zstash archive will have a maximum size of 128 GB. NERSC typically
+recommends file size between 100 and 500 GB for best performance.</p>
+<p>If your model output has been reorganized using the CIME short-term archive utility, you can easily
+archive only a subset of the restart files to conserve space. For example, to <strong>archive
+restart files every 5 years</strong> only:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
+$ screen -r
+$ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+$ zstash create --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
+  --exclude=&quot;archive/rest/???[!05]-*/&quot; \
+  --maxsize 128 . 2&gt;&amp;1 | tee zstash_create_20190226.log
+</pre></div>
+</div>
+</div>
+<div class="section" id="update">
+<h3>Update<a class="headerlink" href="#update" title="Permalink to this headline">¶</a></h3>
+<p>You can also add newly created files to an existing archive, or restart archiving after a
+failure using the <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">update</span></code> functionality:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
+$ screen -r
+$ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+$ zstash update --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
+  --exclude=&quot;archive/rest/???[!05]-*/&quot; 2&gt;&amp;1 | tee zstash_update_20190226.log
+</pre></div>
+</div>
+</div>
+<div class="section" id="check">
+<h3>Check<a class="headerlink" href="#check" title="Permalink to this headline">¶</a></h3>
+<p>After archiving or updating, it is <strong>highly recommended</strong> that you verify the integrity
+of the tar files. The safest way to do so is go to a new, empty directory and run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ zstash check --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> will download the tar archives to the local disk cache (under
+the zstash/ subdirectory) and verify the md5 checksum of every file against the
+checksum stored in the index database (index.db).</p>
+<p><code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> can also be run in the original location. But if tar files
+are present in the local cache (zstash/ sub-directory), the check will only
+be performed against the local disk copy, not the one on HPSS.</p>
+<p>To save time, you can check in parallel by passing in a number of processes with the <code class="docutils literal notranslate"><span class="pre">--workers</span></code>
+argument. Please see the full documentation for <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> for more information.</p>
+<p>If any corrupted file is found during the check, zstash will print a list of corrupted
+files in the archive, along with the tar archive they belong to.</p>
+<p>There are currently two kinds of errors:</p>
+<ol class="arabic simple">
+<li><p>Checksum mismatch error: The file was extracted but the checksum doesn’t
+match the original one computed when the files was uploaded.</p></li>
+<li><p>General extraction error: The file can’t be extracted due to another error.</p></li>
+</ol>
+<p>To see what kind of error you have, search the output for your filename
+and you should be able to see what happened.</p>
+<p>Regarding the first error, this seems to be caused by something on the HPSS end of this process.
+If you have the original model data, please try uploading it again.</p>
+<p>With the second error, you might see something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">INFO</span><span class="p">:</span> <span class="n">Checking</span> <span class="n">archive</span><span class="o">/</span><span class="n">ocn</span><span class="o">/</span><span class="n">hist</span><span class="o">/</span><span class="n">mpaso</span><span class="o">.</span><span class="n">hist</span><span class="o">.</span><span class="n">am</span><span class="o">.</span><span class="n">timeSeriesStatsMonthly</span><span class="mf">.1855</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mf">01.</span><span class="n">nc</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+  <span class="n">File</span> <span class="s2">&quot;build/bdist.linux-x86_64/egg/zstash/extract.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">145</span><span class="p">,</span> <span class="ow">in</span> <span class="n">extractFiles</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">fin</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">BLOCK_SIZE</span><span class="p">)</span>
+  <span class="n">File</span> <span class="s2">&quot;/global/homes/z/zshaheen/anaconda2/envs/zstash_env_v0.2.0/lib/python2.7/tarfile.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">831</span><span class="p">,</span> <span class="ow">in</span> <span class="n">read</span>
+    <span class="n">buf</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fileobj</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">size</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">buf</span><span class="p">))</span>
+  <span class="n">File</span> <span class="s2">&quot;/global/homes/z/zshaheen/anaconda2/envs/zstash_env_v0.2.0/lib/python2.7/tarfile.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">743</span><span class="p">,</span> <span class="ow">in</span> <span class="n">read</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">readnormal</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+  <span class="n">File</span> <span class="s2">&quot;/global/homes/z/zshaheen/anaconda2/envs/zstash_env_v0.2.0/lib/python2.7/tarfile.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">758</span><span class="p">,</span> <span class="ow">in</span> <span class="n">readnormal</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__read</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+  <span class="n">File</span> <span class="s2">&quot;/global/homes/z/zshaheen/anaconda2/envs/zstash_env_v0.2.0/lib/python2.7/tarfile.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">750</span><span class="p">,</span> <span class="ow">in</span> <span class="n">__read</span>
+    <span class="k">raise</span> <span class="n">ReadError</span><span class="p">(</span><span class="s2">&quot;unexpected end of data&quot;</span><span class="p">)</span>
+<span class="n">ReadError</span><span class="p">:</span> <span class="n">unexpected</span> <span class="n">end</span> <span class="n">of</span> <span class="n">data</span>
+</pre></div>
+</div>
+<p>This seems to be caused by the filesystem. Simply run <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> again.
+To save time, like <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">extract</span></code>, you can check for specific files or tar archives:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ zstash check --hpss=/path/to/hpss/archive &quot;archive/ocn/hist/mpaso.hist.am.timeSeriesStatsMonthly.1892-04-01.nc&quot;
+$ zstash check --hpss=/path/to/hpss/archive &quot;000012.tar&quot;
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="compy-anvil">
+<h2>Compy/Anvil<a class="headerlink" href="#compy-anvil" title="Permalink to this headline">¶</a></h2>
+<p>There is no long-term HPSS storage attached to Compy or Anvil. To archive a new simulation,
+we recommend the following:</p>
+<ul class="simple">
+<li><p>Use zstash to create a local archive on disk.</p></li>
+<li><p>Transfer files to NERSC HPSS using Globus.</p></li>
+</ul>
+<p>While the instructions below are specific for Compy, adapting them for Anvil should
+be straightforward.</p>
+<div class="section" id="id1">
+<h3>Archive<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>Starting with v0.4, zstash supports the creation of local archives only (using the
+<code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code> command line option). For example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ screen
+$ cd /compyfs/gola749/E3SM_simulations/20191216.alpha20.piControl.ne30_r05_oECv3_ICG.compy
+$ mkdir zstash
+$ zstash create --hpss=none  --maxsize 128 . 2&gt;&amp;1 | tee zstash/zstash_create_20200224.log
+ctrl-a d # to disconnect from screen session
+</pre></div>
+</div>
+</div>
+<div class="section" id="transfer-to-nersc-hpss">
+<span id="globus-compy"></span><h3>Transfer to NERSC HPSS<a class="headerlink" href="#transfer-to-nersc-hpss" title="Permalink to this headline">¶</a></h3>
+<p>Transfer all zstash files to NERSC HPSS using Globus.</p>
+<ul class="simple">
+<li><p>Login to Globus web interface at <a class="reference external" href="https://www.globus.org/">https://www.globus.org/</a> using your NERSC credentials.</p></li>
+<li><p>On the leftmost pane, select ‘ENDPOINT’</p></li>
+<li><p>Search for ‘NERSC HPSS’. Click on Green power button to activate endpoint.</p></li>
+</ul>
+<a class="reference internal image-reference" href="_images/Globus_Screenshot_1.png"><img alt="Globus screenshot, NERSC HPSS endpoint" src="_images/Globus_Screenshot_1.png" style="width: 685.5px; height: 425.5px;" /></a>
+<ul class="simple">
+<li><p>Back to the leftmost pane, select ‘ENDPOINT’</p></li>
+<li><p>Search for ‘compy-dtn’. Click on Green power button to activate endpoint. Login
+using your compy credentials (username, PIN+RSA).</p></li>
+</ul>
+<a class="reference internal image-reference" href="_images/Globus_Screenshot_2.png"><img alt="Globus screenshot, compy-dtn endpoint" src="_images/Globus_Screenshot_2.png" style="width: 685.5px; height: 425.5px;" /></a>
+<ul class="simple">
+<li><p>In the file manager, navigate to your local zstash directory.</p></li>
+<li><p>Click on ‘Transfer or Sync…’</p></li>
+</ul>
+<a class="reference internal image-reference" href="_images/Globus_Screenshot_3.png"><img alt="Globus screenshot, file manager" src="_images/Globus_Screenshot_3.png" style="width: 685.5px; height: 425.5px;" /></a>
+<ul class="simple">
+<li><p>Configure sync</p>
+<ul>
+<li><p>Select all source files in zstash folder.</p></li>
+<li><p>Select destination endpoint and folder (the Globus web interface cannot create new
+directories, so you will have to create the destination directory on NERSC HPSS is if
+doesn’t already exist).</p></li>
+<li><p>Suggested options for sync</p>
+<ul>
+<li><p>transfer files where the modification time is newer</p></li>
+<li><p>preserve source file modification time</p></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Click ‘Start -&gt;’.</p></li>
+</ul>
+<a class="reference internal image-reference" href="_images/Globus_Screenshot_4.png"><img alt="Globus screenshot, sync" src="_images/Globus_Screenshot_4.png" style="width: 941.5px; height: 547.0px;" /></a>
+</div>
+<div class="section" id="id2">
+<h3>Check<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>Once archiving is complete, run <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">check</span></code> on NERSC to verify integrity of the archive:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh dtn01.nersc.gov
+$ cd &lt;scratch directory&gt;
+$ zstash check --hpss=&lt;HPSS path&gt;
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="design.html" class="btn btn-neutral float-right" title="Design considerations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="usage.html" class="btn btn-neutral float-left" title="Usage" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, E3SM.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: v1.2.0
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../v1.1.0/best_practices.html">v1.1.0</a></dd>
+      <dd><a href="best_practices.html">v1.2.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="../license/best_practices.html">license</a></dd>
+      <dd><a href="../master/best_practices.html">master</a></dd>
+    </dl>
+  </div>
+</div>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
