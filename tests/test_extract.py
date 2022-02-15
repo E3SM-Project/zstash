@@ -24,13 +24,13 @@ class TestExtract(TestZstash):
 
     # `zstash extract` is tested in TestExtract and TestExtractParallel.
     # x = on, no mark = off, b = both on and off tested
-    # option | ExtractVerbose | Extract | ExtractCache | ExtractTars | ExtractParallel | ExtractParallelTars |
-    # --hpss    |x|x|x|x|x|x|
-    # --workers | | | | |x|x|
-    # --cache   | | |x| | | |
-    # --keep    | |x| | | | |
-    # --tars    | | | |x| |x|
-    # -v        |x| | | |b| |
+    # option | ExtractVerbose | Extract | ExtractCache | ExtractTars | ExtractFile | ExtractParallel | ExtractParallelTars |
+    # --hpss    |x|x|x|x|x|x|x|
+    # --workers | | | | | |x|x|
+    # --cache   | | |x| | | | |
+    # --keep    | |x| | | | | |
+    # --tars    | | | |x| | |x|
+    # -v        |x| | | | |b| |
 
     def helperExtractVerbose(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
         """
@@ -208,6 +208,42 @@ class TestExtract(TestZstash):
             )
             self.stop(error_message)
 
+    def helperExtractFile(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
+        """
+        Test `zstash extract` with a specific file.
+        """
+        self.hpss_path = hpss_path
+        use_hpss = self.setupDirs(test_name)
+        self.create(use_hpss, zstash_path)
+        self.assertWorkspace()
+        os.rename(self.test_dir, self.backup_dir)
+        os.mkdir(self.test_dir)
+        os.chdir(self.test_dir)
+        if not use_hpss:
+            shutil.copytree(
+                "{}/{}/{}".format(TOP_LEVEL, self.backup_dir, self.cache), self.copy_dir
+            )
+        cmd = "{}zstash extract --hpss={} file1.txt".format(zstash_path, self.hpss_path)
+        output, err = run_cmd(cmd)
+        os.chdir(TOP_LEVEL)
+        expected_present = [
+            "INFO: No matches for file1.txt",
+        ]
+        expected_absent = ["ERROR", "Not extracting"]
+        self.check_strings(cmd, output + err, expected_present, expected_absent)
+
+        os.chdir(self.test_dir)
+        cmd = "{}zstash extract --hpss={} file0.txt".format(zstash_path, self.hpss_path)
+        output, err = run_cmd(cmd)
+        os.chdir(TOP_LEVEL)
+        expected_present = [
+            "Extracting file0.txt",
+        ]
+        if use_hpss:
+            expected_present.append("Transferring file from HPSS")
+        expected_absent = ["ERROR", "Not extracting"]
+        self.check_strings(cmd, output + err, expected_present, expected_absent)
+
     def testExtractVerbose(self):
         self.helperExtractVerbose("testExtractVerbose", "none")
 
@@ -235,6 +271,13 @@ class TestExtract(TestZstash):
     def testExtractTarsHPSS(self):
         self.conditional_hpss_skip()
         helperExtractTars(self, "testExtractTarsHPSS", HPSS_ARCHIVE)
+
+    def testExtractFile(self):
+        self.helperExtractFile("testExtractFile", "none")
+
+    def testExtractFileHPSS(self):
+        self.conditional_hpss_skip()
+        self.helperExtractFile("testExtractFileHPSS", HPSS_ARCHIVE)
 
 
 def helperExtractTars(

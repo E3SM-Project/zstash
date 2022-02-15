@@ -232,7 +232,11 @@ def extract_database(
                 u"select * from files where name GLOB ? or tar GLOB ?",
                 (args_file, args_file),
             )
-            matches_ = matches_ + cur.fetchall()
+            match: List[TupleFilesRow] = cur.fetchall()
+            if match:
+                matches_ = matches_ + match
+            else:
+                logger.info("No matches for {}".format(args_file))
 
     matches: List[FilesRow] = list(map(lambda match: FilesRow(match), matches_))
 

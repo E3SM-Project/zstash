@@ -24,13 +24,13 @@ class TestExtractParallel(TestZstash):
 
     # `zstash extract` is tested in TestExtract and TestExtractParallel.
     # x = on, no mark = off, b = both on and off tested
-    # option | ExtractVerbose | Extract | ExtractCache | ExtractTars | ExtractParallel | ExtractParallelTars |
-    # --hpss    |x|x|x|x|x|x|
-    # --workers | | | | |x|x|
-    # --cache   | | |x| | | |
-    # --keep    | |x| | | | |
-    # --tars    | | | |x| |x|
-    # -v        |x| | | |b| |
+    # option | ExtractVerbose | Extract | ExtractCache | ExtractTars | ExtractFile | ExtractParallel | ExtractParallelTars |
+    # --hpss    |x|x|x|x|x|x|x|
+    # --workers | | | | | |x|x|
+    # --cache   | | |x| | | | |
+    # --keep    | |x| | | | | |
+    # --tars    | | | |x| | |x|
+    # -v        |x| | | | |b| |
 
     def helperExtractParallel(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
         """
