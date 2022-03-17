@@ -9,7 +9,7 @@ setup(
     packages=find_packages(include=["zstash", "zstash.*"]),
     install_requires=[
         "six==1.16.0",
-        "globus-sdk==2.0.1",
+        "globus-sdk==3.2.1",
         "fair-research-login==0.2.0",
     ],
     entry_points={"console_scripts": ["zstash=zstash.main:main"]},

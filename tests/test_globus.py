@@ -7,7 +7,7 @@ import unittest
 
 from fair_research_login.client import NativeClient
 from globus_sdk import DeleteData, TransferClient
-from globus_sdk.exc import TransferAPIError
+from globus_sdk.services.transfer.errors import TransferAPIError
 
 from tests.base import TOP_LEVEL, ZSTASH_PATH, TestZstash, print_starred, run_cmd
 

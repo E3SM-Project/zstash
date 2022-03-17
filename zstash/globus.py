@@ -8,7 +8,7 @@ import sys
 
 from fair_research_login.client import NativeClient
 from globus_sdk import TransferClient, TransferData
-from globus_sdk.exc import TransferAPIError
+from globus_sdk.services.transfer.errors import TransferAPIError
 
 from .settings import logger
 
