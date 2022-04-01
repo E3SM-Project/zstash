@@ -22,7 +22,7 @@ requirements:
   run:
     - python >=3.6
     - six
-    - globus-sdk >=2,<3
+    - globus-sdk >=2
     - fair-research-login
 
 test:

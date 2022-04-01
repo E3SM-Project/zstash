@@ -6,8 +6,7 @@ import socket
 import unittest
 
 from fair_research_login.client import NativeClient
-from globus_sdk import DeleteData, TransferClient
-from globus_sdk.exc import TransferAPIError
+from globus_sdk import DeleteData, TransferAPIError, TransferClient
 
 from tests.base import TOP_LEVEL, ZSTASH_PATH, TestZstash, print_starred, run_cmd
 
@@ -63,7 +62,7 @@ class TestGlobus(TestZstash):
         transfer_authorizer = native_client.get_authorizers().get(
             "transfer.api.globus.org"
         )
-        self.transfer_client = TransferClient(transfer_authorizer)
+        self.transfer_client = TransferClient(authorizer=transfer_authorizer)
 
         for ep_id in [hpss_globus_endpoint, local_endpoint]:
             r = self.transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
@@ -96,7 +95,9 @@ class TestGlobus(TestZstash):
             with 5 second timeout limit. If the task is ACTIVE after time runs
             out 'task_wait' returns False, and True otherwise.
             """
-            while not self.transfer_client.task_wait(task_id, 5, 5):
+            while not self.transfer_client.task_wait(
+                task_id, timeout=5, polling_interval=5
+            ):
                 task = self.transfer_client.get_task(task_id)
                 if task.get("is_paused"):
                     break
