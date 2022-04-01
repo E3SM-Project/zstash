@@ -99,7 +99,7 @@ def update_config(cur: sqlite3.Cursor):
             # The attribute name does not start with "__"
             # Get the value (column 2) for attribute `attr` (column 1)
             # i.e., for the row where column 1 is the attribute, get the value from column 2
-            cur.execute(u"select value from config where arg=?", (attr,))
+            cur.execute("select value from config where arg=?", (attr,))
             value = cur.fetchone()[0]
             # Update config with the new attribute-value pair
             setattr(config, attr, value)
@@ -108,7 +108,7 @@ def update_config(cur: sqlite3.Cursor):
 def create_tars_table(cur: sqlite3.Cursor, con: sqlite3.Connection):
     # Create 'tars' table
     cur.execute(
-        u"""
+        """
 create table tars (
 id integer primary key,
 name text,
@@ -122,6 +122,6 @@ md5 text
 
 def tars_table_exists(cur: sqlite3.Cursor) -> bool:
     # https://stackoverflow.com/questions/1601151/how-do-i-check-in-sqlite-whether-a-table-exists
-    cur.execute(u"PRAGMA table_info(tars);")
+    cur.execute("PRAGMA table_info(tars);")
     table_info_list: List[TupleTarsRow] = cur.fetchall()
     return True if table_info_list != [] else False

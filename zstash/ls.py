@@ -134,7 +134,7 @@ def ls_database(args: argparse.Namespace, cache: str) -> List[FilesRow]:
     matches_: List[TupleFilesRow] = []
     for args_file in args.files:
         cur.execute(
-            u"select * from files where name GLOB ? or tar GLOB ?",
+            "select * from files where name GLOB ? or tar GLOB ?",
             (args_file, args_file),
         )
         matches_ = matches_ + cur.fetchall()
@@ -148,7 +148,7 @@ def ls_database(args: argparse.Namespace, cache: str) -> List[FilesRow]:
 
     if args.long:
         # Get the names of the columns
-        cur.execute(u"PRAGMA table_info(files);")
+        cur.execute("PRAGMA table_info(files);")
         cols = [str(col_info[1]) for col_info in cur.fetchall()]
         print("\t".join(cols))
 
@@ -170,7 +170,7 @@ def ls_tars_database(args: argparse.Namespace, cache: str) -> List[TarsRow]:
         return []
 
     # Find matching files
-    cur.execute(u"select * from tars")
+    cur.execute("select * from tars")
     matches_: List[TupleTarsRow] = cur.fetchall()
 
     # Remove duplicates
@@ -184,7 +184,7 @@ def ls_tars_database(args: argparse.Namespace, cache: str) -> List[TarsRow]:
         print("\nTars:")
         if args.long:
             # Get the names of the columns
-            cur.execute(u"PRAGMA table_info(tars);")
+            cur.execute("PRAGMA table_info(tars);")
             cols = [str(col_info[1]) for col_info in cur.fetchall()]
             print("\t".join(cols))
 

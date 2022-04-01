@@ -147,7 +147,7 @@ def add_files(
                 if not tars_table_exists(cur):
                     # Need to create tars table
                     create_tars_table(cur, con)
-                cur.execute(u"insert into tars values (NULL,?,?,?)", tar_tuple)
+                cur.execute("insert into tars values (NULL,?,?,?)", tar_tuple)
                 con.commit()
 
             # Transfer tar to HPSS
@@ -160,7 +160,7 @@ def add_files(
             # Update database with files that have been archived
             # Add a row to the "files" table,
             # the last 6 columns matching the values of `archived`
-            cur.executemany(u"insert into files values (NULL,?,?,?,?,?,?)", archived)
+            cur.executemany("insert into files values (NULL,?,?,?,?,?,?)", archived)
             con.commit()
 
             # Open new tar next time
