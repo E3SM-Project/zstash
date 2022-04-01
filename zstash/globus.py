@@ -7,8 +7,7 @@ import socket
 import sys
 
 from fair_research_login.client import NativeClient
-from globus_sdk import TransferClient, TransferData
-from globus_sdk.services.transfer.errors import TransferAPIError
+from globus_sdk import TransferAPIError, TransferClient, TransferData
 
 from .settings import logger
 
@@ -83,7 +82,7 @@ def globus_transfer(  # noqa: C901
     )
     native_client.login(no_local_server=True, refresh_tokens=True)
     transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
-    tc = TransferClient(transfer_authorizer)
+    tc = TransferClient(authorizer=transfer_authorizer)
 
     for ep_id in [src_ep, dst_ep]:
         r = tc.endpoint_autoactivate(ep_id, if_expires_in=600)
@@ -134,7 +133,7 @@ def globus_transfer(  # noqa: C901
         with 20 second timeout limit. If the task is ACTIVE after time runs
         out 'task_wait' returns False, and True otherwise.
         """
-        while not tc.task_wait(task_id, 20, 20):
+        while not tc.task_wait(task_id, timeout=20, polling_interval=20):
             pass
         """
         The Globus transfer job (task) has been finished (SUCCEEDED or FAILED).
