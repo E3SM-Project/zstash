@@ -172,7 +172,7 @@ def update_database(args: argparse.Namespace, cache: str) -> Optional[List[str]]
             size_new = statinfo.st_size
 
         # Select the file matching the path.
-        cur.execute(u"select * from files where name = ?", (file_path,))
+        cur.execute("select * from files where name = ?", (file_path,))
         new: bool = True
         while True:
             # Get the corresponding row in the 'files' table
@@ -211,7 +211,7 @@ def update_database(args: argparse.Namespace, cache: str) -> Optional[List[str]]
 
     # Find last used tar archive
     itar: int = -1
-    cur.execute(u"select distinct tar from files")
+    cur.execute("select distinct tar from files")
     tfiles: List[Tuple[str]] = cur.fetchall()
     for tfile in tfiles:
         tfile_string: str = tfile[0]

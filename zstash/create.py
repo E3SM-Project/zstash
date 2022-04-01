@@ -186,7 +186,7 @@ def create_database(cache: str, args: argparse.Namespace) -> List[str]:
 
     # Create 'config' table
     cur.execute(
-        u"""
+        """
 create table config (
   arg text primary key,
   value text
@@ -197,7 +197,7 @@ create table config (
 
     # Create 'files' table
     cur.execute(
-        u"""
+        """
 create table files (
   id integer primary key,
   name text,
@@ -226,7 +226,7 @@ create table files (
             # This creates a new row in the 'config' table.
             # Insert attr for column 1 ('arg')
             # Insert value for column 2 ('text')
-            cur.execute(u"insert into config values (?,?)", (attr, value))
+            cur.execute("insert into config values (?,?)", (attr, value))
     con.commit()
 
     files: List[str] = get_files_to_archive(cache, args.exclude)

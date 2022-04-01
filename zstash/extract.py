@@ -212,7 +212,7 @@ def extract_database(
         if args.files != ["*"]:
             raise ValueError("If --tars is used, <files> should not be listed.")
         tar_names_initial: List[Tuple[str]] = cur.execute(
-            u"select distinct tar from files"
+            "select distinct tar from files"
         ).fetchall()
         tar_names: List[str] = sorted([x for (x,) in tar_names_initial])
         # Remove `.tar` with `[:-4]` for `parse_tars_option` to work properly
@@ -221,7 +221,7 @@ def extract_database(
         )
         for tar in tar_list:
             cur.execute(
-                u"select * from files where tar GLOB ?",
+                "select * from files where tar GLOB ?",
                 (tar + ".tar",),
             )
             matches_ = matches_ + cur.fetchall()
@@ -229,7 +229,7 @@ def extract_database(
         # Find matching files
         for args_file in args.files:
             cur.execute(
-                u"select * from files where name GLOB ? or tar GLOB ?",
+                "select * from files where name GLOB ? or tar GLOB ?",
                 (args_file, args_file),
             )
             match: List[TupleFilesRow] = cur.fetchall()
