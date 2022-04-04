@@ -21,6 +21,7 @@ dependencies:
   # Documentation
   # =================
   # If versions are updated, also update in `.github/workflows/workflow.yml`
+  - jinja2<3.1
   - sphinx=3.5.1
   - sphinx_rtd_theme=0.5.1
   # Need to pin docutils because 0.17 has a bug with unordered lists
