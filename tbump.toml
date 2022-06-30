@@ -2,7 +2,7 @@
 github_url = "https://github.com/E3SM-Project/zstash.git"
 
 [version]
-current = "1.2.1rc1"
+current = "1.2.1"
 
 # Example of a semver regexp with support for PEP 440
 # release candidates.Make sure this matches current_version
