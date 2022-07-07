@@ -27,6 +27,8 @@ regex_endpoint_map = {
 remote_endpoint = None
 local_endpoint = None
 transfer_client = None
+transfer_data = None
+task_id = None
 
 
 def globus_activate(hpss):
@@ -90,12 +92,12 @@ def globus_activate(hpss):
             sys.exit(1)
 
 
-def globus_transfer(  # noqa: C901
-    remote_ep, remote_path, name, transfer_type, non_blocking=False
-):
+def globus_transfer(remote_ep, remote_path, name, transfer_type):  # noqa: C901
     global transfer_client
     global local_endpoint
     global remote_endpoint
+    global transfer_data
+    global task_id
 
     if not transfer_client:
         globus_activate("globus://" + remote_ep)
@@ -118,19 +120,38 @@ def globus_transfer(  # noqa: C901
     filename = name.split(".")[0]
     label = subdir_label + " " + filename
 
-    td = TransferData(
-        transfer_client,
-        src_ep,
-        dst_ep,
-        label=label,
-        sync_level="checksum",
-        verify_checksum=True,
-        preserve_timestamp=True,
-        fail_on_quota_errors=True,
-    )
-    td.add_item(src_path, dst_path)
+    if not transfer_data:
+        transfer_data = TransferData(
+            transfer_client,
+            src_ep,
+            dst_ep,
+            label=label,
+            sync_level="checksum",
+            verify_checksum=True,
+            preserve_timestamp=True,
+            fail_on_quota_errors=True,
+        )
+    transfer_data.add_item(src_path, dst_path)
+    transfer_data["label"] = subdir_label + " " + filename
     try:
-        task = transfer_client.submit_transfer(td)
+        if task_id:
+            task = transfer_client.get_task(task_id)
+            if task["status"] == "ACTIVE":
+                return
+            elif task["status"] == "SUCCEEDED":
+                src_ep = task["source_endpoint_id"]
+                dst_ep = task["destination_endpoint_id"]
+                label = task["label"]
+                logger.info(
+                    "Globus transfer {}, from {} to {}: {} succeeded".format(
+                        task_id, src_ep, dst_ep, label
+                    )
+                )
+            else:
+                logger.error("Transfer FAILED")
+        task = transfer_client.submit_transfer(transfer_data)
+        task_id = task.get("task_id")
+        transfer_data = None
     except TransferAPIError as e:
         if e.code == "NoCredException":
             logger.error(
@@ -145,11 +166,11 @@ def globus_transfer(  # noqa: C901
         logger.error("Exception: {}".format(e))
         sys.exit(1)
 
-    if non_blocking:
-        return
+
+def globus_wait(task_id):
+    global transfer_client
 
     try:
-        task_id = task.get("task_id")
         """
         A Globus transfer job (task) can be in one of the three states:
         ACTIVE, SUCCEEDED, FAILED. The script every 20 seconds polls a
@@ -165,9 +186,12 @@ def globus_transfer(  # noqa: C901
         """
         task = transfer_client.get_task(task_id)
         if task["status"] == "SUCCEEDED":
+            src_ep = task["source_endpoint_id"]
+            dst_ep = task["destination_endpoint_id"]
+            label = task["label"]
             logger.info(
-                "Globus transfer {}, from {}{} to {}{} succeeded".format(
-                    task_id, src_ep, src_path, dst_ep, dst_path
+                "Globus transfer {}, from {} to {}: {} succeeded".format(
+                    task_id, src_ep, dst_ep, label
                 )
             )
         else:
@@ -185,3 +209,30 @@ def globus_transfer(  # noqa: C901
     except Exception as e:
         logger.error("Exception: {}".format(e))
         sys.exit(1)
+
+
+def globus_finalize(non_blocking=False):
+    global transfer_client
+    global transfer_data
+    global task_id
+
+    try:
+        last_task = transfer_client.submit_transfer(transfer_data)
+        last_task_id = last_task.get("task_id")
+    except TransferAPIError as e:
+        if e.code == "NoCredException":
+            logger.error(
+                "{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(
+                    e.message
+                )
+            )
+        else:
+            logger.error(e)
+        sys.exit(1)
+    except Exception as e:
+        logger.error("Exception: {}".format(e))
+        sys.exit(1)
+
+    if not non_blocking:
+        globus_wait(task_id)
+        globus_wait(last_task_id)
