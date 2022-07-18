@@ -104,9 +104,7 @@ def hpss_transfer(
                 os.remove(file_path)
 
 
-def hpss_put(
-    hpss: str, file_path: str, cache: str, keep: bool = True
-):
+def hpss_put(hpss: str, file_path: str, cache: str, keep: bool = True):
     """
     Put a file to the HPSS archive.
     """

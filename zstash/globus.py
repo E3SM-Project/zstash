@@ -8,6 +8,7 @@ import sys
 
 from fair_research_login.client import NativeClient
 from globus_sdk import TransferAPIError, TransferClient, TransferData
+from globus_sdk.services.transfer.response.iterable import IterableTransferResponse
 from six.moves.urllib.parse import urlparse
 
 from .settings import logger
@@ -26,12 +27,13 @@ regex_endpoint_map = {
 
 remote_endpoint = None
 local_endpoint = None
-transfer_client = None
-transfer_data = None
+transfer_client: TransferClient = None
+transfer_data: TransferData = None
 task_id = None
+archive_directory_listing: IterableTransferResponse = None
 
 
-def globus_activate(hpss):
+def globus_activate(hpss: str):
     """
     Read the local globus endpoint UUID from ~/.zstash.ini.
     If the ini file does not exist, create an ini file with empty values,
@@ -92,17 +94,42 @@ def globus_activate(hpss):
             sys.exit(1)
 
 
-def globus_transfer(remote_ep, remote_path, name, transfer_type):  # noqa: C901
+def file_exists(name: str) -> bool:
+    global archive_directory_listing
+
+    for entry in archive_directory_listing:
+        if entry.get("name") == name:
+            return True
+    return False
+
+
+def globus_transfer(
+    remote_ep: str, remote_path: str, name: str, transfer_type: str
+):  # noqa: C901
     global transfer_client
     global local_endpoint
     global remote_endpoint
     global transfer_data
     global task_id
+    global archive_directory_listing
 
     if not transfer_client:
         globus_activate("globus://" + remote_ep)
     if not transfer_client:
         sys.exit(1)
+
+    if transfer_type == "get":
+        if not archive_directory_listing:
+            archive_directory_listing = transfer_client.operation_ls(
+                remote_endpoint, remote_path
+            )
+        if not file_exists(name):
+            logger.error(
+                "Remote file globus://{}{}/{} does not exist".format(
+                    remote_ep, remote_path, name
+                )
+            )
+            sys.exit(1)
 
     if transfer_type == "get":
         src_ep = remote_endpoint
@@ -166,8 +193,11 @@ def globus_transfer(remote_ep, remote_path, name, transfer_type):  # noqa: C901
         logger.error("Exception: {}".format(e))
         sys.exit(1)
 
+    if transfer_type == "get" and task_id:
+        globus_wait(task_id)
 
-def globus_wait(task_id):
+
+def globus_wait(task_id: str):
     global transfer_client
 
     try:
@@ -211,28 +241,33 @@ def globus_wait(task_id):
         sys.exit(1)
 
 
-def globus_finalize(non_blocking=False):
+def globus_finalize(non_blocking: bool = False):
     global transfer_client
     global transfer_data
     global task_id
 
-    try:
-        last_task = transfer_client.submit_transfer(transfer_data)
-        last_task_id = last_task.get("task_id")
-    except TransferAPIError as e:
-        if e.code == "NoCredException":
-            logger.error(
-                "{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(
-                    e.message
+    last_task_id = None
+
+    if transfer_data:
+        try:
+            last_task = transfer_client.submit_transfer(transfer_data)
+            last_task_id = last_task.get("task_id")
+        except TransferAPIError as e:
+            if e.code == "NoCredException":
+                logger.error(
+                    "{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(
+                        e.message
+                    )
                 )
-            )
-        else:
-            logger.error(e)
-        sys.exit(1)
-    except Exception as e:
-        logger.error("Exception: {}".format(e))
-        sys.exit(1)
+            else:
+                logger.error(e)
+            sys.exit(1)
+        except Exception as e:
+            logger.error("Exception: {}".format(e))
+            sys.exit(1)
 
     if not non_blocking:
-        globus_wait(task_id)
-        globus_wait(last_task_id)
+        if task_id:
+            globus_wait(task_id)
+        if last_task_id:
+            globus_wait(last_task_id)
