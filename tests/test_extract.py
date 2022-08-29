@@ -24,13 +24,14 @@ class TestExtract(TestZstash):
 
     # `zstash extract` is tested in TestExtract and TestExtractParallel.
     # x = on, no mark = off, b = both on and off tested
-    # option | ExtractVerbose | Extract | ExtractCache | ExtractTars | ExtractFile | ExtractParallel | ExtractParallelTars |
-    # --hpss    |x|x|x|x|x|x|x|
-    # --workers | | | | | |x|x|
-    # --cache   | | |x| | | | |
-    # --keep    | |x| | | | | |
-    # --tars    | | | |x| | |x|
-    # -v        |x| | | | |b| |
+    # option | ExtractVerbose | ExtractRetries | ExtractKeep | ExtractCache | ExtractTars | ExtractFile | ExtractParallel | ExtractParallelTars |
+    # --hpss    |x|x|x|x|x|x|x|x|
+    # --workers | | | | | | |x|x|
+    # --cache   | | | |x| | | | |
+    # --keep    | | |x| | | | | |
+    # --retries | |x| | | | | | |
+    # --tars    | | | | |x| | |x|
+    # -v        |x| | | | | |b| |
 
     def helperExtractVerbose(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
         """
@@ -115,6 +116,42 @@ class TestExtract(TestZstash):
             "Extracting file3.txt",
             "Extracting file4.txt",
             "Extracting file5.txt",
+        ]
+        if use_hpss:
+            expected_present.append("Transferring file from HPSS")
+        expected_absent = ["ERROR", "Not extracting"]
+        self.check_strings(cmd, output + err, expected_present, expected_absent)
+
+    def helperExtractRetries(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
+        """
+        Test `zstash extract --retries`.
+        """
+        self.hpss_path = hpss_path
+        use_hpss = self.setupDirs(test_name)
+        self.create(use_hpss, zstash_path)
+        self.assertWorkspace()
+        os.rename(self.test_dir, self.backup_dir)
+        os.mkdir(self.test_dir)
+        os.chdir(self.test_dir)
+        if not use_hpss:
+            shutil.copytree(
+                "{}/{}/{}".format(TOP_LEVEL, self.backup_dir, self.cache), self.copy_dir
+            )
+        cmd = "{}zstash extract --hpss={} --retries=3".format(
+            zstash_path, self.hpss_path
+        )
+        output, err = run_cmd(cmd)
+        os.chdir(TOP_LEVEL)
+        expected_present = [
+            "Opening tar archive zstash/000000.tar",
+            "Extracting file0.txt",
+            "Extracting file0_hard.txt",
+            "Extracting file0_soft.txt",
+            "Extracting file0_soft_bad.txt",
+            "Extracting file_empty.txt",
+            "Extracting dir/file1.txt",
+            "Extracting empty_dir",
+            "No failures detected when extracting the files",
         ]
         if use_hpss:
             expected_present.append("Transferring file from HPSS")
@@ -250,6 +287,13 @@ class TestExtract(TestZstash):
     def testExtractVerboseHPSS(self):
         self.conditional_hpss_skip()
         self.helperExtractVerbose("testExtractVerboseHPSS", HPSS_ARCHIVE)
+
+    def testExtractRetries(self):
+        self.helperExtractRetries("testExtractRetries", "none")
+
+    def testExtractRetriesHPSS(self):
+        self.conditional_hpss_skip()
+        self.helperExtractRetries("testExtractRetriesHPSS", HPSS_ARCHIVE)
 
     def testExtractKeep(self):
         self.helperExtractKeep("testExtractKeep", "none")

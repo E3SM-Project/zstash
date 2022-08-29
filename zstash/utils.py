@@ -52,7 +52,7 @@ def run_command(command: str, error_str: str):
         logger.error(error_str)
         logger.debug("stdout:\n{!r}".format(stdout))
         logger.debug("stderr:\n{!r}".format(stderr))
-        raise Exception(error_str)
+        raise RuntimeError(error_str)
 
 
 def get_files_to_archive(cache: str, exclude: str) -> List[str]:

@@ -304,6 +304,10 @@ where
 * ``--keep`` to keep a copy of the tar files on the local file system after
   they have been extracted from the archive. Normally, they are deleted after
   successful transfer.
+* ``--retries`` to set the number of times to retry ``hsi get`` if it is unsuccessful.
+  The default is 1 retry (2 tries total). Note: for a retry to occur automatically because of
+  an incomplete tar file, then the archive you're extracting from
+  must have been created using ``zstash >= v1.1.0``.
 * ``--tars`` to	specify	specific tars to extract. See "Check" above for example usage.
 * ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to be extracted (standard wildcards supported).
