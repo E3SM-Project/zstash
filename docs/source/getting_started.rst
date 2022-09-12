@@ -193,7 +193,7 @@ Furthermore, the dev environment includes quality assurance (QA) tools such as c
 
 1. Follow :ref:`"Others/Local" <conda_environment_others>` section for installing conda.
 
-2. Clone your fork and keep it in sync with the main repo's ``master``
+2. Clone your fork and keep it in sync with the main repo's ``main``
 
     ::
 
@@ -209,7 +209,7 @@ Furthermore, the dev environment includes quality assurance (QA) tools such as c
         # You should see your fork listed as `origin`
 
 
-   or if you already have a clone of your fork, rebase your fork on the main repo's ``master`` to keep it in sync:
+   or if you already have a clone of your fork, rebase your fork on the main repo's ``main`` to keep it in sync:
 
     ::
 
@@ -221,23 +221,23 @@ Furthermore, the dev environment includes quality assurance (QA) tools such as c
         # Fetch all the branches of that remote into remote-tracking branches
         git fetch <upstream-origin>
 
-        # Make sure that you're on your master branch:
-        git checkout master
+        # Make sure that you're on your main branch:
+        git checkout main
 
-        # Rewrite your master branch so that any of your commits that
-        # aren't already in <upstream-origin>/master are replayed on top of that branch:
-        git rebase <upstream-origin>/master
+        # Rewrite your main branch so that any of your commits that
+        # aren't already in <upstream-origin>/main are replayed on top of that branch:
+        git rebase <upstream-origin>/main
 
-        # Push your master branch to your GitHub fork:
+        # Push your main branch to your GitHub fork:
         # Note that <fork-origin> should be `origin` if you cloned your fork as above.
-        git push -f <fork-origin> master
+        git push -f <fork-origin> main
 
 
-   Checkout a new branch from ``master``:
+   Checkout a new branch from ``main``:
 
     ::
 
-        git checkout -b <branch-name> <remote-origin>/master
+        git checkout -b <branch-name> <remote-origin>/main
 
 3. Remove any cached conda packages. This will ensure that you always get the latest packages.
 
