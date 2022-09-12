@@ -12,7 +12,7 @@ This documentation is created using
 that makes it easy to create intelligent and beautiful documentation, written
 by Georg Brandl and licensed under the BSD license.
 
-The documentation is maintained in the ``master`` branch of the GitHub repository.
+The documentation is maintained in the ``main`` branch of the GitHub repository.
 You can include code and its corresponding documentation updates in a single pull request (PR).
 
 After merging a PR, GitHub Actions automates the documentation building process.
@@ -32,12 +32,12 @@ using Sphinx, you can refer to
 
    $ module load python/3.7-anaconda-2019.10
 
-2. Clone the repository and checkout a branch from `master`: ::
+2. Clone the repository and checkout a branch from `main`: ::
 
    $ cd <myDir>
    $ git clone https://github.com/<your-github-username>/zstash.git
    $ cd zstash
-   $ git checkout -b <branch-name> master
+   $ git checkout -b <branch-name> main
 
 3. Create and activate the conda development environment ::
 
@@ -77,7 +77,7 @@ using Sphinx, you can refer to
 
       Docs version selector dropdown in the bottom left-hand corner
 
-9. Create a pull request from ``<your-fork>/zstash/branch-name`` to ``E3SM-Project/zstash/master``.
+9. Create a pull request from ``<your-fork>/zstash/branch-name`` to ``E3SM-Project/zstash/main``.
 
 Once this pull request is merged and GitHub Actions finishes building the docs, changes will be available on the
 `zstash documentation page <https://e3sm-project.github.io/zstash/>`_.
@@ -111,7 +111,7 @@ Create a new git branch (gh-pages): ::
   $ git branch gh-pages
   $ git checkout gh-pages
 
-Clear out any­thing from the master branch and start fresh ::
+Clear out anything from the main branch and start fresh ::
 
   $ git symbolic-ref HEAD refs/heads/gh-pages
   $ rm .git/index
