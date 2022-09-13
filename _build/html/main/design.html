@@ -1,0 +1,338 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Design considerations &mdash; zstash  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Database" href="database.html" />
+    <link rel="prev" title="Best practices for E3SM" href="best_practices.html" />
+    <link href="_static/style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> zstash
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="best_practices.html">Best practices for E3SM</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Design considerations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#why-zstash">Why zstash?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#why-not-use-htar">Why not use ‘htar’?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#why-not-just-use-cput-r">Why not just use ‘cput -R’?</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="support.html">Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev_guide/index.html">Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to This Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">zstash</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Design considerations</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/design.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="design-considerations">
+<h1>Design considerations<a class="headerlink" href="#design-considerations" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="why-zstash">
+<h2>Why zstash?<a class="headerlink" href="#why-zstash" title="Permalink to this headline">¶</a></h2>
+<p>NERSC HPSS and other similar tape storage systems are optimized
+for file sizes of 100 to 500 GB. The retrieval of a large number
+of small files that are spread across dozens or hundreds of tapes
+is very inefficient because it requires multiple loads into tape
+drives and positioning the tape.</p>
+<p>The recommended practice is thus to bundle smaller files into larger
+ones. zstash was created specifically for this purpose. While
+the existing ‘htar’ utility offers a similar functionality, it also
+suffers from limitations that make it not suitable for archiving
+E3SM model output (see below).</p>
+<p><strong>Features of zstash:</strong></p>
+<ul class="simple">
+<li><p>Files are bundled <strong>into standard tar files</strong> of a specified maximum size.
+The default maximum size is 256 GB, but it can be adjusted at
+creation using the <code class="docutils literal notranslate"><span class="pre">--maxsize</span></code> command line argument.</p></li>
+<li><p><strong>Individual files are never split</strong> between two separate tar
+files. As a result, the size of tar files varies, but will
+generally be smaller than the specified maximum size. The only
+exception would be if individual files are larger than the target size.</p></li>
+<li><p><strong>Tar files are named sequentially</strong> using a six
+digit hexadecimal number (<cite>000000.tar</cite>,  <cite>000001.tar</cite>, …).</p></li>
+<li><p><strong>Tar files are first created locally</strong> on disk (under the
+<cite>zstash/</cite> subdirectory) and <strong>then uploaded to HPSS</strong>. Similarly, when
+extracting files, tar files will be first downloaded from HPSS into
+the local cache (if they are not already present).</p></li>
+<li><p>An sqlite3 <strong>index database</strong> is maintained (<cite>zstash/index.db</cite>) that contains
+information about every archived files, including:</p>
+<ul>
+<li><p>full pathname relative to top-level archival directory.</p></li>
+<li><p>size</p></li>
+<li><p>modification time</p></li>
+<li><p>md5 checksum</p></li>
+<li><p>tar file in which the file is included</p></li>
+<li><p>offset within this tar file (for faster extraction).</p></li>
+</ul>
+</li>
+<li><p><strong>Database enables faster retrieval</strong> of individual files by locating in which tar
+file a specific file is stored, as well as its location (offset) within the
+tar file.</p></li>
+<li><p><strong>Checksums (md5)</strong> of input files are computed <em>on-the-fly</em> during
+archiving. For large files, this saves a considerable amount of
+time compared to separate checksumming and archiving steps.</p></li>
+<li><p><strong>File integrity</strong> is verified by computing checksums on-the-fly while <strong>extracting</strong>
+files.</p></li>
+</ul>
+</div>
+<div class="section" id="why-not-use-htar">
+<h2>Why not use ‘htar’?<a class="headerlink" href="#why-not-use-htar" title="Permalink to this headline">¶</a></h2>
+<p>Htar is an HPSS utility with many nice features. From the NERSC <a class="reference external" href="http://docs.nersc.gov/filesystems/archive_access/#htar">htar documentation page</a>:</p>
+<blockquote>
+<div><p><em>HTAR is a command line utility that creates and manipulates HPSS-resident
+tar-format archive files. It is ideal for storing groups of files in HPSS.
+Since the tar file is created directly in HPSS, it is generally faster and
+uses less local space than creating a local tar file then storing that into
+HPSS. Furthermore, HTAR creates an index file that (by default) is stored
+along with the archive in HPSS. This allows you to list the contents of
+an archive without retrieving it to local storage first. The index file is
+only created if the HTAR bundle is successfully stored in the archive.</em></p>
+</div></blockquote>
+<p>This sounds great. In fact, some of these htar functionalities served as inspiration for zstash.
+However, htar also suffers from a number of limitations that were deemed to be <strong>show stoppers</strong>:</p>
+<blockquote>
+<div><p><strong>Member File Path Length</strong></p>
+<p>File path names within an HTAR aggregate of the form prefix/name are limited to
+<strong>154 characters</strong> for the prefix and 99 characters for the file name. Link names
+cannot exceed 99 characters.</p>
+<p><strong>Member File Size</strong></p>
+<p>The maximum file size the NERSC archive will support is approximately 20 TB.
+However, we recommend you aim for HTAR aggregate sizes of several hundred GBs.
+Member files within an HTAR aggregate are limited to approximately <strong>68GB</strong>.</p>
+</div></blockquote>
+<p>Both the member file path length and file size were simply too restrictive
+for archiving output from E3SM simulations. Furthermore, htar lacks the ability
+to compute checksums of member files.</p>
+</div>
+<div class="section" id="why-not-just-use-cput-r">
+<h2>Why not just use ‘cput -R’?<a class="headerlink" href="#why-not-just-use-cput-r" title="Permalink to this headline">¶</a></h2>
+<p>This is the brute force approach: recursive conditional put. It will recursively
+transfer all your files to tape and only do so if the file isn’t already on tape.</p>
+<p>While this approach <em>may</em> work, it is not recommended when dealing with very
+large number of (relatively small) files. Instead, NERSC recommends to
+<a class="reference external" href="https://docs.nersc.gov/filesystems/archive/#group-small-files-together">group small files together</a> :</p>
+<blockquote>
+<div><p><em>HPSS is a tape system and responds differently than a typical file system.
+If you upload large numbers of small files they will be spread across
+dozens or hundreds of tapes, requiring multiple loads into tape drives
+and positioning the tape. Storing many small files in HPSS without
+bundling them together will result in extremely long retrieval times
+for these files and will slow down the HPSS system for all users.</em></p>
+</div></blockquote>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="database.html" class="btn btn-neutral float-right" title="Database" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="best_practices.html" class="btn btn-neutral float-left" title="Best practices for E3SM" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2020, E3SM.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: main
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../v1.1.0/design.html">v1.1.0</a></dd>
+      <dd><a href="../v1.2.0/design.html">v1.2.0</a></dd>
+      <dd><a href="../v1.2.1/design.html">v1.2.1</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="design.html">main</a></dd>
+      <dd><a href="../hsi-retry/design.html">hsi-retry</a></dd>
+    </dl>
+  </div>
+</div>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
