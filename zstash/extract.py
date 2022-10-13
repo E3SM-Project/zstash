@@ -30,7 +30,7 @@ from .settings import (
     get_db_filename,
     logger,
 )
-from .utils import update_config
+from .utils import tars_table_exists, update_config
 
 
 def extract(keep_files: bool = True):
@@ -93,6 +93,9 @@ def setup_extract() -> Tuple[argparse.Namespace, str]:
         "--cache",
         type=str,
         help='path to the zstash archive on the local file system. The default name is "zstash".',
+    )
+    optional.add_argument(
+        "--retries", type=int, default=1, help="number of times to retry an hsi command"
     )
     optional.add_argument("--tars", type=str, help="specify which tars to process")
     optional.add_argument(
@@ -270,9 +273,11 @@ def extract_database(
     failures: List[FilesRow]
     if args.workers > 1:
         logger.debug("Running zstash {} with multiprocessing".format(cmd))
-        failures = multiprocess_extract(args.workers, matches, keep_files, keep, cache)
+        failures = multiprocess_extract(
+            args.workers, matches, keep_files, keep, cache, cur, args
+        )
     else:
-        failures = extractFiles(matches, keep_files, keep, cache)
+        failures = extractFiles(matches, keep_files, keep, cache, cur, args)
 
     # Close database
     logger.debug("Closing index database")
@@ -287,6 +292,8 @@ def multiprocess_extract(
     keep_files: bool,
     keep_tars: Optional[bool],
     cache: str,
+    cur: sqlite3.Cursor,
+    args: argparse.Namespace,
 ) -> List[FilesRow]:
     """
     Extract the files from the matches in parallel.
@@ -359,7 +366,7 @@ def multiprocess_extract(
         )
         process: multiprocessing.Process = multiprocessing.Process(
             target=extractFiles,
-            args=(matches, keep_files, keep_tars, cache, worker),
+            args=(matches, keep_files, keep_tars, cache, cur, args, worker),
             daemon=True,
         )
         process.start()
@@ -379,12 +386,36 @@ def multiprocess_extract(
     return failures
 
 
+def check_sizes_match(cur, tfname):
+    match: bool
+    if cur and tars_table_exists(cur):
+        logger.info(f"{tfname} exists. Checking expected size matches actual size.")
+        actual_size = os.path.getsize(tfname)
+        name_only = os.path.split(tfname)[1]
+        cur.execute(f"select size from tars where name is '{name_only}';")
+        expected_size: int = cur.fetchall()[0][0]
+        if expected_size != actual_size:
+            logger.info(
+                f"{name_only}: expected size={expected_size} != {actual_size}=actual_size"
+            )
+            match = False
+        else:
+            # Sizes match
+            match = True
+    else:
+        # Cannot access size information; assume the sizes match.
+        match = True
+    return match
+
+
 # FIXME: C901 'extractFiles' is too complex (33)
 def extractFiles(  # noqa: C901
     files: List[FilesRow],
     keep_files: bool,
     keep_tars: Optional[bool],
     cache: str,
+    cur: sqlite3.Cursor,
+    args: argparse.Namespace,
     multiprocess_worker: Optional[parallel.ExtractWorker] = None,
 ) -> List[FilesRow]:
     """
@@ -432,13 +463,42 @@ def extractFiles(  # noqa: C901
             if multiprocess_worker:
                 multiprocess_worker.set_curr_tar(files_row.tar)
 
-            if not os.path.exists(tfname):
-                # Will need to retrieve from HPSS
-                if config.hpss is not None:
-                    hpss: str = config.hpss
+            if config.hpss is not None:
+                hpss: str = config.hpss
+            else:
+                raise TypeError("Invalid config.hpss={}".format(config.hpss))
+            tries: int = args.retries + 1
+            # Set to True to test the `--retries` option with a forced failure.
+            # Then run `python -m unittest tests.test_extract.TestExtract.testExtractRetries`
+            test_retry: bool = False
+            while tries > 0:
+                tries -= 1
+                do_retrieve: bool
+
+                if not os.path.exists(tfname):
+                    do_retrieve = True
                 else:
-                    raise TypeError("Invalid config.hpss={}".format(config.hpss))
-                hpss_get(hpss, tfname, cache)
+                    do_retrieve = not check_sizes_match(cur, tfname)
+
+                try:
+                    if test_retry:
+                        test_retry = False
+                        raise RuntimeError
+                    if do_retrieve:
+                        hpss_get(hpss, tfname, cache)
+                        if not check_sizes_match(cur, tfname):
+                            raise RuntimeError(
+                                f"{tfname} size does not match expected size."
+                            )
+                    # `hpss_get` successful or not needed: no more tries needed
+                    break
+                except RuntimeError as e:
+                    if tries > 0:
+                        logger.info(f"Retrying HPSS get: {tries} tries remaining.")
+                        # Run the try-except block again
+                        continue
+                    else:
+                        raise e
 
             logger.info("Opening tar archive %s" % (tfname))
             tar: tarfile.TarFile = tarfile.open(tfname, "r")
