@@ -49,13 +49,13 @@ The paths to ``e3sm_unified`` activation scripts are machine dependent:
 **acme1**
     ::
 
-     source /usr/local/e3sm_unified/envs/load_latest_e3sm_unified_acme1.sh
+     source /p/user_pub/e3sm_unified/envs/load_latest_e3sm_unified_acme1.sh 
 
 
 **Andes**
     ::
 
-     source /ccs/proj/cli900/sw/rhea/e3sm-unified/load_latest_e3sm_unified_andes.sh
+     source /gpfs/alpine/proj-shared/cli115/e3sm-unified/load_latest_e3sm_unified_andes.sh
 
 
 Change ``.sh`` to ``.csh`` for ``csh`` shells.
