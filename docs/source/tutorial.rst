@@ -2,7 +2,7 @@
 Tutorial
 ********
 
-.. note::
+.. warning::
     This tutorial is specifically for ``zstash v0.4.2``.
     Some features have been added/changed since.
     Paths for E3SM Unified have also changed.
