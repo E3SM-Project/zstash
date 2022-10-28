@@ -1,41 +1,22 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8" />
-  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>Getting started &mdash; zstash  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-
-    
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Tutorial" href="tutorial.html" />
@@ -44,29 +25,13 @@
 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
             <a href="index.html" class="icon icon-home"> zstash
-          
-
-          
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -74,19 +39,8 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Getting started</a><ul>
@@ -117,75 +71,34 @@
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to This Documentation</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">zstash</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-        
       <li>Getting started</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
-          
             <a href="_sources/getting_started.rst.txt" rel="nofollow"> View page source</a>
-          
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <div class="section" id="getting-started">
-<span id="id1"></span><h1>Getting started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
+<span id="id1"></span><h1>Getting started<a class="headerlink" href="#getting-started" title="Permalink to this heading"></a></h1>
 <div class="section" id="activate-e3sm-unified-environment">
-<h2>Activate e3sm_unified environment<a class="headerlink" href="#activate-e3sm-unified-environment" title="Permalink to this headline">¶</a></h2>
+<h2>Activate e3sm_unified environment<a class="headerlink" href="#activate-e3sm-unified-environment" title="Permalink to this heading"></a></h2>
 <p>If you have an account on one of the E3SM supported machines (NERSC, Compy, Acme1,
 LCRC, Cooley, Rhea), you can access <code class="docutils literal notranslate"><span class="pre">zstash</span></code> by activating <code class="docutils literal notranslate"><span class="pre">e3sm_unified</span></code>, which is
 a conda environment that pulls together Python and other E3SM tools such as
@@ -227,12 +140,12 @@ therefore the version of <code class="docutils literal notranslate"><span class=
 To install the latest stable release, refer to the following:</p>
 </div>
 <div class="section" id="installation-in-a-conda-environment">
-<span id="conda-environment"></span><h2>Installation in a Conda Environment<a class="headerlink" href="#installation-in-a-conda-environment" title="Permalink to this headline">¶</a></h2>
+<span id="conda-environment"></span><h2>Installation in a Conda Environment<a class="headerlink" href="#installation-in-a-conda-environment" title="Permalink to this heading"></a></h2>
 <p>If the E3SM Unified environment doesn’t serve your needs, you can alternatively
 install the latest version in your own custom conda environment.</p>
 <p>First, activate conda or install it if it’s not available. Details vary amongst machines.</p>
 <div class="section" id="compy">
-<h3>Compy<a class="headerlink" href="#compy" title="Permalink to this headline">¶</a></h3>
+<h3>Compy<a class="headerlink" href="#compy" title="Permalink to this heading"></a></h3>
 <blockquote>
 <div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>module load anaconda3/2019.03
 source /share/apps/anaconda3/2019.03/etc/profile.d/conda.sh
@@ -241,7 +154,7 @@ source /share/apps/anaconda3/2019.03/etc/profile.d/conda.sh
 </div></blockquote>
 </div>
 <div class="section" id="nersc">
-<h3>NERSC<a class="headerlink" href="#nersc" title="Permalink to this headline">¶</a></h3>
+<h3>NERSC<a class="headerlink" href="#nersc" title="Permalink to this heading"></a></h3>
 <blockquote>
 <div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>module load python/3.7-anaconda-2019.10
 source /global/common/cori_cle7/software/python/3.7-anaconda-2019.10/etc/profile.d/conda.sh
@@ -250,7 +163,7 @@ source /global/common/cori_cle7/software/python/3.7-anaconda-2019.10/etc/profile
 </div></blockquote>
 </div>
 <div class="section" id="others-local">
-<span id="conda-environment-others"></span><h3>Others/Local<a class="headerlink" href="#others-local" title="Permalink to this headline">¶</a></h3>
+<span id="conda-environment-others"></span><h3>Others/Local<a class="headerlink" href="#others-local" title="Permalink to this heading"></a></h3>
 <p>If the system doesn’t come with conda pre-installed, follow these instructions:</p>
 <ol class="arabic">
 <li><p>Download Conda</p>
@@ -298,9 +211,9 @@ create a <strong>(b) Development Environment</strong>.</p>
 </div>
 </div>
 <div class="section" id="a-latest-stable-release">
-<h2>(a) Latest Stable Release<a class="headerlink" href="#a-latest-stable-release" title="Permalink to this headline">¶</a></h2>
+<h2>(a) Latest Stable Release<a class="headerlink" href="#a-latest-stable-release" title="Permalink to this heading"></a></h2>
 <div class="section" id="installation-using-conda">
-<h3>Installation using conda<a class="headerlink" href="#installation-using-conda" title="Permalink to this headline">¶</a></h3>
+<h3>Installation using conda<a class="headerlink" href="#installation-using-conda" title="Permalink to this heading"></a></h3>
 <p>First, make sure that you’re using <code class="docutils literal notranslate"><span class="pre">bash</span></code>.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ bash
 </pre></div>
@@ -319,7 +232,7 @@ $ source activate zstash_env
 </div>
 </div>
 <div class="section" id="installation-on-nersc">
-<h3>Installation on NERSC<a class="headerlink" href="#installation-on-nersc" title="Permalink to this headline">¶</a></h3>
+<h3>Installation on NERSC<a class="headerlink" href="#installation-on-nersc" title="Permalink to this heading"></a></h3>
 <p>After installing on NERSC, you may see improved performance
 running <strong>zstash on the data transfer nodes</strong> (dtn{01..15}.nersc.gov). However, modules are
 not directly available there, so you will need to manually activate Anaconda:</p>
@@ -330,7 +243,7 @@ $ conda activate zstash_env
 </div>
 </div>
 <div class="section" id="updating">
-<h3>Updating<a class="headerlink" href="#updating" title="Permalink to this headline">¶</a></h3>
+<h3>Updating<a class="headerlink" href="#updating" title="Permalink to this heading"></a></h3>
 <p>If you <strong>installed via Anaconda</strong> (e.g., not through the unified environment),
 you can update <code class="docutils literal notranslate"><span class="pre">zstash</span></code> by doing the following:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>conda update zstash -c e3sm -c conda-forge
@@ -339,7 +252,7 @@ you can update <code class="docutils literal notranslate"><span class="pre">zsta
 </div>
 </div>
 <div class="section" id="b-development-environment">
-<span id="dev-env"></span><h2>(b) Development Environment<a class="headerlink" href="#b-development-environment" title="Permalink to this headline">¶</a></h2>
+<span id="dev-env"></span><h2>(b) Development Environment<a class="headerlink" href="#b-development-environment" title="Permalink to this heading"></a></h2>
 <p>Unlike the latest stable release (i.e., the user environment), the development
 environment does not include <code class="docutils literal notranslate"><span class="pre">zstash</span></code>.
 Instead, the developer will <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.</span></code> to build <code class="docutils literal notranslate"><span class="pre">zstash</span></code> with changes
@@ -441,14 +354,14 @@ conda activate zstash_dev
 </div>
 <div class="figure align-default" id="id2">
 <img alt="pre-commit Output" src="_images/pre-commit-passing.png" />
-<p class="caption"><span class="caption-text"><code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> Output</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
+<p class="caption"><span class="caption-text"><code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> Output</span><a class="headerlink" href="#id2" title="Permalink to this image"></a></p>
 </div>
 </div></blockquote>
 </li>
 </ol>
 </div>
 <div class="section" id="archiving">
-<h2>Archiving<a class="headerlink" href="#archiving" title="Permalink to this headline">¶</a></h2>
+<h2>Archiving<a class="headerlink" href="#archiving" title="Permalink to this heading"></a></h2>
 <p>For archiving E3SM simulations, we recommend following the
 <a class="reference internal" href="best_practices.html#best-practices-for-e3sm"><span class="std std-ref">Best practices for E3SM</span></a>.</p>
 </div>
@@ -456,37 +369,27 @@ conda activate zstash_dev
 
 
            </div>
-           
           </div>
-          <footer>
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="tutorial.html" class="btn btn-neutral float-right" title="Tutorial" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="index.html" class="btn btn-neutral float-left" title="Zstash documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tutorial.html" class="btn btn-neutral float-right" title="Tutorial" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2020, E3SM.
-
-    </p>
+    <p>&#169; Copyright 2020, E3SM.</p>
   </div>
-    
-    
-    
-    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
   
 <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
@@ -505,21 +408,15 @@ conda activate zstash_dev
     <dl>
       <dt>Branches</dt>
       <dd><a href="getting_started.html">main</a></dd>
+      <dd><a href="../perlmutter/getting_started.html">perlmutter</a></dd>
       <dd><a href="../update_e3sm_U_paths/getting_started.html">update_e3sm_U_paths</a></dd>
     </dl>
   </div>
-</div>
-
-  <script type="text/javascript">
+</div><script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>

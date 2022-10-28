@@ -1,41 +1,22 @@
-
-
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8" />
-  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
   <title>Tutorial &mdash; zstash  documentation</title>
-  
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-
-  
-  
-
-  
-  
-
-  
-
-  
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="_static/doctools.js"></script>
-    
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-
-    
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Usage" href="usage.html" />
@@ -44,29 +25,13 @@
 
 </head>
 
-<body class="wy-body-for-nav">
-
-   
+<body class="wy-body-for-nav"> 
   <div class="wy-grid-for-nav">
-    
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-          
-
-          
             <a href="index.html" class="icon icon-home"> zstash
-          
-
-          
           </a>
-
-          
-            
-            
-          
-
-          
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -74,19 +39,8 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="index.html">Zstash documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
@@ -125,73 +79,32 @@
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to This Documentation</a></li>
 </ul>
 
-            
-          
         </div>
-        
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
-      
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">zstash</a>
-        
       </nav>
 
-
       <div class="wy-nav-content">
-        
         <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
+          <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-    
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-        
       <li>Tutorial</li>
-    
-    
       <li class="wy-breadcrumbs-aside">
-        
-          
             <a href="_sources/tutorial.rst.txt" rel="nofollow"> View page source</a>
-          
-        
       </li>
-    
   </ul>
-
-  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-            
+             
   <div class="section" id="tutorial">
-<h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
+<h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this heading"></a></h1>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>This tutorial is specifically for <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">v0.4.2</span></code>.
@@ -202,7 +115,7 @@ Paths for E3SM Unified have also changed.</p>
 documentation. This is done to provide a comprehensive tutorial on a single page.
 There is also an <a class="reference external" href="https://youtu.be/kmdBdXa3rXo">accompanying video tutorial</a>.</p>
 <div class="section" id="what-is-zstash">
-<h2>What is Zstash?<a class="headerlink" href="#what-is-zstash" title="Permalink to this headline">¶</a></h2>
+<h2>What is Zstash?<a class="headerlink" href="#what-is-zstash" title="Permalink to this heading"></a></h2>
 <p>Zstash is an <strong>HPSS long-term archiving</strong> solution for E3SM.</p>
 <p>Zstash is written entirely in Python using standard libraries.
 Its design is intentionally minimalistic to provide an effective
@@ -211,7 +124,7 @@ long-term HPSS archiving solution without creating an overly complicated
 <a class="reference external" href="https://e3sm.org/resources/tools/data-management/zstash-hpss-archive/">https://e3sm.org/resources/tools/data-management/zstash-hpss-archive/</a>,
 or <a class="reference external" href="https://e3sm.org/new-zstash-capabilities">https://e3sm.org/new-zstash-capabilities</a>.</p>
 <div class="section" id="terminology">
-<h3>Terminology<a class="headerlink" href="#terminology" title="Permalink to this headline">¶</a></h3>
+<h3>Terminology<a class="headerlink" href="#terminology" title="Permalink to this heading"></a></h3>
 <p><strong>zstash archive</strong>:  A set of files {index.db, nnnnnn.tar where  nnnnnn=000000, 000001, …}</p>
 <p><strong>HPSS</strong>:  A long-term tape storage system.</p>
 <p><strong>HPSS archive</strong>: The zstash archive on HPSS.</p>
@@ -219,7 +132,7 @@ or <a class="reference external" href="https://e3sm.org/new-zstash-capabilities"
 <p><strong>Source directory</strong>: the directory whose contents we are archiving.</p>
 </div>
 <div class="section" id="commands">
-<h3>Commands<a class="headerlink" href="#commands" title="Permalink to this headline">¶</a></h3>
+<h3>Commands<a class="headerlink" href="#commands" title="Permalink to this heading"></a></h3>
 <p><strong>Create</strong>: create a new cache (local archive), create a tar file of the source directory’s contents,
 and if using HPSS, then store it on the HPSS archive.</p>
 <p><strong>Check</strong>: verify integrity of zstash archive (e.g., if using HPSS, check that files were uploaded on HPSS successfully.)</p>
@@ -230,11 +143,11 @@ and if using HPSS, then store it on the HPSS archive.</p>
 <p><strong>Version</strong>: show version number.</p>
 </div>
 <div class="section" id="options">
-<h3>Options<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h3>
+<h3>Options<a class="headerlink" href="#options" title="Permalink to this heading"></a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">--cache</span></code>, <code class="docutils literal notranslate"><span class="pre">--hpss</span></code>, and <code class="docutils literal notranslate"><span class="pre">--keep</span></code> are covered in this tutorial.</p>
 <p>A “x” indicates that the <code class="docutils literal notranslate"><span class="pre">zstash</span></code> command supports the given option.</p>
 <table class="docutils align-default" id="id1">
-<caption><span class="caption-text">zstash options</span><a class="headerlink" href="#id1" title="Permalink to this table">¶</a></caption>
+<caption><span class="caption-text">zstash options</span><a class="headerlink" href="#id1" title="Permalink to this table"></a></caption>
 <colgroup>
 <col style="width: 17%" />
 <col style="width: 17%" />
@@ -321,10 +234,10 @@ and if using HPSS, then store it on the HPSS archive.</p>
 </div>
 </div>
 <div class="section" id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading"></a></h2>
 <p>Below is a basic guide to installation. For more information, see <a class="reference internal" href="getting_started.html#getting-started"><span class="std std-ref">Getting started</span></a>.</p>
 <div class="section" id="e3sm-unified-environment">
-<h3>E3SM Unified Environment<a class="headerlink" href="#e3sm-unified-environment" title="Permalink to this headline">¶</a></h3>
+<h3>E3SM Unified Environment<a class="headerlink" href="#e3sm-unified-environment" title="Permalink to this heading"></a></h3>
 <p>Zstash is available in the E3SM unified environment.
 This is the recommended method of installation.</p>
 <p>On Cori/NERSC:</p>
@@ -338,7 +251,7 @@ This is the recommended method of installation.</p>
 <p>For more information, see <a class="reference internal" href="getting_started.html#getting-started"><span class="std std-ref">Getting started</span></a>.</p>
 </div>
 <div class="section" id="installation-with-conda">
-<h3>Installation with Conda<a class="headerlink" href="#installation-with-conda" title="Permalink to this headline">¶</a></h3>
+<h3>Installation with Conda<a class="headerlink" href="#installation-with-conda" title="Permalink to this heading"></a></h3>
 <p>On Cori/NERSC:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ module load python/3.7-anaconda-2019.10
 $ source /global/common/cori_cle7/software/python/3.7-anaconda-2019.10/etc/profile.d/conda.sh
@@ -360,7 +273,7 @@ $ conda activate zstash_env
 </div>
 </div>
 <div class="section" id="hpss">
-<h2>HPSS<a class="headerlink" href="#hpss" title="Permalink to this headline">¶</a></h2>
+<h2>HPSS<a class="headerlink" href="#hpss" title="Permalink to this heading"></a></h2>
 <p>NERSC machines have HPSS access. We can choose to use HPSS by setting
 <code class="docutils literal notranslate"><span class="pre">--hpss</span></code> (or <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code> if we do not wish to archive to HPSS).</p>
 <div class="admonition note">
@@ -373,12 +286,12 @@ or set <code class="docutils literal notranslate"><span class="pre">--hpss=none<
 </div>
 </div>
 <div class="section" id="examples">
-<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this heading"></a></h2>
 <p>We will use NERSC so that we have access to HPSS. The commands remain the same on Compy,
 with the exception that <code class="docutils literal notranslate"><span class="pre">--hpss</span></code> will have to be set to <code class="docutils literal notranslate"><span class="pre">none</span></code> in all cases.</p>
 <p>Open a NERSC terminal in two windows.</p>
 <div class="section" id="setup">
-<h3>Setup<a class="headerlink" href="#setup" title="Permalink to this headline">¶</a></h3>
+<h3>Setup<a class="headerlink" href="#setup" title="Permalink to this heading"></a></h3>
 <p>We’ll create a <code class="docutils literal notranslate"><span class="pre">tutorial</span></code> directory in <code class="docutils literal notranslate"><span class="pre">$CSCRATCH</span></code> on NERSC. We can create our tutorial
 directory anywhere but <code class="docutils literal notranslate"><span class="pre">CSCRATCH</span></code> is a useful workspace.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd $CSCRATCH
@@ -460,7 +373,7 @@ If you haven’t used HPSS before, <code class="docutils literal notranslate"><s
 (<code class="docutils literal notranslate"><span class="pre">$CSCRATCH/tutorial</span></code>) and on HPSS.</p>
 </div>
 <div class="section" id="simple-case">
-<h3>Simple Case<a class="headerlink" href="#simple-case" title="Permalink to this headline">¶</a></h3>
+<h3>Simple Case<a class="headerlink" href="#simple-case" title="Permalink to this heading"></a></h3>
 <p>This simple case will illustrate <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and <code class="docutils literal notranslate"><span class="pre">extract</span></code>.</p>
 <p>Set up the directory structure:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./setup.sh
@@ -559,7 +472,7 @@ $ rmdir zstash_archive
 </div>
 </div>
 <div class="section" id="no-hpss">
-<h3>No HPSS<a class="headerlink" href="#no-hpss" title="Permalink to this headline">¶</a></h3>
+<h3>No HPSS<a class="headerlink" href="#no-hpss" title="Permalink to this heading"></a></h3>
 <p>This example will again illustrate <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and <code class="docutils literal notranslate"><span class="pre">extract</span></code>,
 but this time without using HPSS.</p>
 <p>Set up the directory structure:</p>
@@ -650,7 +563,7 @@ $ rm -rf zstash_demo/ zstash_extraction/
 <p>There’s nothing to clean up in our HPSS window.</p>
 </div>
 <div class="section" id="change-cache-name">
-<h3>Change Cache Name<a class="headerlink" href="#change-cache-name" title="Permalink to this headline">¶</a></h3>
+<h3>Change Cache Name<a class="headerlink" href="#change-cache-name" title="Permalink to this heading"></a></h3>
 <p>This example will again illustrate <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and <code class="docutils literal notranslate"><span class="pre">extract</span></code>,
 but this time using a different cache.</p>
 <p>Set up the directory structure:</p>
@@ -741,7 +654,7 @@ $ rmdir zstash_archive
 </div>
 </div>
 <div class="section" id="keep-files">
-<h3>Keep Files<a class="headerlink" href="#keep-files" title="Permalink to this headline">¶</a></h3>
+<h3>Keep Files<a class="headerlink" href="#keep-files" title="Permalink to this heading"></a></h3>
 <p>This example will again illustrate <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code>, and <code class="docutils literal notranslate"><span class="pre">extract</span></code>,
 but this time storing the tar files in the local archive (the cache) in addition to the
 HPSS archive. In the <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code> example, we saw that when there was no HPSS archive
@@ -832,7 +745,7 @@ $ rmdir zstash_archive
 </div>
 </div>
 <div class="section" id="check-file-integrity">
-<h3>Check File Integrity<a class="headerlink" href="#check-file-integrity" title="Permalink to this headline">¶</a></h3>
+<h3>Check File Integrity<a class="headerlink" href="#check-file-integrity" title="Permalink to this heading"></a></h3>
 <p>This example will demonstrate how to check that files haven’t been damaged during archive or transfer.</p>
 <p><strong>Create</strong>:</p>
 <p>First, let’s create local and HPSS archives as in the simple case:</p>
@@ -877,7 +790,7 @@ $ rmdir zstash_archive
 </div>
 </div>
 <div class="section" id="list-files-in-hpss-archive">
-<h3>List Files in HPSS Archive<a class="headerlink" href="#list-files-in-hpss-archive" title="Permalink to this headline">¶</a></h3>
+<h3>List Files in HPSS Archive<a class="headerlink" href="#list-files-in-hpss-archive" title="Permalink to this heading"></a></h3>
 <p>This example will demonstrate how to list the files contained in the tar files in the HPSS archive.</p>
 <p><strong>Create</strong>:</p>
 <p>First, let’s create local and HPSS archives as in the simple case:</p>
@@ -966,7 +879,7 @@ $ rmdir zstash_archive
 </div>
 </div>
 <div class="section" id="archiving-e3sm-data-output">
-<h3>Archiving E3SM Data Output<a class="headerlink" href="#archiving-e3sm-data-output" title="Permalink to this headline">¶</a></h3>
+<h3>Archiving E3SM Data Output<a class="headerlink" href="#archiving-e3sm-data-output" title="Permalink to this heading"></a></h3>
 <p>Now, instead of using placeholder data, let’s archive actual data from E3SM. Archiving large amounts
 of data can take several days, so we’ll use a data transfer node to improve performance and
 <code class="docutils literal notranslate"><span class="pre">screen</span></code> so that we can detatch and reattach without stopping <code class="docutils literal notranslate"><span class="pre">zstash</span></code>. For this example,
@@ -1014,37 +927,27 @@ $ rmdir zstash_archive
 
 
            </div>
-           
           </div>
-          <footer>
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="usage.html" class="btn btn-neutral float-right" title="Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="getting_started.html" class="btn btn-neutral float-left" title="Getting started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="usage.html" class="btn btn-neutral float-right" title="Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>
-        &#169; Copyright 2020, E3SM.
-
-    </p>
+    <p>&#169; Copyright 2020, E3SM.</p>
   </div>
-    
-    
-    
-    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
-    
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
 
 </footer>
         </div>
       </div>
-
     </section>
-
   </div>
   
 <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
@@ -1063,21 +966,15 @@ $ rmdir zstash_archive
     <dl>
       <dt>Branches</dt>
       <dd><a href="tutorial.html">main</a></dd>
+      <dd><a href="../perlmutter/tutorial.html">perlmutter</a></dd>
       <dd><a href="../update_e3sm_U_paths/tutorial.html">update_e3sm_U_paths</a></dd>
     </dl>
   </div>
-</div>
-
-  <script type="text/javascript">
+</div><script>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-
-  
-  
-    
-   
+  </script> 
 
 </body>
 </html>
