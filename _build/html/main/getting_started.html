@@ -46,8 +46,6 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Getting started</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#activate-e3sm-unified-environment">Activate e3sm_unified environment</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#installation-in-a-conda-environment">Installation in a Conda Environment</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#compy">Compy</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#nersc">NERSC</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#others-local">Others/Local</a></li>
 </ul>
 </li>
@@ -109,7 +107,7 @@ a conda environment that pulls together Python and other E3SM tools such as
 </pre></div>
 </div>
 </dd>
-<dt><strong>NERSC</strong></dt><dd><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_cori-haswell.sh
+<dt><strong>NERSC</strong></dt><dd><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_pm-cpu.sh
 </pre></div>
 </div>
 </dd>
@@ -144,24 +142,6 @@ To install the latest stable release, refer to the following:</p>
 <p>If the E3SM Unified environment doesn’t serve your needs, you can alternatively
 install the latest version in your own custom conda environment.</p>
 <p>First, activate conda or install it if it’s not available. Details vary amongst machines.</p>
-<div class="section" id="compy">
-<h3>Compy<a class="headerlink" href="#compy" title="Permalink to this heading"></a></h3>
-<blockquote>
-<div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>module load anaconda3/2019.03
-source /share/apps/anaconda3/2019.03/etc/profile.d/conda.sh
-</pre></div>
-</div>
-</div></blockquote>
-</div>
-<div class="section" id="nersc">
-<h3>NERSC<a class="headerlink" href="#nersc" title="Permalink to this heading"></a></h3>
-<blockquote>
-<div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>module load python/3.7-anaconda-2019.10
-source /global/common/cori_cle7/software/python/3.7-anaconda-2019.10/etc/profile.d/conda.sh
-</pre></div>
-</div>
-</div></blockquote>
-</div>
 <div class="section" id="others-local">
 <span id="conda-environment-others"></span><h3>Others/Local<a class="headerlink" href="#others-local" title="Permalink to this heading"></a></h3>
 <p>If the system doesn’t come with conda pre-installed, follow these instructions:</p>
@@ -235,12 +215,8 @@ $ source activate zstash_env
 <h3>Installation on NERSC<a class="headerlink" href="#installation-on-nersc" title="Permalink to this heading"></a></h3>
 <p>After installing on NERSC, you may see improved performance
 running <strong>zstash on the data transfer nodes</strong> (dtn{01..15}.nersc.gov). However, modules are
-not directly available there, so you will need to manually activate Anaconda:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ bash
-$ source /global/common/cori_cle7/software/python/3.7-anaconda-2019.10/etc/profile.d/conda.sh
-$ conda activate zstash_env
-</pre></div>
-</div>
+not directly available there, so you will need to manually activate Anaconda before running
+<code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">activate</span> <span class="pre">zstash_env</span></code>.</p>
 </div>
 <div class="section" id="updating">
 <h3>Updating<a class="headerlink" href="#updating" title="Permalink to this heading"></a></h3>
@@ -408,7 +384,6 @@ conda activate zstash_dev
     <dl>
       <dt>Branches</dt>
       <dd><a href="getting_started.html">main</a></dd>
-      <dd><a href="../perlmutter/getting_started.html">perlmutter</a></dd>
       <dd><a href="../update_e3sm_U_paths/getting_started.html">update_e3sm_U_paths</a></dd>
     </dl>
   </div>

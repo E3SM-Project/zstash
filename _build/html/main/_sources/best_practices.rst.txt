@@ -20,7 +20,7 @@ can access zstash on the data transfer nodes by loading the E3SM unified environ
    $ ssh dtn01.nersc.gov
    $ screen
    $ bash
-   $ source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_cori-haswell.sh
+   $ source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_pm-cpu.sh
 
 To detach from the screen session, use CTRL-A followed by D (for detach).
 You can then safely close your window. To re-attach to an existing session
