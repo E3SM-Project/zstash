@@ -153,7 +153,6 @@ def globus_transfer(
             src_ep,
             dst_ep,
             label=label,
-            sync_level="checksum",
             verify_checksum=True,
             preserve_timestamp=True,
             fail_on_quota_errors=True,

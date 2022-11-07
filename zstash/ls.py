@@ -7,7 +7,6 @@ import sqlite3
 import sys
 from typing import List, Tuple, Union
 
-from .globus import globus_finalize
 from .hpss import hpss_get
 from .settings import (
     DEFAULT_CACHE,
@@ -103,7 +102,6 @@ def ls_database(args: argparse.Namespace, cache: str) -> List[FilesRow]:
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
             # Retrieve from HPSS
             hpss_get(hpss, get_db_filename(cache), cache)
-            globus_finalize()
         else:
             error_str: str = (
                 "--hpss argument is required when local copy of database is unavailable"

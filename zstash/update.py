@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 from typing import List, Optional, Tuple
 
-from .globus import globus_activate
+from .globus import globus_activate, globus_finalize
 from .hpss import hpss_get, hpss_put
 from .hpss_utils import add_files
 from .settings import (
@@ -44,6 +44,8 @@ def update():
     else:
         raise TypeError("Invalid config.hpss={}".format(config.hpss))
     hpss_put(hpss, get_db_filename(cache), cache, keep=True)
+
+    globus_finalize(non_blocking=args.non_blocking)
 
     # List failures
     if len(failures) > 0:
@@ -87,6 +89,11 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
         "--cache",
         type=str,
         help='path to the zstash archive on the local file system. The default name is "zstash".',
+    )
+    optional.add_argument(
+        "--non-blocking",
+        action="store_true",
+        help="do not wait for each Globus transfer until it completes.",
     )
     optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"
