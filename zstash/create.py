@@ -10,6 +10,7 @@ from typing import Any, List, Tuple
 
 from six.moves.urllib.parse import urlparse
 
+from .globus import globus_activate, globus_finalize
 from .hpss import hpss_put
 from .hpss_utils import add_files
 from .settings import DEFAULT_CACHE, config, get_db_filename, logger
@@ -53,7 +54,9 @@ def create():
 
     if hpss != "none":
         url = urlparse(hpss)
-        if url.scheme != "globus":
+        if url.scheme == "globus":
+            globus_activate(hpss)
+        else:
             # config.hpss is not "none", so we need to
             # create target HPSS directory
             logger.debug("Creating target HPSS directory")
@@ -85,9 +88,9 @@ def create():
     failures: List[str] = create_database(cache, args)
 
     # Transfer to HPSS. Always keep a local copy.
-    hpss_put(
-        hpss, get_db_filename(cache), cache, keep=True, non_blocking=args.non_blocking
-    )
+    hpss_put(hpss, get_db_filename(cache), cache, keep=True)
+
+    globus_finalize(non_blocking=args.non_blocking)
 
     if len(failures) > 0:
         # List the failures
@@ -240,7 +243,6 @@ create table files (
         cache,
         args.keep,
         skip_tars_md5=args.no_tars_md5,
-        non_blocking=args.non_blocking,
     )
 
     # Close database

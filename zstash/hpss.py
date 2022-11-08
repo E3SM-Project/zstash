@@ -17,7 +17,6 @@ def hpss_transfer(
     transfer_type: str,
     cache: str,
     keep: bool = False,
-    non_blocking: bool = False,
 ):
     if hpss == "none":
         logger.info("{}: HPSS is unavailable".format(transfer_type))
@@ -88,9 +87,7 @@ def hpss_transfer(
 
         if scheme == "globus":
             # Transfer file using the Globus Transfer Service
-            globus_transfer(
-                endpoint, url_path, name, transfer_type, non_blocking=non_blocking
-            )
+            globus_transfer(endpoint, url_path, name, transfer_type)
         else:
             # Transfer file using `hsi`
             command: str = 'hsi -q "cd {}; {} {}"'.format(hpss, transfer_command, name)
@@ -102,18 +99,16 @@ def hpss_transfer(
             os.chdir(cwd)
 
         if transfer_type == "put":
-            if not keep:
+            if not keep and scheme != "globus":
                 # We should not keep the local file, so delete it now that it is on HPSS
                 os.remove(file_path)
 
 
-def hpss_put(
-    hpss: str, file_path: str, cache: str, keep: bool = True, non_blocking: bool = False
-):
+def hpss_put(hpss: str, file_path: str, cache: str, keep: bool = True):
     """
     Put a file to the HPSS archive.
     """
-    hpss_transfer(hpss, file_path, "put", cache, keep, non_blocking)
+    hpss_transfer(hpss, file_path, "put", cache, keep)
 
 
 def hpss_get(hpss: str, file_path: str, cache: str):
