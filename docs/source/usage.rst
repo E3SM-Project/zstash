@@ -53,6 +53,7 @@ Additional optional arguments:
   The default is 256 GB. Zstash will create tar files that are smaller 
   than MAXSIZE except when individual input files exceed MAXSIZE (as 
   individual files are never split up between different tar files).
+* ``--non-blocking`` Zstash will submit a Globus transfer and immediately create a subsequent tarball. That is, Zstash will not wait until the transfer completes to start creating a subsequent tarball. On machines where it takes more time to create a tarball than transfer it, each Globus transfer will have one file. On machines where it takes less time to create a tarball than transfer it, the first transfer will have one file, but the number of tarballs in subsequent transfers will grow finding dynamically the most optimal number of tarballs per transfer.
 * ``-v`` increases output verbosity.
 
 Local tar files as well as the sqlite3 index database (index.db) will be stored
@@ -230,6 +231,7 @@ where
 * ``--keep`` to keep a copy of the tar files on the local file system after
   they have been extracted from the archive. Normally, they are deleted after
   successful transfer.
+* ``--non-blocking`` Zstash will submit a Globus transfer and immediately create a subsequent tarball. That is, Zstash will not wait until the transfer completes to start creating a subsequent tarball. On machines where it takes more time to create a tarball than transfer it, each Globus transfer will have one file. On machines where it takes less time to create a tarball than transfer it, the first transfer will have one file, but the number of tarballs in subsequent transfers will grow finding dynamically the most optimal number of tarballs per transfer.
 * ``-v`` increases output verbosity.
 
 Note: in the event that an update includes revisions to files previously archived, ``zstash update``
