@@ -18,6 +18,7 @@ hpss_endpoint_map = {
     "NERSC": "9cd89cfd-6d04-11e5-ba46-22000b92c6ec",
 }
 
+# This is used if the `globus_endpoint_uuid` is not set in `~/.zstash.ini`
 regex_endpoint_map = {
     r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
     r"blueslogin.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
@@ -69,7 +70,11 @@ def globus_activate(hpss: str):
                 local_endpoint = regex_endpoint_map.get(pattern)
                 break
     if not local_endpoint:
-        logger.error("{} does not have the local Globus endpoint set".format(ini_path))
+        logger.error(
+            "{} does not have the local Globus endpoint set nor could one be found in regex_endpoint_map.".format(
+                ini_path
+            )
+        )
         sys.exit(1)
 
     if remote_endpoint.upper() in hpss_endpoint_map.keys():
