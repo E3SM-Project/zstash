@@ -70,6 +70,13 @@ def globus_activate(hpss: str):
             if re.fullmatch(pattern, fqdn):
                 local_endpoint = regex_endpoint_map.get(pattern)
                 break
+    # FQDN is not set on Perlmutter at NERSC
+    if not local_endpoint:
+        nersc_hostname = os.environ.get("NERSC_HOST")
+        if nersc_hostname and (
+            nersc_hostname == "perlmutter" or nersc_hostname == "unknown"
+        ):
+            local_endpoint = regex_endpoint_map.get(r"perlmutter.*\.nersc\.gov")
     if not local_endpoint:
         logger.error(
             "{} does not have the local Globus endpoint set nor could one be found in regex_endpoint_map.".format(
