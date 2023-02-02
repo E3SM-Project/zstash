@@ -13,10 +13,10 @@ jobs:
     timeout-minutes: 2
     steps:
       - name: Checkout Code Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Python 3.9
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.9
 
@@ -24,7 +24,7 @@ jobs:
       # Getting only staged files can be tricky in case a new PR is opened
       # since the action is run on a branch in detached head state
       - name: Install and Run Pre-commit
-        uses: pre-commit/action@v2.0.0
+        uses: pre-commit/action@v3.0.0
 
   build:
     runs-on: ubuntu-latest
@@ -33,10 +33,10 @@ jobs:
         shell: bash -l {0}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.9
 
@@ -58,18 +58,18 @@ jobs:
         shell: bash -l {0}
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           persist-credentials: false
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.9
 
       - name: Cache pip
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
