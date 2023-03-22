@@ -54,8 +54,10 @@
 <li class="toctree-l2"><a class="reference internal" href="project-standards.html">Project Standards</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">How to Prepare a Release</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#bumping-the-version">Bumping the Version</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#releasing-on-github">Releasing on GitHub</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#releasing-on-anaconda">Releasing on Anaconda</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#releasing-on-github-release-candidates">Releasing on GitHub: release candidates</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#releasing-on-github-production-releases">Releasing on GitHub: production releases</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#releasing-on-conda-forge-release-candidates">Releasing on conda-forge: release candidates</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#releasing-on-conda-forge-production-releases">Releasing on conda-forge: production releases</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#creating-a-new-version-of-the-documentation">Creating a New Version of the Documentation</a></li>
 </ul>
 </li>
@@ -140,8 +142,14 @@ $ git push origin v1.2.0
 <li><p>Create a pull request to the main repo and merge it.</p></li>
 </ol>
 </div>
-<div class="section" id="releasing-on-github">
-<span id="github-release"></span><h2>Releasing on GitHub<a class="headerlink" href="#releasing-on-github" title="Permalink to this heading"></a></h2>
+<div class="section" id="releasing-on-github-release-candidates">
+<span id="github-release"></span><h2>Releasing on GitHub: release candidates<a class="headerlink" href="#releasing-on-github-release-candidates" title="Permalink to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Create a tag for the release candidate at <a class="reference external" href="https://github.com/E3SM-Project/zstash/tags">https://github.com/E3SM-Project/zstash/tags</a>.</p></li>
+</ol>
+</div>
+<div class="section" id="releasing-on-github-production-releases">
+<h2>Releasing on GitHub: production releases<a class="headerlink" href="#releasing-on-github-production-releases" title="Permalink to this heading"></a></h2>
 <ol class="arabic simple">
 <li><p>Draft a new release <a class="reference external" href="https://github.com/E3SM-Project/zstash/releases">here</a>.</p></li>
 <li><p>Set <cite>Tag version</cite> to <code class="docutils literal notranslate"><span class="pre">v&lt;version&gt;</span></code>, <strong>including the “v”</strong>. <cite>&#64;Target</cite> should be <code class="docutils literal notranslate"><span class="pre">main</span></code>.</p></li>
@@ -151,28 +159,32 @@ $ git push origin v1.2.0
 <li><p>You can scroll through <a class="reference external" href="https://github.com/E3SM-Project/zstash/commits/main">zstash commits</a> for a list of changes.</p></li>
 </ul>
 </li>
-<li><p>If this version is a release candidate (<code class="docutils literal notranslate"><span class="pre">&lt;version&gt;</span></code> appended with <code class="docutils literal notranslate"><span class="pre">rc</span></code>), checkmark <cite>This is a pre-release</cite>.</p></li>
 <li><p>Click <cite>Publish release</cite>.</p></li>
 <li><p>CI/CD release workflow is automatically triggered.</p></li>
 </ol>
 </div>
-<div class="section" id="releasing-on-anaconda">
-<h2>Releasing on Anaconda<a class="headerlink" href="#releasing-on-anaconda" title="Permalink to this heading"></a></h2>
+<div class="section" id="releasing-on-conda-forge-release-candidates">
+<h2>Releasing on conda-forge: release candidates<a class="headerlink" href="#releasing-on-conda-forge-release-candidates" title="Permalink to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Make a PR to <a class="reference external" href="https://github.com/conda-forge/zstash-feedstock/">conda-forge</a> from your fork of the feedstock. Note that the conda-forge bot does not work for release candidates.</p>
+<ul class="simple">
+<li><p>Start from the current dev branch and update the version number and the sha256 sum manually.</p></li>
+<li><p>Set the build number back to 0 if needed.</p></li>
+<li><p>Make the dev branch the target of the PR. Then, the package build on conda-forge will end up with the <code class="docutils literal notranslate"><span class="pre">e3sm_dev</span></code> label.</p></li>
+</ul>
+</li>
+<li><p>Check the <a class="reference external" href="https://anaconda.org/conda-forge/zstash">https://anaconda.org/conda-forge/zstash</a> page to view the newly updated package. Release candidates are assigned the <code class="docutils literal notranslate"><span class="pre">e3sm_dev</span></code> label.</p></li>
+</ol>
+</div>
+<div class="section" id="releasing-on-conda-forge-production-releases">
+<h2>Releasing on conda-forge: production releases<a class="headerlink" href="#releasing-on-conda-forge-production-releases" title="Permalink to this heading"></a></h2>
 <ol class="arabic simple">
 <li><p>Be sure to have already completed <a class="reference internal" href="#github-release"><span class="std std-ref">Releasing On GitHub</span></a>. This triggers the CI/CD workflow that handles Anaconda releases.</p></li>
-<li><p>Wait until the CI/CD build is successful. You can view all workflows at <a class="reference external" href="https://github.com/E3SM-Project/zstash/actions">All Workflows</a>.</p></li>
-<li><p>Check the <a class="reference external" href="https://anaconda.org/e3sm/zstash">https://anaconda.org/e3sm/zstash</a> page to view the newly updated package.</p>
-<ul class="simple">
-<li><p>Release candidates are assigned the <code class="docutils literal notranslate"><span class="pre">e3sm_dev</span></code> label</p></li>
-<li><p>Production releases are assigned the <code class="docutils literal notranslate"><span class="pre">main</span></code> label</p></li>
-</ul>
-</li>
-<li><p>Notify the maintainers of the unified E3SM environment about the new release on the <a class="reference external" href="https://acme-climate.atlassian.net/wiki/spaces/WORKFLOW/pages/129732419/E3SM+Unified+Anaconda+Environment">E3SM Confluence site</a>.</p>
-<ul class="simple">
-<li><p>Be sure to only update the <code class="docutils literal notranslate"><span class="pre">zstash</span></code> version number in the correct version(s) of the E3SM Unified environment.</p></li>
-<li><p>This is almost certainly one of the versions listed under “Next versions”. If you are uncertain of which to update, leave a comment on the page asking.</p></li>
-</ul>
-</li>
+<li><p>Wait for a bot PR to come up automatically on conda-forge after the GitHub release. This can happen anywhere from 1 hour to 1 day later.</p></li>
+<li><p>Re-render the PR (see <a class="reference external" href="https://conda-forge.org/docs/maintainer/updating_pkgs.html#rerendering-feedstocks">docs</a>).</p></li>
+<li><p>Merge the PR on conda-forge.</p></li>
+<li><p>Check the <a class="reference external" href="https://anaconda.org/conda-forge/zstash">https://anaconda.org/conda-forge/zstash</a> page to view the newly updated package. Production releases are assigned the <code class="docutils literal notranslate"><span class="pre">main</span></code> label.</p></li>
+<li><p>Notify the maintainers of the unified E3SM environment about the new release on the <a class="reference external" href="https://acme-climate.atlassian.net/wiki/spaces/WORKFLOW/pages/129732419/E3SM+Unified+Anaconda+Environment">E3SM Confluence site</a>.</p></li>
 </ol>
 </div>
 <div class="section" id="creating-a-new-version-of-the-documentation">
