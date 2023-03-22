@@ -48,8 +48,13 @@ Bumping the Version
 
 .. _github-release:
 
-Releasing on GitHub
--------------------
+Releasing on GitHub: release candidates
+---------------------------------------
+
+1. Create a tag for the release candidate at https://github.com/E3SM-Project/zstash/tags.
+
+Releasing on GitHub: production releases
+----------------------------------------
 
 1. Draft a new release `here <https://github.com/E3SM-Project/zstash/releases>`_.
 2. Set `Tag version` to ``v<version>``, **including the "v"**. `@Target` should be ``main``.
@@ -58,24 +63,30 @@ Releasing on GitHub
 
    * You can scroll through `zstash commits <https://github.com/E3SM-Project/zstash/commits/main>`_ for a list of changes.
 
-5. If this version is a release candidate (``<version>`` appended with ``rc``), checkmark `This is a pre-release`.
-6. Click `Publish release`.
-7. CI/CD release workflow is automatically triggered.
+5. Click `Publish release`.
+6. CI/CD release workflow is automatically triggered.
 
-Releasing on Anaconda
+
+Releasing on conda-forge: release candidates
+--------------------------------------------
+
+1. Make a PR to `conda-forge <https://github.com/conda-forge/zstash-feedstock/>`_ from your fork of the feedstock. Note that the conda-forge bot does not work for release candidates.
+
+   * Start from the current dev branch and update the version number and the sha256 sum manually.
+   * Set the build number back to 0 if needed.
+   * Make the dev branch the target of the PR. Then, the package build on conda-forge will end up with the ``e3sm_dev`` label.
+
+2. Check the https://anaconda.org/conda-forge/zstash page to view the newly updated package. Release candidates are assigned the ``e3sm_dev`` label.
+
+Releasing on conda-forge: production releases
 ------------------
 
 1. Be sure to have already completed :ref:`Releasing On GitHub <github-release>`. This triggers the CI/CD workflow that handles Anaconda releases.
-2. Wait until the CI/CD build is successful. You can view all workflows at `All Workflows <https://github.com/E3SM-Project/zstash/actions>`_.
-3. Check the https://anaconda.org/e3sm/zstash page to view the newly updated package.
-
-   * Release candidates are assigned the ``e3sm_dev`` label
-   * Production releases are assigned the ``main`` label
-
-4. Notify the maintainers of the unified E3SM environment about the new release on the `E3SM Confluence site <https://acme-climate.atlassian.net/wiki/spaces/WORKFLOW/pages/129732419/E3SM+Unified+Anaconda+Environment>`_.
-
-   * Be sure to only update the ``zstash`` version number in the correct version(s) of the E3SM Unified environment.
-   * This is almost certainly one of the versions listed under “Next versions”. If you are uncertain of which to update, leave a comment on the page asking.
+2. Wait for a bot PR to come up automatically on conda-forge after the GitHub release. This can happen anywhere from 1 hour to 1 day later.
+3. Re-render the PR (see `docs <https://conda-forge.org/docs/maintainer/updating_pkgs.html#rerendering-feedstocks>`_).
+4. Merge the PR on conda-forge.
+5. Check the https://anaconda.org/conda-forge/zstash page to view the newly updated package. Production releases are assigned the ``main`` label.
+6. Notify the maintainers of the unified E3SM environment about the new release on the `E3SM Confluence site <https://acme-climate.atlassian.net/wiki/spaces/WORKFLOW/pages/129732419/E3SM+Unified+Anaconda+Environment>`_.
 
 Creating a New Version of the Documentation
 -------------------------------------------
