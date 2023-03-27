@@ -98,6 +98,11 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
     optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
+    optional.add_argument(
+        "--follow-symlinks",
+        action="store_true",
+        help="Hard copy symlinks. This is useful for preventing broken links. Note that a broken link will result in a failed update.",
+    )
     args: argparse.Namespace = parser.parse_args(sys.argv[2:])
     if args.hpss and args.hpss.lower() == "none":
         args.hpss = "none"
@@ -112,7 +117,10 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
     return args, cache
 
 
-def update_database(args: argparse.Namespace, cache: str) -> Optional[List[str]]:
+# C901 'update_database' is too complex (20)
+def update_database(  # noqa: C901
+    args: argparse.Namespace, cache: str
+) -> Optional[List[str]]:
     # Open database
     logger.debug("Opening index database")
     if not os.path.exists(get_db_filename(cache)):
@@ -226,8 +234,20 @@ def update_database(args: argparse.Namespace, cache: str) -> Optional[List[str]]
         tfile_string: str = tfile[0]
         itar = max(itar, int(tfile_string[0:6], 16))
 
-    # Add files
-    failures: List[str] = add_files(cur, con, itar, newfiles, cache, keep)
+    failures: List[str]
+    if args.follow_symlinks:
+        try:
+            # Add files
+            failures = add_files(
+                cur, con, itar, newfiles, cache, keep, args.follow_symlinks
+            )
+        except FileNotFoundError:
+            raise Exception("Archive update failed due to broken symlink.")
+    else:
+        # Add files
+        failures = add_files(
+            cur, con, itar, newfiles, cache, keep, args.follow_symlinks
+        )
 
     # Close database
     con.commit()

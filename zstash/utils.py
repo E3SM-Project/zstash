@@ -46,9 +46,9 @@ def run_command(command: str, error_str: str):
     if status != 0:
         error_str = "Error={}, Command was `{}`".format(error_str, command)
         if "hsi" in command:
-            error_str = "{}. This command includes `hsi`. Be sure that you have logged into `hsi`.".format(
-                error_str
-            )
+            error_str = f"{error_str}. This command includes `hsi`. Be sure that you have logged into `hsi`"
+        if "cd" in command:
+            error_str = f"{error_str}. This command includes `cd`. Check that this directory exists and contains the needed files"
         logger.error(error_str)
         logger.debug("stdout:\n{!r}".format(stdout))
         logger.debug("stderr:\n{!r}".format(stderr))

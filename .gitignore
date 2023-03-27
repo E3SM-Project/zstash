@@ -1,5 +1,7 @@
 build/
 dist/
+tests/test_follow_symlinks/
+tests/test_follow_symlinks_non_archived/
 zstash.egg-info/
 *.pyc
 *~

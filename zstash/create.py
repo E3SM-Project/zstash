@@ -153,6 +153,11 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
         action="store_true",
         help="For testing/debugging only. Will not create the tars table or compute the hashes of the tars.",
     )
+    optional.add_argument(
+        "--follow-symlinks",
+        action="store_true",
+        help="Hard copy symlinks. This is useful for preventing broken links. Note that a broken link will result in a failed create.",
+    )
     # Now that we're inside a subcommand, ignore the first two argvs
     # (zstash create)
     args: argparse.Namespace = parser.parse_args(sys.argv[2:])
@@ -234,16 +239,34 @@ create table files (
 
     files: List[str] = get_files_to_archive(cache, args.exclude)
 
-    # Add files to archive
-    failures: List[str] = add_files(
-        cur,
-        con,
-        -1,
-        files,
-        cache,
-        args.keep,
-        skip_tars_md5=args.no_tars_md5,
-    )
+    failures: List[str]
+    if args.follow_symlinks:
+        try:
+            # Add files to archive
+            failures = add_files(
+                cur,
+                con,
+                -1,
+                files,
+                cache,
+                args.keep,
+                args.follow_symlinks,
+                skip_tars_md5=args.no_tars_md5,
+            )
+        except FileNotFoundError:
+            raise Exception("Archive creation failed due to broken symlink.")
+    else:
+        # Add files to archive
+        failures = add_files(
+            cur,
+            con,
+            -1,
+            files,
+            cache,
+            args.keep,
+            args.follow_symlinks,
+            skip_tars_md5=args.no_tars_md5,
+        )
 
     # Close database
     con.commit()
