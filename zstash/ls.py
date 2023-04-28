@@ -100,8 +100,11 @@ def ls_database(args: argparse.Namespace, cache: str) -> List[FilesRow]:
                 hpss = config.hpss
             else:
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
-            # Retrieve from HPSS
-            hpss_get(hpss, get_db_filename(cache), cache)
+            try:
+                # Retrieve from HPSS
+                hpss_get(hpss, get_db_filename(cache), cache)
+            except RuntimeError:
+                raise FileNotFoundError("There was nothing to ls.")
         else:
             error_str: str = (
                 "--hpss argument is required when local copy of database is unavailable"
@@ -138,6 +141,9 @@ def ls_database(args: argparse.Namespace, cache: str) -> List[FilesRow]:
             (args_file, args_file),
         )
         matches_ = matches_ + cur.fetchall()
+
+    if matches_ == []:
+        raise FileNotFoundError("There was nothing to ls.")
 
     # Remove duplicates
     matches_ = list(set(matches_))

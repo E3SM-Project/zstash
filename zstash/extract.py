@@ -241,6 +241,9 @@ def extract_database(
             else:
                 logger.info("No matches for {}".format(args_file))
 
+    if matches_ == []:
+        raise FileNotFoundError("There was nothing to extract.")
+
     matches: List[FilesRow] = list(map(lambda match: FilesRow(match), matches_))
 
     # Sort by the filename, tape (so the tar archive),

@@ -1,7 +1,9 @@
 from __future__ import absolute_import, print_function
 
 import hashlib
+import os
 import os.path
+import shutil
 import sqlite3
 import tarfile
 import traceback
@@ -60,6 +62,7 @@ def add_files(
     files: List[str],
     cache: str,
     keep: bool,
+    follow_symlinks: bool,
     skip_tars_md5: bool = False,
 ) -> List[str]:
 
@@ -105,7 +108,7 @@ def add_files(
             size: int
             mtime: datetime
             md5: Optional[str]
-            offset, size, mtime, md5 = add_file(tar, current_file)
+            offset, size, mtime, md5 = add_file(tar, current_file, follow_symlinks)
             t: TupleFilesRowNoId = (
                 current_file,
                 size,
@@ -171,11 +174,15 @@ def add_files(
 # Add file to tar archive while computing its hash
 # Return file offset (in tar archive), size and md5 hash
 def add_file(
-    tar: tarfile.TarFile, file_name: str
+    tar: tarfile.TarFile, file_name: str, follow_symlinks: bool
 ) -> Tuple[int, int, datetime, Optional[str]]:
 
     # FIXME: error: "TarFile" has no attribute "offset"
     offset: int = tar.offset  # type: ignore
+    if follow_symlinks and os.path.islink(file_name):
+        linked_file_name = os.path.realpath(file_name)
+        os.remove(file_name)  # Remove symbolic link and create a hard copy
+        shutil.copy(linked_file_name, file_name)
     tarinfo: tarfile.TarInfo = tar.gettarinfo(file_name)
     # Change the size of any hardlinks from 0 to the size of the actual file
     if tarinfo.islnk():
