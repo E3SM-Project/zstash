@@ -46,6 +46,7 @@ Additional optional arguments:
 
 * ``--cache`` to use a cache other than the default of ``zstash``. If hpss is ``--hpss=none``, then this will be the archive.
 * ``--exclude`` comma separated list of file patterns to exclude
+* ``--follow-symlinks`` Hard copy symlinks. This is useful for preventing broken links. Note that a broken link will result in a failed create.
 * ``--keep`` to keep a copy of the tar files on the local file system after 
   they have been transferred to HPSS. Normally, they are deleted after 
   successful transfer.
@@ -228,6 +229,7 @@ where
 * ``--cache`` to use a cache other than the default of ``zstash``.
 * ``--dry-run`` an optional argument to specify a dry run, only lists files to be updated in archive.
 * ``--exclude`` an optional argument of comma separated list of file patterns to exclude
+* ``--follow-symlinks`` Hard copy symlinks. This is useful for preventing broken links. Note that a broken link will result in a failed update.
 * ``--keep`` to keep a copy of the tar files on the local file system after
   they have been extracted from the archive. Normally, they are deleted after
   successful transfer.
