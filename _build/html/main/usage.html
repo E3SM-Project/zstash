@@ -144,6 +144,7 @@ e.g. <code class="docutils literal notranslate"><span class="pre">globus://nersc
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">--cache</span></code> to use a cache other than the default of <code class="docutils literal notranslate"><span class="pre">zstash</span></code>. If hpss is <code class="docutils literal notranslate"><span class="pre">--hpss=none</span></code>, then this will be the archive.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--exclude</span></code> comma separated list of file patterns to exclude</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--follow-symlinks</span></code> Hard copy symlinks. This is useful for preventing broken links. Note that a broken link will result in a failed create.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
 they have been transferred to HPSS. Normally, they are deleted after
 successful transfer.</p></li>
@@ -323,6 +324,7 @@ $ zstash update --hpss=&lt;path to HPSS&gt; [--cache=&lt;cache&gt;] [--dry-run] 
 <li><p><code class="docutils literal notranslate"><span class="pre">--cache</span></code> to use a cache other than the default of <code class="docutils literal notranslate"><span class="pre">zstash</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> an optional argument to specify a dry run, only lists files to be updated in archive.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--exclude</span></code> an optional argument of comma separated list of file patterns to exclude</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--follow-symlinks</span></code> Hard copy symlinks. This is useful for preventing broken links. Note that a broken link will result in a failed update.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
 they have been extracted from the archive. Normally, they are deleted after
 successful transfer.</p></li>
