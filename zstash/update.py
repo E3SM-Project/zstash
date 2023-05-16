@@ -73,6 +73,9 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
         ),
     )
     optional.add_argument(
+        "--include", type=str, help="comma separated list of file patterns to include"
+    )
+    optional.add_argument(
         "--exclude", type=str, help="comma separated list of file patterns to exclude"
     )
     optional.add_argument(
@@ -173,7 +176,7 @@ def update_database(  # noqa: C901
     logger.debug("Max size  : {}".format(maxsize))
     logger.debug("Keep local tar files  : {}".format(keep))
 
-    files: List[str] = get_files_to_archive(cache, args.exclude)
+    files: List[str] = get_files_to_archive(cache, args.include, args.exclude)
 
     # Eliminate files that are already archived and up to date
     newfiles: List[str] = []

@@ -10,29 +10,40 @@ from typing import Any, List, Tuple
 from .settings import TupleTarsRow, config, logger
 
 
-def exclude_files(exclude: str, files: List[str]) -> List[str]:
+def filter_files(subset: str, files: List[str], include: bool) -> List[str]:
 
-    # Construct lits of files to exclude, based on
+    # Construct list of files to filter, based on
     #  https://codereview.stackexchange.com/questions/33624/
     #  filtering-a-long-list-of-files-through-a-set-of-ignore-patterns-using-iterators
-    exclude_patterns: List[str] = exclude.split(",")
+    subset_patterns: List[str] = subset.split(",")
 
-    # If exclude pattern ends with a trailing '/', the user intends to exclude
+    # If subset pattern ends with a trailing '/', the user intends to filter
     # the entire subdirectory content, therefore replace '/' with '/*'
-    for i in range(len(exclude_patterns)):
-        if exclude_patterns[i][-1] == "/":
-            exclude_patterns[i] += "*"
+    for i in range(len(subset_patterns)):
+        if subset_patterns[i][-1] == "/":
+            subset_patterns[i] += "*"
 
-    # Actual files to exclude
-    exclude_files: List[str] = []
+    # Actual files to filter
+    subset_files: List[str] = []
     for file_name in files:
-        if any(fnmatch(file_name, pattern) for pattern in exclude_patterns):
-            exclude_files.append(file_name)
+        if any(fnmatch(file_name, pattern) for pattern in subset_patterns):
+            subset_files.append(file_name)
 
-    # Now, remove those files
-    new_files = [f for f in files if f not in exclude_files]
+    # Now, filter those files
+    if include:
+        new_files = [f for f in files if f in subset_files]
+    else:
+        new_files = [f for f in files if f not in subset_files]
 
     return new_files
+
+
+def exclude_files(exclude: str, files: List[str]) -> List[str]:
+    return filter_files(exclude, files, include=False)
+
+
+def include_files(include: str, files: List[str]) -> List[str]:
+    return filter_files(include, files, include=True)
 
 
 def run_command(command: str, error_str: str):
@@ -55,7 +66,7 @@ def run_command(command: str, error_str: str):
         raise RuntimeError(error_str)
 
 
-def get_files_to_archive(cache: str, exclude: str) -> List[str]:
+def get_files_to_archive(cache: str, include: str, exclude: str) -> List[str]:
     # List of files
     logger.info("Gathering list of files to archive")
     # Tuples of the form (path, filename)
@@ -82,7 +93,11 @@ def get_files_to_archive(cache: str, exclude: str) -> List[str]:
         if x[0] != os.path.join(".", cache)
     ]
 
-    # Eliminate files based on exclude pattern
+    # First, add files based on include pattern
+    if include is not None:
+        files = include_files(include, files)
+
+    # Then, eliminate files based on exclude pattern
     if exclude is not None:
         files = exclude_files(exclude, files)
 
