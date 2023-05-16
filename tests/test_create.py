@@ -19,12 +19,13 @@ class TestCreate(TestZstash):
     """
 
     # x = on, no mark = off, b = both on and off tested
-    # option | CreateVerbose | CreateExcludeDir | CreateExcludeFile | CreateKeep | CreateCache | TestZstash.create (used in multiple tests) | TestCheckParallel.testKeepTarsWithPreviouslySetHPSS |
-    # --exclude | |x|x| | | | |
-    # --maxsize | | | | | | |x|
-    # --keep    | | | |x| |b| |
-    # --cache   | | | | |x| | |
-    # -v        |x| | | | | | |
+    # option | CreateVerbose | CreateIncludeDir | CreateIncludeFile | CreateExcludeDir | CreateExcludeFile | CreateKeep | CreateCache | TestZstash.create (used in multiple tests) | TestCheckParallel.testKeepTarsWithPreviouslySetHPSS |
+    # --exclude | | | |x|x| | | | |
+    # --include | |x|x| | | | | | |
+    # --maxsize | | | | | | | | |x|
+    # --keep    | | | | | |x| |b| |
+    # --cache   | | | | | | |x| | |
+    # -v        |x| | | | | | | | |
 
     def helperCreateVerbose(self, test_name, hpss_path: str, zstash_path=ZSTASH_PATH):
         """
@@ -33,6 +34,74 @@ class TestCreate(TestZstash):
         self.hpss_path: str = hpss_path
         use_hpss = self.setupDirs(test_name)
         self.create(use_hpss, zstash_path, verbose=True)
+
+    def helperCreateIncludeDir(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
+        """
+        Test `zstash --include`, including a directory.
+        """
+        self.hpss_path = hpss_path
+        use_hpss = self.setupDirs(test_name)
+        if use_hpss:
+            description_str = "Adding files to HPSS"
+        else:
+            description_str = "Adding files to local archive"
+        print_starred(description_str)
+        self.assertWorkspace()
+        included_files = "dir/"
+        cmd = "{}zstash create --include={} --hpss={} {}".format(
+            zstash_path, included_files, self.hpss_path, self.test_dir
+        )
+        output, err = run_cmd(cmd)
+        expected_present = [
+            "Archiving dir/file1.txt",
+        ]
+        if use_hpss:
+            expected_present += ["Transferring file to HPSS"]
+        else:
+            expected_present += ["put: HPSS is unavailable"]
+        expected_absent = [
+            "ERROR",
+            "Archiving file0.txt",
+            "Archiving file_empty.txt",
+            "Archiving file0_soft.txt",
+            "Archiving file0_soft_bad.txt",
+            "Archiving file0_hard.txt",
+        ]
+        self.check_strings(cmd, output + err, expected_present, expected_absent)
+
+    def helperCreateIncludeFile(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
+        """
+        Test `zstash --include`, including a file.
+        """
+        self.hpss_path = hpss_path
+        use_hpss = self.setupDirs(test_name)
+        if use_hpss:
+            description_str = "Adding files to HPSS"
+        else:
+            description_str = "Adding files to local archive"
+        print_starred(description_str)
+        self.assertWorkspace()
+        included_files = "file0.txt,file_empty.txt"
+        cmd = "{}zstash create --include={} --hpss={} {}".format(
+            zstash_path, included_files, self.hpss_path, self.test_dir
+        )
+        output, err = run_cmd(cmd)
+        expected_present = [
+            "Archiving file0.txt",
+            "Archiving file_empty.txt",
+        ]
+        if use_hpss:
+            expected_present += ["Transferring file to HPSS"]
+        else:
+            expected_present += ["put: HPSS is unavailable"]
+        expected_absent = [
+            "ERROR",
+            "Archiving dir/file1.txt",
+            "Archiving file0_soft.txt",
+            "Archiving file0_soft_bad.txt",
+            "Archiving file0_hard.txt",
+        ]
+        self.check_strings(cmd, output + err, expected_present, expected_absent)
 
     def writeExtraFiles(self):
         """
@@ -146,6 +215,20 @@ class TestCreate(TestZstash):
     def testCreateVerboseHPSS(self):
         self.conditional_hpss_skip()
         self.helperCreateVerbose("testCreateVerboseHPSS", HPSS_ARCHIVE)
+
+    def testCreateIncludeDir(self):
+        self.helperCreateIncludeDir("testCreateIncludeDir", "none")
+
+    def testCreateIncludeDirHPSS(self):
+        self.conditional_hpss_skip()
+        self.helperCreateIncludeDir("testCreateIncludeDir", HPSS_ARCHIVE)
+
+    def testCreateIncludeFile(self):
+        self.helperCreateIncludeFile("testCreateIncludeFile", "none")
+
+    def testCreateIncludeFileHPSS(self):
+        self.conditional_hpss_skip()
+        self.helperCreateIncludeFile("testCreateIncludeFile", HPSS_ARCHIVE)
 
     # No need to include a with-HPSS version.
     def testCreateExcludeDir(self):

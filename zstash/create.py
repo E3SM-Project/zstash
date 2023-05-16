@@ -122,6 +122,9 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
         "optional named arguments"
     )
     optional.add_argument(
+        "--include", type=str, help="comma separated list of file patterns to include"
+    )
+    optional.add_argument(
         "--exclude", type=str, help="comma separated list of file patterns to exclude"
     )
     optional.add_argument(
@@ -237,7 +240,7 @@ create table files (
             cur.execute("insert into config values (?,?)", (attr, value))
     con.commit()
 
-    files: List[str] = get_files_to_archive(cache, args.exclude)
+    files: List[str] = get_files_to_archive(cache, args.include, args.exclude)
 
     failures: List[str]
     if args.follow_symlinks:
