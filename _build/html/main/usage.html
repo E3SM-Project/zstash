@@ -244,6 +244,10 @@ processes to use, resulting in checking being done in parallel.
 <li><p><code class="docutils literal notranslate"><span class="pre">--keep</span></code> to keep a copy of the tar files on the local file system after
 they have been extracted from the archive. Normally, they are deleted after
 successful transfer.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--retries</span></code> to set the number of times to retry <code class="docutils literal notranslate"><span class="pre">hsi</span> <span class="pre">get</span></code> if it is unsuccessful.
+The default is 1 retry (2 tries total). Note: for a retry to occur automatically because of
+an incomplete tar file, then the archive you’re checking
+must have been created using <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">&gt;=</span> <span class="pre">v1.1.0</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--tars</span></code> to specify specific tars to check. See below for example usage.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-v</span></code> increases output verbosity.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to check (standard wildcards supported).</p>
