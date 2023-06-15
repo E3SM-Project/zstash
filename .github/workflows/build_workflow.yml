@@ -35,10 +35,29 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Cache Conda
+        uses: actions/cache@v3
+        env:
+          CACHE_NUMBER: 0
         with:
-          python-version: 3.9
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{
+            hashFiles('conda/dev.yml') }}
+
+
+      - name: Build Conda Environment
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: zstash_dev
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-mamba: true
+          mamba-version: "*"
+          environment-file: conda/dev.yml
+          channel-priority: strict
+          auto-update-conda: true
+          # IMPORTANT: This needs to be set for caching to work properly!
+          use-only-tar-bz2: true
 
       - name: Install `zstash` Package
         run: |
