@@ -144,8 +144,18 @@ $ git push origin v1.2.0
 </div>
 <div class="section" id="releasing-on-github-release-candidates">
 <span id="github-release"></span><h2>Releasing on GitHub: release candidates<a class="headerlink" href="#releasing-on-github-release-candidates" title="Permalink to this heading"></a></h2>
-<ol class="arabic simple">
-<li><p>Create a tag for the release candidate at <a class="reference external" href="https://github.com/E3SM-Project/zstash/tags">https://github.com/E3SM-Project/zstash/tags</a>.</p></li>
+<ol class="arabic">
+<li><p>Create a tag for the release candidate at <a class="reference external" href="https://github.com/E3SM-Project/zstash/tags">https://github.com/E3SM-Project/zstash/tags</a>.</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ git checkout main
+$ git fetch upstream
+$ git rebase upstream/main
+$ git tag -a v1.2.0rc1 -m &quot;v1.2.0rc1&quot;
+$ git push upstream v1.2.0rc1
+</pre></div>
+</div>
+</div></blockquote>
+</li>
 </ol>
 </div>
 <div class="section" id="releasing-on-github-production-releases">
@@ -170,10 +180,10 @@ $ git push origin v1.2.0
 <ul class="simple">
 <li><p>Start from the current dev branch and update the version number and the sha256 sum manually.</p></li>
 <li><p>Set the build number back to 0 if needed.</p></li>
-<li><p>Make the dev branch the target of the PR. Then, the package build on conda-forge will end up with the <code class="docutils literal notranslate"><span class="pre">e3sm_dev</span></code> label.</p></li>
+<li><p>Make the dev branch the target of the PR. Then, the package build on conda-forge will end up with the <code class="docutils literal notranslate"><span class="pre">zstash_dev</span></code> label.</p></li>
 </ul>
 </li>
-<li><p>Check the <a class="reference external" href="https://anaconda.org/conda-forge/zstash">https://anaconda.org/conda-forge/zstash</a> page to view the newly updated package. Release candidates are assigned the <code class="docutils literal notranslate"><span class="pre">e3sm_dev</span></code> label.</p></li>
+<li><p>Check the <a class="reference external" href="https://anaconda.org/conda-forge/zstash">https://anaconda.org/conda-forge/zstash</a> page to view the newly updated package. Release candidates are assigned the <code class="docutils literal notranslate"><span class="pre">zstash_dev</span></code> label.</p></li>
 </ol>
 </div>
 <div class="section" id="releasing-on-conda-forge-production-releases">
@@ -241,6 +251,7 @@ $ git push origin v1.2.0
       <dd><a href="release.html">main</a></dd>
       <dd><a href="../../issue-199-v2/dev_guide/release.html">issue-199-v2</a></dd>
       <dd><a href="../../issue-242-zstash-ini/dev_guide/release.html">issue-242-zstash-ini</a></dd>
+      <dd><a href="../../issue-252/dev_guide/release.html">issue-252</a></dd>
     </dl>
   </div>
 </div><script>
