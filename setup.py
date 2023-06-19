@@ -8,10 +8,5 @@ setup(
     description="Long term HPSS archiving software for E3SM",
     packages=find_packages(include=["zstash", "zstash.*"]),
     python_requires=">=3.6",
-    install_requires=[
-        "fair-research-login>=0.2.6,<0.3.0",
-        "globus-sdk>=3.0.0,<4.0.0",
-        "six",
-    ],
     entry_points={"console_scripts": ["zstash=zstash.main:main"]},
 )

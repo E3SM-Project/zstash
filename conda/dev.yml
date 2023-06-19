@@ -24,10 +24,9 @@ dependencies:
   # If versions are updated, also update in `.github/workflows/workflow.yml`
   - jinja2<3.1
   - sphinx=5.2.3
+  - sphinx-multiversion=0.2.4
   - sphinx_rtd_theme=1.0.0
   # Need to pin docutils because 0.17 has a bug with unordered lists
   # https://github.com/readthedocs/sphinx_rtd_theme/issues/1115
   - docutils=0.16
-  - pip:
-      - sphinx-multiversion==0.2.4
 prefix: /opt/miniconda3/envs/zstash_dev
