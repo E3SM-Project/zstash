@@ -50,7 +50,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#a-latest-stable-release">(a) Latest Stable Release</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#installation-using-conda">Installation using conda</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#installation-using-mamba">Installation using mamba</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#installation-on-nersc">Installation on NERSC</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#updating">Updating</a></li>
 </ul>
@@ -146,35 +146,39 @@ install the latest version in your own custom conda environment.</p>
 <span id="conda-environment-others"></span><h3>Others/Local<a class="headerlink" href="#others-local" title="Permalink to this heading"></a></h3>
 <p>If the system doesn’t come with conda pre-installed, follow these instructions:</p>
 <ol class="arabic">
-<li><p>Download Conda</p>
+<li><p>Download Mambaforge</p>
 <blockquote>
 <div><dl>
-<dt>Linux</dt><dd><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+<dt>Linux</dt><dd><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh
 </pre></div>
 </div>
 </dd>
-<dt>MacOS (note that <code class="docutils literal notranslate"><span class="pre">zstash</span></code> is not supported on MacOS, but it may be useful to contribute to the documentation on MacOS)</dt><dd><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
+<dt>MacOS x86_64 (note that <code class="docutils literal notranslate"><span class="pre">zstash</span></code> is not supported on MacOS, but it may be useful to contribute to the documentation on MacOS)</dt><dd><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-MacOSX-x86_64.sh
 </pre></div>
 </div>
 </dd>
 </dl>
 </div></blockquote>
 </li>
-<li><p>Install Conda</p>
+<li><p>Install Mambaforge</p>
 <blockquote>
 <div><dl>
-<dt>Linux</dt><dd><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>bash ./Miniconda3-latest-Linux-x86_64.sh
+<dt>Linux</dt><dd><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>bash ./Mambaforge-Linux-x86_64.sh
 </pre></div>
 </div>
 </dd>
-<dt>MacOS</dt><dd><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>bash ./Miniconda3-latest-MacOSX-x86_64.sh
+<dt>MacOS x86_64</dt><dd><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>bash ./Mambaforge-MacOSX-x86_64.sh
 </pre></div>
 </div>
 </dd>
 </dl>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">Do</span> <span class="pre">you</span> <span class="pre">wish</span> <span class="pre">the</span> <span class="pre">installer</span> <span class="pre">to</span> <span class="pre">initialize</span> <span class="pre">Miniconda3</span> <span class="pre">by</span> <span class="pre">running</span> <span class="pre">conda</span> <span class="pre">init?</span> <span class="pre">[yes|no]</span> <span class="pre">yes</span></code></p></li>
-</ul>
+<p>When you see:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>by running conda init? [yes|no]
+[no] &gt;&gt;&gt; yes
+</pre></div>
+</div>
+<p>respond with <code class="docutils literal notranslate"><span class="pre">yes</span></code> so <code class="docutils literal notranslate"><span class="pre">conda</span></code> and <code class="docutils literal notranslate"><span class="pre">mamba</span></code> commands are available on
+initializing a new bash terminal.</p>
 </div></blockquote>
 </li>
 </ol>
@@ -186,28 +190,37 @@ binstar config --set ssl_verify False
 </pre></div>
 </div>
 </div></blockquote>
-<p>4. Once conda is properly working, you can install the <strong>(a) Latest Stable Release</strong> or
+<p>4. Once conda and mamba are properly working, you can install the <strong>(a) Latest Stable Release</strong> or
 create a <strong>(b) Development Environment</strong>.</p>
 </div>
 </div>
 <div class="section" id="a-latest-stable-release">
 <h2>(a) Latest Stable Release<a class="headerlink" href="#a-latest-stable-release" title="Permalink to this heading"></a></h2>
-<div class="section" id="installation-using-conda">
-<h3>Installation using conda<a class="headerlink" href="#installation-using-conda" title="Permalink to this heading"></a></h3>
+<div class="section" id="installation-using-mamba">
+<h3>Installation using mamba<a class="headerlink" href="#installation-using-mamba" title="Permalink to this heading"></a></h3>
 <p>First, make sure that you’re using <code class="docutils literal notranslate"><span class="pre">bash</span></code>.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ bash
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>bash
 </pre></div>
 </div>
-<p>You must have Anaconda installed as well.
+<p>You must have a conda base enviornment installed as well.
 See <a class="reference internal" href="#conda-environment"><span class="std std-ref">“Installation in a Conda Environment”</span></a> section above for
 installing conda.
 Create a new Anaconda environment with zstash installed and activate it:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda create -n zstash_env -c e3sm -c conda-forge zstash
-$ source activate zstash_env
+<p>These steps should not be necessary if you installed Mambaforge as suggested
+above but may be needed if you have previously installed Miniconda3 instead:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>conda install -y -n base mamba
+conda config --add channels conda-forge
+conda config --set channel_priority strict
 </pre></div>
 </div>
-<p>Or you can install zstash in an existing environment.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ conda install zstash -c e3sm -c conda-forge
+<p>Create a new conda environment with <code class="docutils literal notranslate"><span class="pre">zstash</span></code> installed and activate it:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mamba create -n zstash_env zstash
+conda activate zstash_env
+</pre></div>
+</div>
+<p>Or (less recommended because of potential conflicts) you can install <code class="docutils literal notranslate"><span class="pre">zstash</span></code>
+in an existing environment.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mamba install zppy
 </pre></div>
 </div>
 </div>
@@ -220,9 +233,9 @@ not directly available there, so you will need to manually activate Anaconda bef
 </div>
 <div class="section" id="updating">
 <h3>Updating<a class="headerlink" href="#updating" title="Permalink to this heading"></a></h3>
-<p>If you <strong>installed via Anaconda</strong> (e.g., not through the unified environment),
-you can update <code class="docutils literal notranslate"><span class="pre">zstash</span></code> by doing the following:</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>conda update zstash -c e3sm -c conda-forge
+<p>If you <strong>installed into your own conda environment</strong> (e.g., not through the
+unified environment), you can update <code class="docutils literal notranslate"><span class="pre">zstash</span></code> by doing the following:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mamba update zstash
 </pre></div>
 </div>
 </div>
@@ -284,7 +297,7 @@ git push -f &lt;fork-origin&gt; main
 </li>
 <li><p>Remove any cached conda packages. This will ensure that you always get the latest packages.</p>
 <blockquote>
-<div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>conda clean --all
+<div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mamba clean --all
 </pre></div>
 </div>
 </div></blockquote>
@@ -303,7 +316,7 @@ git push -f &lt;fork-origin&gt; main
 <div><ul class="simple">
 <li><p>Tip: Add the flag <code class="docutils literal notranslate"><span class="pre">-n</span> <span class="pre">&lt;name_of_env&gt;</span></code> to customize the name of the environment</p></li>
 </ul>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>conda env create -f conda/dev.yml
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mamba env create -f conda/dev.yml
 conda activate zstash_dev
 </pre></div>
 </div>
@@ -386,8 +399,6 @@ conda activate zstash_dev
       <dt>Branches</dt>
       <dd><a href="getting_started.html">main</a></dd>
       <dd><a href="../issue-199-v2/getting_started.html">issue-199-v2</a></dd>
-      <dd><a href="../issue-242-zstash-ini/getting_started.html">issue-242-zstash-ini</a></dd>
-      <dd><a href="../issue-252/getting_started.html">issue-252</a></dd>
     </dl>
   </div>
 </div><script>
