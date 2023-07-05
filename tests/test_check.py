@@ -189,7 +189,7 @@ class TestCheck(TestZstash):
         )
         self.assertEqualOrStop(
             output + err,
-            'INFO: zstash/000000.tar exists. Checking expected size matches actual size.\nINFO: Opening tar archive {}/000000.tar\nINFO: Checking file1.txt\nINFO: Checking file2.txt\nINFO: No failures detected when checking the files. If you have a log file, run "grep -i Exception <log-file>" to double check.\n'.format(
+            'For help, please see https://e3sm-project.github.io/zstash. Ask questions at https://github.com/E3SM-Project/zstash/discussions/categories/q-a.\nINFO: zstash/000000.tar exists. Checking expected size matches actual size.\nINFO: Opening tar archive {}/000000.tar\nINFO: Checking file1.txt\nINFO: Checking file2.txt\nINFO: No failures detected when checking the files. If you have a log file, run "grep -i Exception <log-file>" to double check.\n'.format(
                 self.cache
             ),
         )
