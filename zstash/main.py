@@ -54,6 +54,10 @@ For help with a specific command
     # exclude the rest of the args too, or validation will fail
     args: argparse.Namespace = parser.parse_args(sys.argv[1:2])
 
+    print(
+        "For help, please see https://e3sm-project.github.io/zstash. Ask questions at https://github.com/E3SM-Project/zstash/discussions/categories/q-a."
+    )
+
     if args.command == "version":
         print(__version__)
     elif args.command == "create":
