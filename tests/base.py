@@ -147,12 +147,14 @@ class TestZstash(unittest.TestCase):
         """
         Assert that the code is being run from the correct directory.
         """
-        actual = os.getcwd()
-        expected = "zstash"
-        if not actual.endswith(expected):
-            self.stop(
-                "Current_directory={} does not end in {}".format(actual, expected)
-            )
+        # To run the tests, we should be at the top of the repository.
+        ls_results = os.listdir()
+        if ("zstash" in ls_results) and (os.path.isdir("zstash")):
+            if ("tests" in ls_results) and (os.path.isdir("tests")):
+                return
+        self.stop(
+            f"Current directory={os.getcwd()} does not contain zstash and tests directories"
+        )
 
     def assertEqualOrStop(self, actual, expected):
         """
