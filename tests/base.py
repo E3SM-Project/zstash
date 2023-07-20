@@ -6,6 +6,9 @@ To run an individual test, run something like `python -m unittest tests.test_ext
 If running on Cori, it is preferable to run from $CSCRATCH rather than
 /global/homes. Running from the latter may result in a
 'Resource temporarily unavailable' error.
+
+If running on Compy, it is necessary to run test_globus.py from a
+sub-directory of /compyfs rather than /qfs.
 """
 
 import os
