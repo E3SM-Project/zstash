@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function
 
 import configparser
+import os
 import os.path
 import re
 import socket
@@ -22,9 +23,11 @@ hpss_endpoint_map = {
 regex_endpoint_map = {
     r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
     r"blueslogin.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
+    r"chrlogin.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
     r"b\d+\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
     r"chr.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
     r"cori.*\.nersc\.gov": "9d6d99eb-6d04-11e5-ba46-22000b92c6ec",
+    r"compy.*\.pnl\.gov": "68fbd2fa-83d7-11e9-8e63-029d279f7e24",
     r"perlmutter.*\.nersc\.gov": "6bdc7956-fc0f-4ad2-989c-7aa5ee643a79",  # If this doesn't work, use cori
 }
 
@@ -66,6 +69,10 @@ def globus_activate(hpss: str):
             sys.exit(1)
     if not local_endpoint:
         fqdn = socket.getfqdn()
+        if re.fullmatch(r"n.*\.local", fqdn) and os.getenv("HOSTNAME", "NA").startswith(
+            "compy"
+        ):
+            fqdn = "compy.pnl.gov"
         for pattern in regex_endpoint_map.keys():
             if re.fullmatch(pattern, fqdn):
                 local_endpoint = regex_endpoint_map.get(pattern)
