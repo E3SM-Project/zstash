@@ -9,7 +9,7 @@ dependencies:
   - python=3.9.13
   - six=1.16.0
   - globus-sdk=3.2.1
-  - fair-research-login=0.2.0
+  - fair-research-login=0.2.6
   # Developer Tools
   # =================
   # If versions are updated, also update 'rev' in `.pre-commit.config.yaml`
