@@ -1,10 +1,15 @@
 name: CI/CD Release Workflow
 
 on:
+  # This is run on release, meaning it is run when these steps are followed:
+  # https://e3sm-project.github.io/zstash/_build/html/main/dev_guide/release.html#releasing-on-github-production-releases
+  # That means this workflow is not run for release candidates.
   release:
     types: [published]
 
 jobs:
+
+  # On a release, the docs should always be published.
   publish-docs:
     runs-on: ubuntu-latest
     defaults:
@@ -38,6 +43,7 @@ jobs:
           channel-priority: strict
           auto-update-conda: true
 
+      # sphinx-multiversion allows for version docs.
       - name: Build Sphinx Docs
         run: |
           cd docs

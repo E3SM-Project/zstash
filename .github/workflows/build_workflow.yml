@@ -2,11 +2,15 @@ name: CI/CD Build Workflow
 
 on:
   push:
+    # When a branch is pushed to GitHub, run this workflow.
+    # This will show up as the checks to pass on a pull request.
     branches: [main]
 
   pull_request:
+    # When a pull request is merged, run this workflow.
     branches: [main]
 
+# These are the 3 jobs that show up under "All checks have passed" on GitHub.
 jobs:
   pre-commit-hooks:
     runs-on: ubuntu-latest
@@ -22,7 +26,9 @@ jobs:
 
       # Run all pre-commit hooks on all the files.
       # Getting only staged files can be tricky in case a new PR is opened
-      # since the action is run on a branch in detached head state
+      # since the action is run on a branch in detached head state.
+      # This is the equivalent of running "pre-commit run --all-files" locally.
+      # If you commit with the `--no-verify` flag, this check may fail.
       - name: Install and Run Pre-commit
         uses: pre-commit/action@v3.0.0
 
@@ -65,6 +71,7 @@ jobs:
         run: |
           python -m unittest tests/test_*.py
 
+  # If the branch updates documentation, then the docs will need to be updated.
   publish-docs:
     if: github.event_name == 'push'
     needs: [pre-commit-hooks, build]
@@ -100,6 +107,7 @@ jobs:
           channel-priority: strict
           auto-update-conda: true
 
+      # sphinx-multiversion allows for version docs.
       - name: Build Sphinx Docs
         run: |
           cd docs
