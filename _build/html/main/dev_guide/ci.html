@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Developer Guide &mdash; zstash  documentation</title>
+  <title>Understanding CI &mdash; zstash  documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -19,8 +19,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Project Standards" href="project-standards.html" />
-    <link rel="prev" title="Support" href="../support.html" />
+    <link rel="next" title="Testing directions for making a release" href="release_testing.html" />
+    <link rel="prev" title="Project Standards" href="project-standards.html" />
     <link href="../_static/style.css" rel="stylesheet" type="text/css">
 
 </head>
@@ -50,9 +50,14 @@
 <li class="toctree-l1"><a class="reference internal" href="../design.html">Design considerations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../database.html">Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../support.html">Support</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Developer Guide</a><ul>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Developer Guide</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="project-standards.html">Project Standards</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ci.html">Understanding CI</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Understanding CI</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#build-workflow">Build Workflow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#release-workflow">Release Workflow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#github-actions">GitHub Actions</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="release_testing.html">Testing directions for making a release</a></li>
 <li class="toctree-l2"><a class="reference internal" href="release.html">How to Prepare a Release</a></li>
 </ul>
@@ -74,9 +79,10 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
-      <li>Developer Guide</li>
+          <li><a href="index.html">Developer Guide</a> &raquo;</li>
+      <li>Understanding CI</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/dev_guide/index.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/dev_guide/ci.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -84,37 +90,26 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="developer-guide">
-<h1>Developer Guide<a class="headerlink" href="#developer-guide" title="Permalink to this heading"></a></h1>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="project-standards.html">Project Standards</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="project-standards.html#development-environment">Development Environment</a></li>
-<li class="toctree-l2"><a class="reference internal" href="project-standards.html#version-control-vc">Version Control (VC)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="project-standards.html#code-quality-assurance">Code Quality Assurance</a></li>
-<li class="toctree-l2"><a class="reference internal" href="project-standards.html#continuous-integration-continuous-delivery-ci-cd">Continuous Integration / Continuous Delivery (CI/CD)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="project-standards.html#style-guide">Style Guide</a></li>
-<li class="toctree-l2"><a class="reference internal" href="project-standards.html#api-documentation">API Documentation</a></li>
+  <div class="section" id="understanding-ci">
+<h1>Understanding CI<a class="headerlink" href="#understanding-ci" title="Permalink to this heading"></a></h1>
+<p>In this guide, we’ll cover:</p>
+<ul class="simple">
+<li><p>Build Workflow</p></li>
+<li><p>Release Workflow</p></li>
+<li><p>GitHub Actions</p></li>
 </ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="ci.html">Understanding CI</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="ci.html#build-workflow">Build Workflow</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ci.html#release-workflow">Release Workflow</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ci.html#github-actions">GitHub Actions</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="release_testing.html">Testing directions for making a release</a></li>
-<li class="toctree-l1"><a class="reference internal" href="release.html">How to Prepare a Release</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="release.html#bumping-the-version">Bumping the Version</a></li>
-<li class="toctree-l2"><a class="reference internal" href="release.html#releasing-on-github-release-candidates">Releasing on GitHub: release candidates</a></li>
-<li class="toctree-l2"><a class="reference internal" href="release.html#releasing-on-github-production-releases">Releasing on GitHub: production releases</a></li>
-<li class="toctree-l2"><a class="reference internal" href="release.html#releasing-on-conda-forge-release-candidates">Releasing on conda-forge: release candidates</a></li>
-<li class="toctree-l2"><a class="reference internal" href="release.html#releasing-on-conda-forge-production-releases">Releasing on conda-forge: production releases</a></li>
-<li class="toctree-l2"><a class="reference internal" href="release.html#creating-a-new-version-of-the-documentation">Creating a New Version of the Documentation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="release.html#extra-resources">Extra Resources</a></li>
-</ul>
-</li>
-</ul>
+<div class="section" id="build-workflow">
+<h2>Build Workflow<a class="headerlink" href="#build-workflow" title="Permalink to this heading"></a></h2>
+<p>The build workflow is at <a class="reference external" href="https://github.com/E3SM-Project/zstash/blob/main/.github/workflows/build_workflow.yml">https://github.com/E3SM-Project/zstash/blob/main/.github/workflows/build_workflow.yml</a>. See comments in the file for in-depth explanations of each step.</p>
+</div>
+<div class="section" id="release-workflow">
+<h2>Release Workflow<a class="headerlink" href="#release-workflow" title="Permalink to this heading"></a></h2>
+<p>The release workflow is at <a class="reference external" href="https://github.com/E3SM-Project/zstash/blob/main/.github/workflows/release_workflow.yml">https://github.com/E3SM-Project/zstash/blob/main/.github/workflows/release_workflow.yml</a>. See comments in the file for in-depth explanations of each step.</p>
+</div>
+<div class="section" id="github-actions">
+<h2>GitHub Actions<a class="headerlink" href="#github-actions" title="Permalink to this heading"></a></h2>
+<p>Both of these workflows are run by GitHub Actions. See <a class="reference external" href="https://github.com/E3SM-Project/zstash/actions">https://github.com/E3SM-Project/zstash/actions</a>.</p>
+<p>When a pull request is made, the build workflow is run automatically on the pushed branch. When the pull request is merged, the build workflow is once again run, but this time on the <code class="docutils literal notranslate"><span class="pre">main</span></code> branch.</p>
 </div>
 </div>
 
@@ -122,8 +117,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../support.html" class="btn btn-neutral float-left" title="Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="project-standards.html" class="btn btn-neutral float-right" title="Project Standards" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="project-standards.html" class="btn btn-neutral float-left" title="Project Standards" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="release_testing.html" class="btn btn-neutral float-right" title="Testing directions for making a release" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
@@ -152,18 +147,18 @@
   <div class="rst-other-versions">
     <dl>
       <dt>Tags</dt>
-      <dd><a href="../../v1.1.0/dev_guide/index.html">v1.1.0</a></dd>
-      <dd><a href="../../v1.2.0/dev_guide/index.html">v1.2.0</a></dd>
-      <dd><a href="../../v1.2.1/dev_guide/index.html">v1.2.1</a></dd>
-      <dd><a href="../../v1.3.0/dev_guide/index.html">v1.3.0</a></dd>
-      <dd><a href="../../v1.4.0/dev_guide/index.html">v1.4.0</a></dd>
+      <dd><a href="../../v1.1.0/index.html">v1.1.0</a></dd>
+      <dd><a href="../../v1.2.0/index.html">v1.2.0</a></dd>
+      <dd><a href="../../v1.2.1/index.html">v1.2.1</a></dd>
+      <dd><a href="../../v1.3.0/index.html">v1.3.0</a></dd>
+      <dd><a href="../../v1.4.0/index.html">v1.4.0</a></dd>
     </dl>
     <dl>
       <dt>Branches</dt>
-      <dd><a href="index.html">main</a></dd>
-      <dd><a href="../../devops/fix-docs-tags/dev_guide/index.html">devops/fix-docs-tags</a></dd>
-      <dd><a href="../../github-templates/dev_guide/index.html">github-templates</a></dd>
-      <dd><a href="../../issue-199-v2/dev_guide/index.html">issue-199-v2</a></dd>
+      <dd><a href="ci.html">main</a></dd>
+      <dd><a href="../../devops/fix-docs-tags/index.html">devops/fix-docs-tags</a></dd>
+      <dd><a href="../../github-templates/index.html">github-templates</a></dd>
+      <dd><a href="../../issue-199-v2/index.html">issue-199-v2</a></dd>
     </dl>
   </div>
 </div><script>

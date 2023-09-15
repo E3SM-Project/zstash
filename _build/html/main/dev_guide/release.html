@@ -20,7 +20,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Contributing to This Documentation" href="../contributing.html" />
-    <link rel="prev" title="Project Standards" href="project-standards.html" />
+    <link rel="prev" title="Testing directions for making a release" href="release_testing.html" />
     <link href="../_static/style.css" rel="stylesheet" type="text/css">
 
 </head>
@@ -52,6 +52,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../support.html">Support</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Developer Guide</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="project-standards.html">Project Standards</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ci.html">Understanding CI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="release_testing.html">Testing directions for making a release</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">How to Prepare a Release</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#bumping-the-version">Bumping the Version</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#releasing-on-github-release-candidates">Releasing on GitHub: release candidates</a></li>
@@ -59,6 +61,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#releasing-on-conda-forge-release-candidates">Releasing on conda-forge: release candidates</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#releasing-on-conda-forge-production-releases">Releasing on conda-forge: production releases</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#creating-a-new-version-of-the-documentation">Creating a New Version of the Documentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#extra-resources">Extra Resources</a></li>
 </ul>
 </li>
 </ul>
@@ -103,19 +106,19 @@
 <div class="section" id="bumping-the-version">
 <h2>Bumping the Version<a class="headerlink" href="#bumping-the-version" title="Permalink to this heading"></a></h2>
 <ol class="arabic">
-<li><p>Checkout the latest <code class="docutils literal notranslate"><span class="pre">main</span></code>.</p></li>
 <li><p>Checkout a branch with the name of the version.</p>
 <blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Prepend &quot;v&quot; to &lt;version&gt;</span>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="n">upstream</span> <span class="n">main</span>
+<span class="c1"># Prepend &quot;v&quot; to &lt;version&gt;</span>
 <span class="c1"># For release candidates, append &quot;rc&quot; to &lt;version&gt;</span>
-<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="n">v</span><span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">t</span> <span class="n">origin</span><span class="o">/&lt;</span><span class="n">version</span><span class="o">&gt;</span>
+<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="n">v</span><span class="o">&lt;</span><span class="n">version</span><span class="o">&gt;</span> <span class="n">upstream</span><span class="o">/</span><span class="n">main</span>
 </pre></div>
 </div>
 </div></blockquote>
 </li>
 <li><p>Bump version using tbump.</p>
 <blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span># Exclude &quot;v&quot; and &lt;version&gt; should match step 2
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span># Exclude &quot;v&quot; and &lt;version&gt; should match the above step.
 # --no-tag is required since tagging is handled in &quot;Releasing on GitHub&quot;
 $ tbump &lt;version&gt; --no-tag
 
@@ -139,18 +142,21 @@ $ git push origin v1.2.0
 </div>
 </div></blockquote>
 </li>
-<li><p>Create a pull request to the main repo and merge it.</p></li>
+<li><p>If you encounter <code class="docutils literal notranslate"><span class="pre">Error:</span> <span class="pre">Command</span> <span class="pre">`git</span> <span class="pre">push</span> <span class="pre">upstream</span> <span class="pre">main`</span> <span class="pre">failed</span></code>, as in <a class="reference external" href="https://github.com/E3SM-Project/zppy/issues/470">zppy issue 470</a>, you can run <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">push</span> <span class="pre">upstream</span> <span class="pre">main</span></code> yourself.</p></li>
+<li><p>Create a pull request to the main repo and merge it. Mark yourself as the assignee, and mark “Update version” as the label.</p></li>
 </ol>
 </div>
 <div class="section" id="releasing-on-github-release-candidates">
 <span id="github-release"></span><h2>Releasing on GitHub: release candidates<a class="headerlink" href="#releasing-on-github-release-candidates" title="Permalink to this heading"></a></h2>
 <ol class="arabic">
-<li><p>Create a tag for the release candidate at <a class="reference external" href="https://github.com/E3SM-Project/zstash/tags">https://github.com/E3SM-Project/zstash/tags</a>.</p>
+<li><p>Create a tag for the release candidate at <a class="reference external" href="https://github.com/E3SM-Project/zstash/tags">https://github.com/E3SM-Project/zstash/tags</a>. Example, bumping to v1.2.0rc1:</p>
 <blockquote>
 <div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ git checkout main
 $ git fetch upstream
-$ git rebase upstream/main
+$ git reset --hard upstream/main
 $ git tag -a v1.2.0rc1 -m &quot;v1.2.0rc1&quot;
+# Delete the branch from the tbump step. Otherwise, the push command won&#39;t work.
+$ git branch -D v1.2.0rc1
 $ git push upstream v1.2.0rc1
 </pre></div>
 </div>
@@ -161,12 +167,13 @@ $ git push upstream v1.2.0rc1
 <div class="section" id="releasing-on-github-production-releases">
 <h2>Releasing on GitHub: production releases<a class="headerlink" href="#releasing-on-github-production-releases" title="Permalink to this heading"></a></h2>
 <ol class="arabic simple">
-<li><p>Draft a new release <a class="reference external" href="https://github.com/E3SM-Project/zstash/releases">here</a>.</p></li>
+<li><p>Draft a new release <a class="reference external" href="https://github.com/E3SM-Project/zstash/releases">here</a>. You can save this and come back to it later, if need be.</p></li>
 <li><p>Set <cite>Tag version</cite> to <code class="docutils literal notranslate"><span class="pre">v&lt;version&gt;</span></code>, <strong>including the “v”</strong>. <cite>&#64;Target</cite> should be <code class="docutils literal notranslate"><span class="pre">main</span></code>.</p></li>
 <li><p>Set <cite>Release title</cite> to <code class="docutils literal notranslate"><span class="pre">v&lt;version&gt;</span></code>, <strong>including the “v”</strong>.</p></li>
 <li><p>Use <cite>Describe this release</cite> to summarize the changelog.</p>
 <ul class="simple">
 <li><p>You can scroll through <a class="reference external" href="https://github.com/E3SM-Project/zstash/commits/main">zstash commits</a> for a list of changes.</p></li>
+<li><p>You can look at the last release to get an idea of how to format the description.</p></li>
 </ul>
 </li>
 <li><p>Click <cite>Publish release</cite>.</p></li>
@@ -175,15 +182,41 @@ $ git push upstream v1.2.0rc1
 </div>
 <div class="section" id="releasing-on-conda-forge-release-candidates">
 <h2>Releasing on conda-forge: release candidates<a class="headerlink" href="#releasing-on-conda-forge-release-candidates" title="Permalink to this heading"></a></h2>
-<ol class="arabic simple">
-<li><p>Make a PR to <a class="reference external" href="https://github.com/conda-forge/zstash-feedstock/">conda-forge</a> from your fork of the feedstock. Note that the conda-forge bot does not work for release candidates.</p>
-<ul class="simple">
-<li><p>Start from the current dev branch and update the version number and the sha256 sum manually.</p></li>
-<li><p>Set the build number back to 0 if needed.</p></li>
-<li><p>Make the dev branch the target of the PR. Then, the package build on conda-forge will end up with the <code class="docutils literal notranslate"><span class="pre">zstash_dev</span></code> label.</p></li>
-</ul>
+<ol class="arabic">
+<li><p>If you don’t have a local version of the conda-forge repo, run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">git</span><span class="nd">@github</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="n">conda</span><span class="o">-</span><span class="n">forge</span><span class="o">/</span><span class="n">zstash</span><span class="o">-</span><span class="n">feedstock</span><span class="o">.</span><span class="n">git</span>
+<span class="n">git</span> <span class="n">remote</span> <span class="n">add</span> <span class="n">upstream</span> <span class="n">git</span><span class="nd">@github</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="n">conda</span><span class="o">-</span><span class="n">forge</span><span class="o">/</span><span class="n">zstash</span><span class="o">-</span><span class="n">feedstock</span><span class="o">.</span><span class="n">git</span>
+</pre></div>
+</div>
 </li>
-<li><p>Check the <a class="reference external" href="https://anaconda.org/conda-forge/zstash">https://anaconda.org/conda-forge/zstash</a> page to view the newly updated package. Release candidates are assigned the <code class="docutils literal notranslate"><span class="pre">zstash_dev</span></code> label.</p></li>
+<li><p>If you don’t have a fork of the conda-forge repo, on <a class="reference external" href="https://github.com/conda-forge/zstash-feedstock/">conda-forge</a>, click the “Fork” button in the upper right hand corner. Then, on your fork, click the green “Code” button, and copy the SSH path. Run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">remote</span> <span class="n">add</span> <span class="o">&lt;</span><span class="n">your</span> <span class="n">fork</span> <span class="n">name</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">SSH</span> <span class="n">path</span> <span class="k">for</span> <span class="n">your</span> <span class="n">fork</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</li>
+<li><p>Get the sha256 of the tag you made in “Releasing on GitHub: release candidates”:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">curl</span> <span class="o">-</span><span class="n">sL</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">E3SM</span><span class="o">-</span><span class="n">Project</span><span class="o">/</span><span class="n">zstash</span><span class="o">/</span><span class="n">archive</span><span class="o">/</span><span class="n">v1</span><span class="mf">.2.0</span><span class="n">rc1</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span> <span class="o">|</span> <span class="n">openssl</span> <span class="n">sha256</span>
+</pre></div>
+</div>
+</li>
+<li><p>Make changes on a local branch. Example, bumping to v1.2.0rc1:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ git fetch upstream dev
+$ git checkout -b v1.2.0rc1 upstream/dev # You can name the branch anything you want
+# In `recipe/meta.yaml`, update the version and sha256 (and the build number if needed):
+{% set version = &quot;1.2.0rc1&quot; %} # Set to your version
+sha256: ... # The sha256 from the previous step
+number: 0 # build &gt; number should always be 0
+$ git add -A
+$ git commit -m &quot;v1.2.0rc1&quot;
+$ git push &lt;your fork name&gt; v1.2.0rc1
+</pre></div>
+</div>
+</li>
+<li><p>Note that the conda-forge bot does not work for release candidates. So, make a PR manually from your fork of the feedstock to the <code class="docutils literal notranslate"><span class="pre">dev</span></code> branch of <a class="reference external" href="https://github.com/conda-forge/zstash-feedstock/">conda-forge</a>. Then, the package build on conda-forge will end up with the <code class="docutils literal notranslate"><span class="pre">zstash_dev</span></code> label. You can add the “automerge” label to have the PR automatically merge once CI checks pass.</p></li>
+<li><ol class="arabic simple" start="6">
+<li><p>After merging, CI runs again (in a slightly different way). Then, check the <a class="reference external" href="https://anaconda.org/conda-forge/zstash">https://anaconda.org/conda-forge/zstash</a> page to view the newly updated package. Release candidates are assigned the <code class="docutils literal notranslate"><span class="pre">zstash_dev</span></code> label. Note that it takes about 15 minutes for the files to propagate across conda-forge’s mirroring services, which must happen before you can use the files.</p></li>
+</ol>
+</li>
 </ol>
 </div>
 <div class="section" id="releasing-on-conda-forge-production-releases">
@@ -194,7 +227,12 @@ $ git push upstream v1.2.0rc1
 <li><p>Re-render the PR (see <a class="reference external" href="https://conda-forge.org/docs/maintainer/updating_pkgs.html#rerendering-feedstocks">docs</a>).</p></li>
 <li><p>Merge the PR on conda-forge.</p></li>
 <li><p>Check the <a class="reference external" href="https://anaconda.org/conda-forge/zstash">https://anaconda.org/conda-forge/zstash</a> page to view the newly updated package. Production releases are assigned the <code class="docutils literal notranslate"><span class="pre">main</span></code> label.</p></li>
-<li><p>Notify the maintainers of the unified E3SM environment about the new release on the <a class="reference external" href="https://acme-climate.atlassian.net/wiki/spaces/WORKFLOW/pages/129732419/E3SM+Unified+Anaconda+Environment">E3SM Confluence site</a>.</p></li>
+<li><p>Notify the maintainers of the unified E3SM environment about the new release on the <a class="reference external" href="https://acme-climate.atlassian.net/wiki/spaces/WORKFLOW/pages/129732419/E3SM+Unified+Anaconda+Environment">E3SM Confluence site</a>.</p>
+<ul class="simple">
+<li><p>Be sure to only update the <code class="docutils literal notranslate"><span class="pre">zstash</span></code> version number in the correct version(s) of the E3SM Unified environment.</p></li>
+<li><p>This is almost certainly one of the E3SM Unified versions listed under “Next versions”. If you are uncertain of which to update, leave a comment on the page asking.</p></li>
+</ul>
+</li>
 </ol>
 </div>
 <div class="section" id="creating-a-new-version-of-the-documentation">
@@ -205,13 +243,22 @@ $ git push upstream v1.2.0rc1
 <li><p>Changes will be available on the <a class="reference external" href="https://e3sm-project.github.io/zstash/">zstash documentation page</a>.</p></li>
 </ol>
 </div>
+<div class="section" id="extra-resources">
+<h2>Extra Resources<a class="headerlink" href="#extra-resources" title="Permalink to this heading"></a></h2>
+<p>Conda-forge:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://conda-forge.org/docs/user/introduction.html#why-conda-forge">https://conda-forge.org/docs/user/introduction.html#why-conda-forge</a></p></li>
+<li><p><a class="reference external" href="https://conda-forge.org/docs/maintainer/infrastructure.html#admin-web-services">https://conda-forge.org/docs/maintainer/infrastructure.html#admin-web-services</a></p></li>
+<li><p><a class="reference external" href="https://acme-climate.atlassian.net/wiki/spaces/IPD/pages/3616735236/Releasing+E3SM+Software+on+Anaconda+conda-forge+channel">https://acme-climate.atlassian.net/wiki/spaces/IPD/pages/3616735236/Releasing+E3SM+Software+on+Anaconda+conda-forge+channel</a></p></li>
+</ul>
+</div>
 </div>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="project-standards.html" class="btn btn-neutral float-left" title="Project Standards" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="release_testing.html" class="btn btn-neutral float-left" title="Testing directions for making a release" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="../contributing.html" class="btn btn-neutral float-right" title="Contributing to This Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
@@ -249,11 +296,10 @@ $ git push upstream v1.2.0rc1
     </dl>
     <dl>
       <dt>Branches</dt>
-      <dd><a href="../../dev-guide-updates/dev_guide/release.html">dev-guide-updates</a></dd>
+      <dd><a href="release.html">main</a></dd>
       <dd><a href="../../devops/fix-docs-tags/dev_guide/release.html">devops/fix-docs-tags</a></dd>
       <dd><a href="../../github-templates/dev_guide/release.html">github-templates</a></dd>
       <dd><a href="../../issue-199-v2/dev_guide/release.html">issue-199-v2</a></dd>
-      <dd><a href="release.html">main</a></dd>
     </dl>
   </div>
 </div><script>

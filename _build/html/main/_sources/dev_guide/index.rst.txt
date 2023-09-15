@@ -6,4 +6,6 @@ Developer Guide
    :maxdepth: 2
 
    project-standards
+   ci
+   release_testing
    release

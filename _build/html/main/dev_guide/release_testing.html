@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Testing directions for making a release &mdash; zstash  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="How to Prepare a Release" href="release.html" />
+    <link rel="prev" title="Understanding CI" href="ci.html" />
+    <link href="../_static/style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> zstash
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Zstash documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../best_practices.html">Best practices for E3SM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design.html">Design considerations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../support.html">Support</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Developer Guide</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="project-standards.html">Project Standards</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ci.html">Understanding CI</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Testing directions for making a release</a></li>
+<li class="toctree-l2"><a class="reference internal" href="release.html">How to Prepare a Release</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing to This Documentation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">zstash</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Developer Guide</a> &raquo;</li>
+      <li>Testing directions for making a release</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/dev_guide/release_testing.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="testing-directions-for-making-a-release">
+<h1>Testing directions for making a release<a class="headerlink" href="#testing-directions-for-making-a-release" title="Permalink to this heading"></a></h1>
+<ol class="arabic">
+<li><p>Have three shells open: one on Chrysalis, one on Compy, and one on Perlmutter. Do the following steps on each machine.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>If running on Perlmutter, it is preferable to run from <code class="docutils literal notranslate"><span class="pre">$CSCRATCH</span></code> rather than <code class="docutils literal notranslate"><span class="pre">/global/homes</span></code>. Running from the latter may result in a ‘Resource temporarily unavailable’ error.</p></li>
+<li><p>If running on Compy, it is necessary to run <code class="docutils literal notranslate"><span class="pre">test_globus.py</span></code> from a sub-directory of <code class="docutils literal notranslate"><span class="pre">/compyfs</span></code> rather than <code class="docutils literal notranslate"><span class="pre">/qfs</span></code>.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cd</span></code> to the <code class="docutils literal notranslate"><span class="pre">zstash</span></code> directory.</p></li>
+<li><p>Check out a branch to test on.</p>
+<blockquote>
+<div><ol class="loweralpha">
+<li><p>test dev (run before making a new zstash RC)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="n">upstream</span> <span class="n">main</span>
+<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="n">test_pre_zstash_rc</span><span class="o">&lt;</span><span class="c1">#&gt; upstream/main</span>
+<span class="n">git</span> <span class="n">log</span> <span class="c1"># check the commits match https://github.com/E3SM-Project/zstash/commits/main</span>
+</pre></div>
+</div>
+</li>
+<li><p>test new Unified RC</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="n">upstream</span> <span class="n">main</span>
+<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="n">test_unified_rc</span><span class="o">&lt;</span><span class="c1">#&gt;_&lt;machine_name&gt; upstream/main</span>
+<span class="n">git</span> <span class="n">log</span> <span class="c1"># check the commits match https://github.com/E3SM-Project/zstash/commits/main</span>
+</pre></div>
+</div>
+</li>
+<li><p>test final Unified</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">fetch</span> <span class="n">upstream</span> <span class="n">main</span>
+<span class="n">git</span> <span class="n">checkout</span> <span class="o">-</span><span class="n">b</span> <span class="n">test_unified_</span><span class="o">&lt;</span><span class="c1">#&gt;_&lt;machine_name&gt; upstream/main</span>
+<span class="n">git</span> <span class="n">log</span> <span class="c1"># check the commits match https://github.com/E3SM-Project/zstash/commits/main</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</div></blockquote>
+</li>
+<li><p>Set up your environment.</p>
+<blockquote>
+<div><ol class="loweralpha">
+<li><p>test dev (run before making a new zstash RC): Set up a new development environment. This ensures that testing will use the latest conda changes. Note that you will need to run <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">remove</span> <span class="pre">-n</span> <span class="pre">zstash_dev_pre_rc&lt;#&gt;</span> <span class="pre">--all</span></code> first if you have previously done this step.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mamba</span> <span class="n">clean</span> <span class="o">--</span><span class="nb">all</span>
+<span class="n">mamba</span> <span class="n">env</span> <span class="n">create</span> <span class="o">-</span><span class="n">f</span> <span class="n">conda</span><span class="o">/</span><span class="n">dev</span><span class="o">.</span><span class="n">yml</span> <span class="o">-</span><span class="n">n</span> <span class="n">zstash_dev_pre_rc</span><span class="o">&lt;</span><span class="c1">#&gt;</span>
+<span class="n">conda</span> <span class="n">activate</span> <span class="n">zstash_dev_pre_rc</span><span class="o">&lt;</span><span class="c1">#&gt;</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="o">.</span>
+</pre></div>
+</div>
+</li>
+<li><p>test new Unified RC: Launch the E3SM Unified environment for the machine you’re on. Change out the version numbers below.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>* Chrysalis: ``source /lcrc/soft/climate/e3sm-unified/test_e3sm_unified_1.9.0rc16_chrysalis.sh``
+* Compy: ``source /share/apps/E3SM/conda_envs/test_e3sm_unified_1.9.0rc16_compy.sh``
+* Perlmutter: ``source /global/common/software/e3sm/anaconda_envs/test_e3sm_unified_1.9.0rc16_pm-cpu.sh``
+</pre></div>
+</div>
+</li>
+<li><p>test final Unified</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>* Chrysalis: ``source /lcrc/soft/climate/e3sm-unified/load_latest_e3sm_unified_chrysalis.sh``
+* Compy: ``source /share/apps/E3SM/conda_envs/load_latest_e3sm_unified_compy.sh``
+* Perlmutter: ``source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_pm-cpu.sh``
+</pre></div>
+</div>
+</li>
+</ol>
+</div></blockquote>
+</li>
+<li><p>Activate Globus. Go to <a class="reference external" href="https://www.globus.org/">https://www.globus.org/</a>. Log in with your NERSC credentials. Activate the following Globus endpoints using the corresponding credentials:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://app.globus.org/file-manager/collections/61f9954c-a4fa-11ea-8f07-0a21f750d19b/overview">Chrysalis</a></p></li>
+<li><p><a class="reference external" href="https://app.globus.org/file-manager/collections/68fbd2fa-83d7-11e9-8e63-029d279f7e24">Compy</a></p></li>
+<li><p><a class="reference external" href="https://app.globus.org/file-manager/collections/9d6d99eb-6d04-11e5-ba46-22000b92c6ec">Perlmutter/NERSC</a></p></li>
+</ul>
+</li>
+<li><p>Run the unit tests with <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">unittest</span> <span class="pre">tests/test_*.py</span></code>.</p>
+<blockquote>
+<div><ol class="loweralpha">
+<li><p>test dev (run before making a new zstash RC):</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>If there are any failures, fix the code (or tests). If you make any conda changes, go back to step 4a. If you otherwise change zppy source code, run <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.</span></code> and then redo step 6. If you only make changes to tests, you can immediately redo step 6.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>test new Unified RC:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>If there are any failures, fix the code and go back to step 1, following the (a: test dev (run before making a new zstash RC)) directions.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>test final Unified:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>There should be no failures. If there are, a patch release of E3SM Unified may be required.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ol>
+<p>For a, b, and c:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>If there are no failures, proceed to the next step.</p></li>
+</ul>
+</div></blockquote>
+</div></blockquote>
+</li>
+<li><p>Make a pull request and merge any changes. This keeps the repo updated with the latest testing configurations. Mark yourself as the assignee, and mark “Testing” as the label. If you made bug fixes, add the “semver: bug” label. (If you’ve made no changes, skip this step).</p></li>
+<li><p>Wrap up release testing:</p>
+<blockquote>
+<div><ol class="loweralpha">
+<li><p>test dev (run before making a new zstash RC): Create the next zstash RC by following the “release candidates” directions at <a class="reference external" href="https://e3sm-project.github.io/zstash/_build/html/main/dev_guide/release.html">https://e3sm-project.github.io/zstash/_build/html/main/dev_guide/release.html</a>.</p></li>
+<li><p>test new Unified RC: Create the next zstash RC by following the “production releases” directions at <a class="reference external" href="https://e3sm-project.github.io/zstash/_build/html/main/dev_guide/release.html">https://e3sm-project.github.io/zstash/_build/html/main/dev_guide/release.html</a>.</p></li>
+<li><p>test final Unified: You can now safely remove old branches and environments. At <a class="reference external" href="https://github.com/E3SM-Project/zstash/branches">https://github.com/E3SM-Project/zstash/branches</a>, delete any branches that are no longer needed. Also, run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># Branches
+$ cd &lt;zstash directory&gt;
+$ git branch # Look at all branch names
+$ git branch -D &lt;list branches you want to delete&gt;
+
+# Environments
+$ conda env list
+# For each environment you want to delete, run:
+$ conda remove -n &lt;environment_name&gt; --all
+</pre></div>
+</div>
+</li>
+</ol>
+</div></blockquote>
+</li>
+</ol>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ci.html" class="btn btn-neutral float-left" title="Understanding CI" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="release.html" class="btn btn-neutral float-right" title="How to Prepare a Release" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, E3SM.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other Versions</span>
+    v: main
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      <dt>Tags</dt>
+      <dd><a href="../../v1.1.0/index.html">v1.1.0</a></dd>
+      <dd><a href="../../v1.2.0/index.html">v1.2.0</a></dd>
+      <dd><a href="../../v1.2.1/index.html">v1.2.1</a></dd>
+      <dd><a href="../../v1.3.0/index.html">v1.3.0</a></dd>
+      <dd><a href="../../v1.4.0/index.html">v1.4.0</a></dd>
+    </dl>
+    <dl>
+      <dt>Branches</dt>
+      <dd><a href="release_testing.html">main</a></dd>
+      <dd><a href="../../devops/fix-docs-tags/index.html">devops/fix-docs-tags</a></dd>
+      <dd><a href="../../github-templates/index.html">github-templates</a></dd>
+      <dd><a href="../../issue-199-v2/index.html">issue-199-v2</a></dd>
+    </dl>
+  </div>
+</div><script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
