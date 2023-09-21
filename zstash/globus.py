@@ -6,6 +6,7 @@ import os.path
 import re
 import socket
 import sys
+from typing import Any, List
 
 from fair_research_login.client import NativeClient
 from globus_sdk import TransferAPIError, TransferClient, TransferData
@@ -26,9 +27,8 @@ regex_endpoint_map = {
     r"chrlogin.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
     r"b\d+\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
     r"chr.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
-    r"cori.*\.nersc\.gov": "9d6d99eb-6d04-11e5-ba46-22000b92c6ec",
     r"compy.*\.pnl\.gov": "68fbd2fa-83d7-11e9-8e63-029d279f7e24",
-    r"perlmutter.*\.nersc\.gov": "6bdc7956-fc0f-4ad2-989c-7aa5ee643a79",  # If this doesn't work, use cori
+    r"perlmutter.*\.nersc\.gov": "6bdc7956-fc0f-4ad2-989c-7aa5ee643a79",
 }
 
 remote_endpoint = None
@@ -37,6 +37,30 @@ transfer_client: TransferClient = None
 transfer_data: TransferData = None
 task_id = None
 archive_directory_listing: IterableTransferResponse = None
+
+
+# https://globus-sdk-python.readthedocs.io/en/stable/examples/minimal_transfer_script/index.html
+def get_transfer_client(
+    scopes="openid urn:globus:auth:scope:transfer.api.globus.org:all",
+):
+    native_client = NativeClient(
+        client_id="6c1629cf-446c-49e7-af95-323c6412397f",
+        app_name="Zstash",
+        default_scopes=scopes,
+    )
+    native_client.login(no_local_server=True, refresh_tokens=True)
+    transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
+    transfer_client = TransferClient(authorizer=transfer_authorizer)
+    return transfer_client
+
+
+# https://globus-sdk-python.readthedocs.io/en/stable/examples/minimal_transfer_script/index.html
+def check_for_consent_required(target, transfer_client, consent_required_scopes):
+    try:
+        transfer_client.operation_ls(target, path="/")
+    except TransferAPIError as err:
+        if err.info.consent_required:
+            consent_required_scopes.extend(err.info.consent_required.required_scopes)
 
 
 def globus_activate(hpss: str):
@@ -95,14 +119,7 @@ def globus_activate(hpss: str):
     if remote_endpoint.upper() in hpss_endpoint_map.keys():
         remote_endpoint = hpss_endpoint_map.get(remote_endpoint.upper())
 
-    native_client = NativeClient(
-        client_id="6c1629cf-446c-49e7-af95-323c6412397f",
-        app_name="Zstash",
-        default_scopes="openid urn:globus:auth:scope:transfer.api.globus.org:all",
-    )
-    native_client.login(no_local_server=True, refresh_tokens=True)
-    transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
-    transfer_client = TransferClient(authorizer=transfer_authorizer)
+    transfer_client = get_transfer_client()
 
     for ep_id in [local_endpoint, remote_endpoint]:
         r = transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
@@ -167,6 +184,18 @@ def globus_transfer(
     subdir_label = re.sub("[^A-Za-z0-9_ -]", "", subdir)
     filename = name.split(".")[0]
     label = subdir_label + " " + filename
+
+    # https://globus-sdk-python.readthedocs.io/en/stable/examples/minimal_transfer_script/index.html
+    consent_required_scopes: List[Any]
+    consent_required_scopes = []
+    check_for_consent_required(src_ep, transfer_client, consent_required_scopes)
+    check_for_consent_required(dst_ep, transfer_client, consent_required_scopes)
+    if consent_required_scopes:
+        print(
+            "One of your endpoints requires consent in order to be used.\n"
+            "You must login a second time to grant consents.\n\n"
+        )
+        transfer_client = get_transfer_client()
 
     if not transfer_data:
         transfer_data = TransferData(
@@ -282,6 +311,19 @@ def globus_finalize(non_blocking: bool = False):
             else:
                 logger.error(e)
             sys.exit(1)
+        except TransferAPIError as e:
+            # https://globus-sdk-python.readthedocs.io/en/stable/examples/minimal_transfer_script/index.html
+            if not e.info.consent_required:
+                logger.error("Exception: {}".format(e))
+                sys.exit(1)
+            print(
+                "Encountered a ConsentRequired error.\n"
+                "You must log in again to grant consents.\n\n"
+            )
+            transfer_client = get_transfer_client(
+                scopes=e.info.consent_required.required_scopes
+            )
+            globus_finalize(non_blocking)
         except Exception as e:
             logger.error("Exception: {}".format(e))
             sys.exit(1)
