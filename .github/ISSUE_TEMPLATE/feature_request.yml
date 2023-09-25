@@ -8,14 +8,14 @@ body:
       id: semver-level
       attributes:
           label: How will this affect the next version number?
-	  description: |
-	      `zstash` uses semantic versioning (https://semver.org/). Bug fixes and small improvements will increment the PATCH version. New features will increment the MINOR version. Incompatible API changes will increment the MAJOR version. The amount of work required to implement a request typically increases with each level. (For bug fixes, use the "Bug Report" template).
-	  multiple: false
-	  options:
-	      - Small improvement (increment PATCH version)
-	      - New feature (increment MINOR version)
-	      - Incompatibile API change (increment MAJOR version)
-	  default: 1
+          description: |
+              `zstash` uses semantic versioning (https://semver.org/). Bug fixes and small improvements will increment the PATCH version. New features will increment the MINOR version. Incompatible API changes will increment the MAJOR version. The amount of work required to implement a request typically increases with each level. (For bug fixes, use the "Bug Report" template).
+          multiple: false
+          options:
+              - Small improvement (increment PATCH version)
+              - New feature (increment MINOR version)
+              - Incompatibile API change (increment MAJOR version)
+          default: 1
       validations:
           required: true
 

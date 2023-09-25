@@ -38,8 +38,8 @@ body:
       id: machine
       attributes:
           label: What machine were you running on?
-	  description: |
-	      List the machine(s) you encounter the issue on (e.g., Chrysalis, Compy, Perlmutter).
+          description: |
+              List the machine(s) you encounter the issue on (e.g., Chrysalis, Compy, Perlmutter).
       validations:
           required: true
 
