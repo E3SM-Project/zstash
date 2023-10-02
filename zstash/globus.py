@@ -8,7 +8,12 @@ import socket
 import sys
 
 from fair_research_login.client import NativeClient
-from globus_sdk import TransferAPIError, TransferClient, TransferData
+from globus_sdk import (
+    NativeAppAuthClient,
+    TransferAPIError,
+    TransferClient,
+    TransferData,
+)
 from globus_sdk.services.transfer.response.iterable import IterableTransferResponse
 from six.moves.urllib.parse import urlparse
 
@@ -26,9 +31,8 @@ regex_endpoint_map = {
     r"chrlogin.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
     r"b\d+\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
     r"chr.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
-    r"cori.*\.nersc\.gov": "9d6d99eb-6d04-11e5-ba46-22000b92c6ec",
     r"compy.*\.pnl\.gov": "68fbd2fa-83d7-11e9-8e63-029d279f7e24",
-    r"perlmutter.*\.nersc\.gov": "6bdc7956-fc0f-4ad2-989c-7aa5ee643a79",  # If this doesn't work, use cori
+    r"perlmutter.*\.nersc\.gov": "6bdc7956-fc0f-4ad2-989c-7aa5ee643a79",
 }
 
 remote_endpoint = None
@@ -37,6 +41,23 @@ transfer_client: TransferClient = None
 transfer_data: TransferData = None
 task_id = None
 archive_directory_listing: IterableTransferResponse = None
+
+
+def globus_flow(ep=""):
+    CLIENT = NativeAppAuthClient(
+        client_id="6c1629cf-446c-49e7-af95-323c6412397f", app_name="Zstash"
+    )
+    scopes = "urn:globus:auth:scope:transfer.api.globus.org:all"
+    endpoint_scope = f"[ *https://auth.globus.org/scopes/{ep}/data_access ]"
+    data_access_sopes = scopes + endpoint_scope
+    CLIENT.oauth2_start_flow(refresh_tokens=True, requested_scopes=data_access_sopes)
+    authorize_url = CLIENT.oauth2_get_authorize_url()
+    print(f"Please go to this URL and login:\n\n{authorize_url}\n\n")
+
+    get_input = getattr(__builtins__, "raw_input", input)
+    auth_code = get_input("Please enter the code you get after login here: ")
+    token_response = CLIENT.oauth2_exchange_code_for_tokens(auth_code)
+    print(token_response)
 
 
 def globus_activate(hpss: str):
@@ -49,6 +70,7 @@ def globus_activate(hpss: str):
     global local_endpoint
     global remote_endpoint
 
+    print("globus.py globus_activate")
     url = urlparse(hpss)
     if url.scheme != "globus":
         return
@@ -94,6 +116,11 @@ def globus_activate(hpss: str):
 
     if remote_endpoint.upper() in hpss_endpoint_map.keys():
         remote_endpoint = hpss_endpoint_map.get(remote_endpoint.upper())
+
+    print(f"local_endpoint={local_endpoint}")
+    print(f"remote_endpoint={remote_endpoint}")
+    # globus_flow(local_endpoint)
+    # globus_flow(remote_endpoint)
 
     native_client = NativeClient(
         client_id="6c1629cf-446c-49e7-af95-323c6412397f",
