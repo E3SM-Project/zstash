@@ -1,6 +1,8 @@
 from __future__ import absolute_import, print_function
 
 import configparser
+import json
+import logging
 import os
 import os.path
 import re
@@ -26,9 +28,8 @@ regex_endpoint_map = {
     r"chrlogin.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
     r"b\d+\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
     r"chr.*\.lcrc\.anl\.gov": "61f9954c-a4fa-11ea-8f07-0a21f750d19b",
-    r"cori.*\.nersc\.gov": "9d6d99eb-6d04-11e5-ba46-22000b92c6ec",
     r"compy.*\.pnl\.gov": "68fbd2fa-83d7-11e9-8e63-029d279f7e24",
-    r"perlmutter.*\.nersc\.gov": "6bdc7956-fc0f-4ad2-989c-7aa5ee643a79",  # If this doesn't work, use cori
+    r"perlmutter.*\.nersc\.gov": "6bdc7956-fc0f-4ad2-989c-7aa5ee643a79",
 }
 
 remote_endpoint = None
@@ -37,6 +38,37 @@ transfer_client: TransferClient = None
 transfer_data: TransferData = None
 task_id = None
 archive_directory_listing: IterableTransferResponse = None
+
+
+def check_endpoint_version_5(transfer_client, ep_id):
+    logging.debug(f"Checking {ep_id}")
+    output = json.loads(transfer_client.get_endpoint(ep_id))
+    logging.debug(f"Version is {output['gcs_version']}")
+    if int(output["gcs_version"].split(".")[0]) >= 5:
+        return True
+    else:
+        return False
+
+
+def submit_transfer_with_checks(transfer_client, transfer_data, remote_endpoint=None):
+    try:
+        task = transfer_client.submit_transfer(transfer_data)
+    except TransferAPIError as err:
+        if (
+            remote_endpoint
+            and check_endpoint_version_5(transfer_client, remote_endpoint)
+            and err.info.consent_required
+        ):
+            native_client = NativeClient(
+                client_id="6c1629cf-446c-49e7-af95-323c6412397f", app_name="Zstash"
+            )
+            native_client.login(
+                requested_scopes=f"urn:globus:auth:scope:transfer.api.globus.org:all[ *https://auth.globus.org/scopes/{remote_endpoint}/data_access ]"
+            )
+            task = transfer_client.submit_transfer(transfer_data)
+        else:
+            raise err
+    return task
 
 
 def globus_activate(hpss: str):
@@ -196,7 +228,7 @@ def globus_transfer(
                 )
             else:
                 logger.error("Transfer FAILED")
-        task = transfer_client.submit_transfer(transfer_data)
+        task = submit_transfer_with_checks(transfer_client, transfer_data, dst_ep)
         task_id = task.get("task_id")
         transfer_data = None
     except TransferAPIError as e:
@@ -270,7 +302,8 @@ def globus_finalize(non_blocking: bool = False):
 
     if transfer_data:
         try:
-            last_task = transfer_client.submit_transfer(transfer_data)
+            # We don't have remote_endpoint information to pass in here.
+            last_task = submit_transfer_with_checks(transfer_client, transfer_data)
             last_task_id = last_task.get("task_id")
         except TransferAPIError as e:
             if e.code == "NoCredException":
