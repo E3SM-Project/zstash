@@ -60,7 +60,7 @@ def globus_flow(ep=""):
     print(token_response)
 
 
-def globus_activate(hpss: str):
+def globus_activate(hpss: str, globus_consent_prompt: bool = False):
     """
     Read the local globus endpoint UUID from ~/.zstash.ini.
     If the ini file does not exist, create an ini file with empty values,
@@ -116,7 +116,8 @@ def globus_activate(hpss: str):
     if remote_endpoint.upper() in hpss_endpoint_map.keys():
         remote_endpoint = hpss_endpoint_map.get(remote_endpoint.upper())
 
-    globus_flow(remote_endpoint)
+    if globus_consent_prompt:
+        globus_flow(remote_endpoint)
 
     native_client = NativeClient(
         client_id="6c1629cf-446c-49e7-af95-323c6412397f",

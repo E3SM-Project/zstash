@@ -55,7 +55,7 @@ def create():
     if hpss != "none":
         url = urlparse(hpss)
         if url.scheme == "globus":
-            globus_activate(hpss)
+            globus_activate(hpss, args.globus_consent_prompt)
         else:
             # config.hpss is not "none", so we need to
             # create target HPSS directory
@@ -160,6 +160,11 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
         "--follow-symlinks",
         action="store_true",
         help="Hard copy symlinks. This is useful for preventing broken links. Note that a broken link will result in a failed create.",
+    )
+    optional.add_argument(
+        "--globus-consent-prompt",
+        action="store_true",
+        help="Prompt for Globus consent. This is useful if you encounter a 'ConsentRequired' error.",
     )
     # Now that we're inside a subcommand, ignore the first two argvs
     # (zstash create)
