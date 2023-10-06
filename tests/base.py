@@ -51,12 +51,11 @@ def run_cmd(cmd):
     # `cmd` must be a list
     if isinstance(cmd, str):
         cmd = cmd.split()
-    print(f"base.py os.listdir={os.listdir()}")
-    print("base.py run_cmd A")
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print("base.py run_cmd B")
+    # TODO: user input prompts don't make it through here. It just hangs.
+    # Is it possible to check if we already have consents granted and then not need to prompt?
+    # Or, we could make a flag/command line option to prompt for consents or not.
     output, err = p.communicate()
-    print("base.py run_cmd C")
 
     # When running in Python 3, the output of subprocess.Popen.communicate()
     # is a bytes object. We need to convert it to a string.
@@ -283,9 +282,7 @@ class TestZstash(unittest.TestCase):
             self.hpss_path,
             self.test_dir,
         )
-        print("base.py create A")
         output, err = run_cmd(cmd)
-        print("base.py create B")
         if use_hpss:
             expected_present = ["Transferring file to HPSS"]
         else:

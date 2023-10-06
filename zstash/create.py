@@ -25,7 +25,6 @@ from .utils import (
 def create():
     cache: str
     exclude: str
-    logger.warning("create.py create")
     cache, args = setup_create()
 
     # Check config fields

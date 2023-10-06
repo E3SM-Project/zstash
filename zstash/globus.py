@@ -70,7 +70,6 @@ def globus_activate(hpss: str):
     global local_endpoint
     global remote_endpoint
 
-    print("globus.py globus_activate")
     url = urlparse(hpss)
     if url.scheme != "globus":
         return
@@ -117,10 +116,7 @@ def globus_activate(hpss: str):
     if remote_endpoint.upper() in hpss_endpoint_map.keys():
         remote_endpoint = hpss_endpoint_map.get(remote_endpoint.upper())
 
-    print(f"local_endpoint={local_endpoint}")
-    print(f"remote_endpoint={remote_endpoint}")
-    # globus_flow(local_endpoint)
-    # globus_flow(remote_endpoint)
+    globus_flow(remote_endpoint)
 
     native_client = NativeClient(
         client_id="6c1629cf-446c-49e7-af95-323c6412397f",
