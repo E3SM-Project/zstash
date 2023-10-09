@@ -106,11 +106,6 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
         action="store_true",
         help="Hard copy symlinks. This is useful for preventing broken links. Note that a broken link will result in a failed update.",
     )
-    optional.add_argument(
-        "--globus-consent-prompt",
-        action="store_true",
-        help="Prompt for Globus consent. This is useful if you encounter a 'ConsentRequired' error.",
-    )
     args: argparse.Namespace = parser.parse_args(sys.argv[2:])
     if args.hpss and args.hpss.lower() == "none":
         args.hpss = "none"
@@ -140,7 +135,7 @@ def update_database(  # noqa: C901
                 hpss: str = config.hpss
             else:
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
-            globus_activate(hpss, args.globus_consent_prompt)
+            globus_activate(hpss)
             hpss_get(hpss, get_db_filename(cache), cache)
         else:
             error_str: str = (

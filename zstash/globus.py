@@ -1,6 +1,8 @@
 from __future__ import absolute_import, print_function
 
 import configparser
+import json
+import logging
 import os
 import os.path
 import re
@@ -8,12 +10,7 @@ import socket
 import sys
 
 from fair_research_login.client import NativeClient
-from globus_sdk import (
-    NativeAppAuthClient,
-    TransferAPIError,
-    TransferClient,
-    TransferData,
-)
+from globus_sdk import TransferAPIError, TransferClient, TransferData
 from globus_sdk.services.transfer.response.iterable import IterableTransferResponse
 from six.moves.urllib.parse import urlparse
 
@@ -43,24 +40,38 @@ task_id = None
 archive_directory_listing: IterableTransferResponse = None
 
 
-def globus_flow(ep=""):
-    CLIENT = NativeAppAuthClient(
-        client_id="6c1629cf-446c-49e7-af95-323c6412397f", app_name="Zstash"
-    )
-    scopes = "urn:globus:auth:scope:transfer.api.globus.org:all"
-    endpoint_scope = f"[ *https://auth.globus.org/scopes/{ep}/data_access ]"
-    data_access_sopes = scopes + endpoint_scope
-    CLIENT.oauth2_start_flow(refresh_tokens=True, requested_scopes=data_access_sopes)
-    authorize_url = CLIENT.oauth2_get_authorize_url()
-    print(f"Please go to this URL and login:\n\n{authorize_url}\n\n")
-
-    get_input = getattr(__builtins__, "raw_input", input)
-    auth_code = get_input("Please enter the code you get after login here: ")
-    token_response = CLIENT.oauth2_exchange_code_for_tokens(auth_code)
-    print(token_response)
+def check_endpoint_version_5(transfer_client, ep_id):
+    logging.debug(f"Checking {ep_id}")
+    output = json.loads(transfer_client.get_endpoint(ep_id))
+    logging.debug(f"Version is {output['gcs_version']}")
+    if int(output["gcs_version"].split(".")[0]) >= 5:
+        return True
+    else:
+        return False
 
 
-def globus_activate(hpss: str, globus_consent_prompt: bool = False):
+def submit_transfer_with_checks(transfer_client, transfer_data, remote_endpoint=None):
+    try:
+        task = transfer_client.submit_transfer(transfer_data)
+    except TransferAPIError as err:
+        if (
+            remote_endpoint
+            and check_endpoint_version_5(transfer_client, remote_endpoint)
+            and err.info.consent_required
+        ):
+            native_client = NativeClient(
+                client_id="6c1629cf-446c-49e7-af95-323c6412397f", app_name="Zstash"
+            )
+            native_client.login(
+                requested_scopes=f"urn:globus:auth:scope:transfer.api.globus.org:all[ *https://auth.globus.org/scopes/{remote_endpoint}/data_access ]"
+            )
+            task = transfer_client.submit_transfer(transfer_data)
+        else:
+            raise err
+    return task
+
+
+def globus_activate(hpss: str):
     """
     Read the local globus endpoint UUID from ~/.zstash.ini.
     If the ini file does not exist, create an ini file with empty values,
@@ -115,9 +126,6 @@ def globus_activate(hpss: str, globus_consent_prompt: bool = False):
 
     if remote_endpoint.upper() in hpss_endpoint_map.keys():
         remote_endpoint = hpss_endpoint_map.get(remote_endpoint.upper())
-
-    if globus_consent_prompt:
-        globus_flow(remote_endpoint)
 
     native_client = NativeClient(
         client_id="6c1629cf-446c-49e7-af95-323c6412397f",
@@ -220,7 +228,7 @@ def globus_transfer(
                 )
             else:
                 logger.error("Transfer FAILED")
-        task = transfer_client.submit_transfer(transfer_data)
+        task = submit_transfer_with_checks(transfer_client, transfer_data, dst_ep)
         task_id = task.get("task_id")
         transfer_data = None
     except TransferAPIError as e:
@@ -294,7 +302,8 @@ def globus_finalize(non_blocking: bool = False):
 
     if transfer_data:
         try:
-            last_task = transfer_client.submit_transfer(transfer_data)
+            # We don't have remote_endpoint information to pass in here.
+            last_task = submit_transfer_with_checks(transfer_client, transfer_data)
             last_task_id = last_task.get("task_id")
         except TransferAPIError as e:
             if e.code == "NoCredException":
