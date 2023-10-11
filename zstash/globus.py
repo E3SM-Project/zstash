@@ -43,7 +43,7 @@ def check_endpoint_version_5(ep_id):
     output = transfer_client.get_endpoint(ep_id)
     version = output.get("gcs_version", "0.0")
     if output["gcs_version"] is None:
-        return True
+        return False
     elif int(version.split('.')[0]) >= 5:
         return True
     return False
