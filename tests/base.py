@@ -52,9 +52,6 @@ def run_cmd(cmd):
     if isinstance(cmd, str):
         cmd = cmd.split()
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    # TODO: user input prompts don't make it through here. It just hangs.
-    # Is it possible to check if we already have consents granted and then not need to prompt?
-    # Or, we could make a flag/command line option to prompt for consents or not.
     output, err = p.communicate()
 
     # When running in Python 3, the output of subprocess.Popen.communicate()

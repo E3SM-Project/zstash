@@ -1,7 +1,6 @@
 from __future__ import absolute_import, print_function
 
 import configparser
-import json
 import os
 import os.path
 import re
@@ -44,7 +43,7 @@ def check_endpoint_version_5(ep_id):
     version = output.get("gcs_version", "0.0")
     if output["gcs_version"] is None:
         return False
-    elif int(version.split('.')[0]) >= 5:
+    elif int(version.split(".")[0]) >= 5:
         return True
     return False
 
@@ -62,13 +61,12 @@ def submit_transfer_with_checks(transfer_data):
             native_client = NativeClient(
                 client_id="6c1629cf-446c-49e7-af95-323c6412397f", app_name="Zstash"
             )
-            native_client.login(
-                requested_scopes=scopes
-            )
+            native_client.login(requested_scopes=scopes)
             # Quit here and tell user to re-try
-            print("Consents added, please re-run the previous command to start transfer")
+            print(
+                "Consents added, please re-run the previous command to start transfer"
+            )
             sys.exit(0)
-            # I think what's happening is that it needs to reload the token with the new consents
         else:
             raise err
     return task
@@ -305,7 +303,6 @@ def globus_finalize(non_blocking: bool = False):
 
     if transfer_data:
         try:
-            # We don't have remote_endpoint information to pass in here.
             last_task = submit_transfer_with_checks(transfer_data)
             last_task_id = last_task.get("task_id")
         except TransferAPIError as e:
