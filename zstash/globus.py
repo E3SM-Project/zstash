@@ -2,7 +2,6 @@ from __future__ import absolute_import, print_function
 
 import configparser
 import json
-import logging
 import os
 import os.path
 import re
@@ -40,32 +39,36 @@ task_id = None
 archive_directory_listing: IterableTransferResponse = None
 
 
-def check_endpoint_version_5(transfer_client, ep_id):
-    logging.debug(f"Checking {ep_id}")
-    output = json.loads(transfer_client.get_endpoint(ep_id))
-    logging.debug(f"Version is {output['gcs_version']}")
-    if int(output["gcs_version"].split(".")[0]) >= 5:
+def check_endpoint_version_5(ep_id):
+    output = transfer_client.get_endpoint(ep_id)
+    version = output.get("gcs_version", "0.0")
+    if output["gcs_version"] is None:
         return True
-    else:
-        return False
+    elif int(version.split('.')[0]) >= 5:
+        return True
+    return False
 
 
-def submit_transfer_with_checks(transfer_client, transfer_data, remote_endpoint=None):
+def submit_transfer_with_checks(transfer_data):
     try:
         task = transfer_client.submit_transfer(transfer_data)
     except TransferAPIError as err:
-        if (
-            remote_endpoint
-            and check_endpoint_version_5(transfer_client, remote_endpoint)
-            and err.info.consent_required
-        ):
+        if err.info.consent_required:
+            scopes = "urn:globus:auth:scope:transfer.api.globus.org:all["
+            for ep_id in [remote_endpoint, local_endpoint]:
+                if check_endpoint_version_5(ep_id):
+                    scopes += f" *https://auth.globus.org/scopes/{ep_id}/data_access"
+            scopes += " ]"
             native_client = NativeClient(
                 client_id="6c1629cf-446c-49e7-af95-323c6412397f", app_name="Zstash"
             )
             native_client.login(
-                requested_scopes=f"urn:globus:auth:scope:transfer.api.globus.org:all[ *https://auth.globus.org/scopes/{remote_endpoint}/data_access ]"
+                requested_scopes=scopes
             )
-            task = transfer_client.submit_transfer(transfer_data)
+            # Quit here and tell user to re-try
+            print("Consents added, please re-run the previous command to start transfer")
+            sys.exit(0)
+            # I think what's happening is that it needs to reload the token with the new consents
         else:
             raise err
     return task
@@ -228,7 +231,7 @@ def globus_transfer(
                 )
             else:
                 logger.error("Transfer FAILED")
-        task = submit_transfer_with_checks(transfer_client, transfer_data, dst_ep)
+        task = submit_transfer_with_checks(transfer_data)
         task_id = task.get("task_id")
         transfer_data = None
     except TransferAPIError as e:
@@ -303,7 +306,7 @@ def globus_finalize(non_blocking: bool = False):
     if transfer_data:
         try:
             # We don't have remote_endpoint information to pass in here.
-            last_task = submit_transfer_with_checks(transfer_client, transfer_data)
+            last_task = submit_transfer_with_checks(transfer_data)
             last_task_id = last_task.get("task_id")
         except TransferAPIError as e:
             if e.code == "NoCredException":
