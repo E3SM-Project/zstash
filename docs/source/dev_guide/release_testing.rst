@@ -54,13 +54,13 @@ Testing directions for making a release
 
    * `Chrysalis <https://app.globus.org/file-manager/collections/61f9954c-a4fa-11ea-8f07-0a21f750d19b/overview>`_
    * `Compy <https://app.globus.org/file-manager/collections/68fbd2fa-83d7-11e9-8e63-029d279f7e24>`_
-   * `Perlmutter/NERSC <https://app.globus.org/file-manager/collections/9d6d99eb-6d04-11e5-ba46-22000b92c6ec>`_
+   * `Perlmutter/NERSC <https://app.globus.org/file-manager/collections/6bdc7956-fc0f-4ad2-989c-7aa5ee643a79/overview>`_
 
 6. Run the unit tests with ``python -m unittest tests/test_*.py``.
 
     a. test dev (run before making a new zstash RC):
 
-        * If there are any failures, fix the code (or tests). If you make any conda changes, go back to step 4a. If you otherwise change zppy source code, run ``pip install .`` and then redo step 6. If you only make changes to tests, you can immediately redo step 6.
+        * If there are any failures, fix the code (or tests). If you make any conda changes, go back to step 4a. If you otherwise change zstash source code, run ``pip install .`` and then redo step 6. If you only make changes to tests, you can immediately redo step 6.
 
     b. test new Unified RC:
 
