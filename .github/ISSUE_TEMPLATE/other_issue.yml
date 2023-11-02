@@ -1,0 +1,24 @@
+name: Other Issue
+description: Report an issue not covered by the other templates.
+body:
+    - type: checkboxes
+      id: checks
+      attributes:
+          label: Request criteria
+          description: Please confirm and check all the following options.
+          options:
+              - label: I searched the [zstash GitHub Discussions](https://github.com/E3SM-Project/zstash/discussions) to find a similar question and didn't find it.
+                required: true
+              - label: I searched the [zstash documentation](https://e3sm-project.github.io/zstash).
+                required: true
+              - label: This issue does not match the other templates (i.e., it is not a bug report, documentation request, feature request, or a question.)
+                required: true
+
+    - type: textarea
+      id: issue-description
+      attributes:
+          label: Issue description
+          description: |
+              Please describe the issue.
+      validations:
+          required: true

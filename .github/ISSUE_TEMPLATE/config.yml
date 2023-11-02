@@ -1,7 +1,7 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
     - name: Questions (zstash)
-      url: https://github.com/E3SM-Project/zstash/discussions
+      url: https://github.com/E3SM-Project/zstash/discussions/categories/questions
       about: |
           Ask questions and discuss with other zstash community members here. Please
           browse the zstash Discussions Forum or zstash documentation first before asking a
