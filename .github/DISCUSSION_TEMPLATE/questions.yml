@@ -19,6 +19,15 @@ body:
                 required: true
 
     - type: textarea
+      id: deadline
+      attributes:
+          label: What is the deadline?
+          description: |
+              How urgently do you need a response to this question? Is there a day you need a resolution by? Knowing these constraints helps zstash developers properly priortize user questions.
+      validations:
+         required: true
+
+    - type: textarea
       id: your-question
       attributes:
           label: Describe your question
