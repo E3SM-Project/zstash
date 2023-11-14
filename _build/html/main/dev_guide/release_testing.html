@@ -192,7 +192,7 @@
 </div></blockquote>
 </div></blockquote>
 </li>
-<li><p>Make a pull request and merge any changes. This keeps the repo updated with the latest testing configurations. Mark yourself as the assignee, and mark “Testing” as the label. If you made bug fixes, add the “semver: bug” label. (If you’ve made no changes, skip this step).</p></li>
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">diff</span></code>. You should not have any changes. If you do, you have probably made code changes to get the tests to pass. Make a pull request to merge the changes. Add the “semver: bug” label.</p></li>
 <li><p>Wrap up release testing:</p>
 <blockquote>
 <div><ol class="loweralpha">
@@ -260,10 +260,10 @@ $ conda remove -n &lt;environment_name&gt; --all
     </dl>
     <dl>
       <dt>Branches</dt>
+      <dd><a href="release_testing.html">main</a></dd>
       <dd><a href="../../devops/fix-docs-tags/index.html">devops/fix-docs-tags</a></dd>
       <dd><a href="../../issue-199-v2/index.html">issue-199-v2</a></dd>
       <dd><a href="../../issue-298/index.html">issue-298</a></dd>
-      <dd><a href="release_testing.html">main</a></dd>
     </dl>
   </div>
 </div><script>
