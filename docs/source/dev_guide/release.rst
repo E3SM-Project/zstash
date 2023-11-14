@@ -45,7 +45,7 @@ Bumping the Version
         :: Looking good? (y/N)
         >
 
-3. If you encounter ``Error: Command `git push upstream main` failed``, as in `zppy issue 470 <https://github.com/E3SM-Project/zppy/issues/470>`_, you can run ``git push upstream main`` yourself.
+3. If you encounter ``Error: Command `git push upstream main` failed``, as in `zppy issue 470 <https://github.com/E3SM-Project/zppy/issues/470>`_, you can run ``git push upstream <branch>`` yourself.
 	
 4. Create a pull request to the main repo and merge it. Mark yourself as the assignee, and mark "Update version" as the label.
 

@@ -74,7 +74,7 @@ Testing directions for making a release
 
         * If there are no failures, proceed to the next step.
 
-7. Make a pull request and merge any changes. This keeps the repo updated with the latest testing configurations. Mark yourself as the assignee, and mark "Testing" as the label. If you made bug fixes, add the "semver: bug" label. (If you've made no changes, skip this step).
+7. Run ``git diff``. You should not have any changes. If you do, you have probably made code changes to get the tests to pass. Make a pull request to merge the changes. Add the "semver: bug" label.
 
 8. Wrap up release testing:
 
