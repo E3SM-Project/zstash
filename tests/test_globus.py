@@ -10,8 +10,8 @@ from globus_sdk import DeleteData, TransferAPIError, TransferClient
 
 from tests.base import TOP_LEVEL, ZSTASH_PATH, TestZstash, print_starred, run_cmd
 
-# Use 'Globus Tutorial Endpoint 1' to simulate an HPSS Globus endpoint
-hpss_globus_endpoint = "ddb59aef-6d04-11e5-ba46-22000b92c6ec"
+# Use 'Globus Tutorial Collection 1' to simulate an HPSS Globus endpoint
+hpss_globus_endpoint = "6c54cade-bde5-45c1-bdea-f4bd71dba2cc"
 
 regex_endpoint_map = {
     r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
