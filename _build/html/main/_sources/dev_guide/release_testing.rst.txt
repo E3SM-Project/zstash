@@ -52,7 +52,7 @@ Testing directions for making a release
 
 5. Activate Globus. Go to https://www.globus.org/. Log in with your NERSC credentials. Activate the following Globus endpoints using the corresponding credentials:
 
-   * `Chrysalis <https://app.globus.org/file-manager/collections/61f9954c-a4fa-11ea-8f07-0a21f750d19b/overview>`_
+   * `Chrysalis <https://app.globus.org/file-manager/collections/15288284-7006-4041-ba1a-6b52501e49f1/overview>`_
    * `Compy <https://app.globus.org/file-manager/collections/68fbd2fa-83d7-11e9-8e63-029d279f7e24>`_
    * `Perlmutter/NERSC <https://app.globus.org/file-manager/collections/6bdc7956-fc0f-4ad2-989c-7aa5ee643a79/overview>`_
 
