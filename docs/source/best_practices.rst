@@ -39,8 +39,9 @@ For example: ::
    $ ssh dtn01.nersc.gov
    $ screen -r
    $ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+   $ mkdir zstash
    $ zstash create --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
-     --maxsize 128 . 2>&1 | tee zstash_create_20190226.log
+     --maxsize 128 . 2>&1 | tee zstash/zstash_create_20190226.log
 
 The command above will archive the entire directory structure under
 `/global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison`.
@@ -55,9 +56,10 @@ restart files every 5 years** only: ::
    $ ssh dtn01.nersc.gov
    $ screen -r
    $ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+   $ mkdir zstash
    $ zstash create --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
      --exclude="archive/rest/???[!05]-*/" \
-     --maxsize 128 . 2>&1 | tee zstash_create_20190226.log
+     --maxsize 128 . 2>&1 | tee zstash/zstash_create_20190226.log
 
 Update
 ------
@@ -68,8 +70,9 @@ failure using the ``zstash update`` functionality: ::
    $ ssh dtn01.nersc.gov
    $ screen -r
    $ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+   $ mkdir zstash
    $ zstash update --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
-     --exclude="archive/rest/???[!05]-*/" 2>&1 | tee zstash_update_20190226.log
+     --exclude="archive/rest/???[!05]-*/" 2>&1 | tee zstash/zstash_update_20190226.log
 
 Check
 -----
