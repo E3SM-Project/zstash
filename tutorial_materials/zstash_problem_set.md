@@ -40,12 +40,54 @@ Luckily, zstash has a built-in default for this endpoint:
 
 </details>
 
+
+### Problem 2
+
+Suppose we want to archive a simulation to HPSS, 
+but we also want the generated tars locally. 
+How could we do that?
+
+<details>
+<summary>Hints</summary>
+
+Is there a [command line option](https://docs.e3sm.org/zstash/_build/html/main/usage.html#create) that could help us?
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+We juse need to add the `--keep` flag.
+
+</details>
+
+### Problem 3
+
+Suppose we want to archive a simulation locally,
+but not to HPSS,
+perhaps because the machine we're on doesn't have HPSS.
+How could we do that?
+
+<details>
+<summary>Hints</summary>
+
+Is there a [command line option](https://docs.e3sm.org/zstash/_build/html/main/usage.html#create) that could help us?
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+We juse need to set `--hpss=none`. Then, the cache effectively replaces the HPSS archive.
+
+</details>
+
 ## Debugging
 
 ### Problem 1
 
 ```
-zstash create --hpss=tutorial_archive_20240503 --include=archive/atm/hist/extendedOutput.v3.LR.historical_0101.eam.h0.2000-1*.nc /global/cfs/cdirs/e3sm/www/Tutorials/2024/simulations/extendedOutput.v3.LR.historical_0101/
+zstash create --hpss=tutorial_archive_20240507 --include=archive/atm/hist/extendedOutput.v3.LR.historical_0101.eam.h0.2000-1*.nc /global/cfs/cdirs/e3sm/www/Tutorials/2024/simulations/extendedOutput.v3.LR.historical_0101/
 ```
 Why does the above command give a permissions error?
 
@@ -63,6 +105,6 @@ we do have permissions?
 
 We need to add the `cache` parameter:
 ```
---cache=/pscratch/sd/f/forsyth/e3sm_tutorial_output/zstash_v3.LR.historical_0101
+--cache=/pscratch/sd/f/forsyth/e3sm_tutorial/workdir/zstash_v3.LR.historical_0101
 ```
 </details>
