@@ -9,6 +9,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![flake8](https://img.shields.io/badge/flake8-enabled-green)](https://github.com/PyCQA/flake8)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
+[![DOI](https://zenodo.org/badge/98688685.svg)](https://zenodo.org/doi/10.5281/zenodo.1239926)
 
 See [documentation](https://e3sm-project.github.io/zstash) for more details.
 
