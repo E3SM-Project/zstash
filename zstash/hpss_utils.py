@@ -3,7 +3,6 @@ from __future__ import absolute_import, print_function
 import hashlib
 import os
 import os.path
-import shutil
 import sqlite3
 import tarfile
 import traceback
@@ -98,7 +97,7 @@ def add_files(
                 do_hash = False
             tarFileObject = HashIO(os.path.join(cache, tfname), "wb", do_hash)
             # FIXME: error: Argument "fileobj" to "open" has incompatible type "HashIO"; expected "Optional[IO[bytes]]"
-            tar = tarfile.open(mode="w", fileobj=tarFileObject)  # type: ignore
+            tar = tarfile.open(mode="w", fileobj=tarFileObject, dereference=follow_symlinks)  # type: ignore
 
         # Add current file to tar archive
         current_file: str = files[i]
@@ -179,10 +178,6 @@ def add_file(
 
     # FIXME: error: "TarFile" has no attribute "offset"
     offset: int = tar.offset  # type: ignore
-    if follow_symlinks and os.path.islink(file_name):
-        linked_file_name = os.path.realpath(file_name)
-        os.remove(file_name)  # Remove symbolic link and create a hard copy
-        shutil.copy(linked_file_name, file_name)
     tarinfo: tarfile.TarInfo = tar.gettarinfo(file_name)
     # Change the size of any hardlinks from 0 to the size of the actual file
     if tarinfo.islnk():

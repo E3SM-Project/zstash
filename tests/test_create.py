@@ -19,13 +19,14 @@ class TestCreate(TestZstash):
     """
 
     # x = on, no mark = off, b = both on and off tested
-    # option | CreateVerbose | CreateIncludeDir | CreateIncludeFile | CreateExcludeDir | CreateExcludeFile | CreateKeep | CreateCache | TestZstash.create (used in multiple tests) | TestCheckParallel.testKeepTarsWithPreviouslySetHPSS |
-    # --exclude | | | |x|x| | | | |
-    # --include | |x|x| | | | | | |
-    # --maxsize | | | | | | | | |x|
-    # --keep    | | | | | |x| |b| |
-    # --cache   | | | | | | |x| | |
-    # -v        |x| | | | | | | | |
+    # option | CreateVerbose | CreateIncludeDir | CreateIncludeFile | CreateExcludeDir | CreateExcludeFile | CreateKeep | CreateCache | CreateFollowSymlinks | TestZstash.create (used in multiple tests) | TestCheckParallel.testKeepTarsWithPreviouslySetHPSS |
+    # --exclude         | | | |x|x| | | | | |
+    # --follow-symlinks | | | | | | | |x| | |
+    # --include         | |x|x| | | | | | | |
+    # --maxsize         | | | | | | | | | |x|
+    # --keep            | | | | | |x| | |b| |
+    # --cache           | | | | | | |x|x| | |
+    # -v                |x| | | | | | | | | |
 
     def helperCreateVerbose(self, test_name, hpss_path: str, zstash_path=ZSTASH_PATH):
         """
@@ -209,6 +210,17 @@ class TestCreate(TestZstash):
             )
             self.stop(error_message)
 
+    def helperCreateFollowSymlinks(self, test_name, zstash_path=ZSTASH_PATH):
+        """
+        Test `zstash create --hpss=none --follow-symlinks --cache=my_cache`
+        """
+        self.hpss_path = "none"
+        self.cache = "my_cache"
+        use_hpss = self.setupDirs(test_name, follow_symlinks=True)
+        self.create(use_hpss, zstash_path, follow_symlinks=True, cache=self.cache)
+        # Test that the link in the src directory remains a link (i.e., is not a copied file)
+        self.assertTrue(os.path.islink(f"{self.test_dir}/file0_soft.txt"))
+
     def testCreateVerbose(self):
         self.helperCreateVerbose("testCreateVerbose", "none")
 
@@ -251,6 +263,9 @@ class TestCreate(TestZstash):
     def testCreateCacheHPSS(self):
         self.conditional_hpss_skip()
         self.helperCreateCache("testCreateCacheHPSS", HPSS_ARCHIVE)
+
+    def testCreateFollowSymlinks(self):
+        self.helperCreateFollowSymlinks("testCreateFollowSymlinks")
 
 
 if __name__ == "__main__":
