@@ -186,7 +186,7 @@ class TestZstash(unittest.TestCase):
             print_in_box(error_message)
             self.stop(error_message)
 
-    def setupDirs(self, test_name):
+    def setupDirs(self, test_name, follow_symlinks=False):
         """
         Set up directories for testing.
         """
@@ -223,7 +223,9 @@ class TestZstash(unittest.TestCase):
             os.symlink("file0.txt", "{}/file0_soft.txt".format(self.test_dir))
 
         # Bad symbolic (soft) link (points to a file name which points to an inode)
-        if not os.path.lexists("{}/file0_soft_bad.txt".format(self.test_dir)):
+        if (not follow_symlinks) and (
+            not os.path.lexists("{}/file0_soft_bad.txt".format(self.test_dir))
+        ):
             # Create symbolic link pointing to test_dir/file0_that_doesnt_exist.txt
             # named test_dir/file0_soft_bad.txt
             os.symlink(
@@ -250,6 +252,7 @@ class TestZstash(unittest.TestCase):
         use_hpss,
         zstash_path,
         keep=False,
+        follow_symlinks=False,
         cache=None,
         verbose=False,
         no_tars_md5=False,
@@ -268,11 +271,16 @@ class TestZstash(unittest.TestCase):
             cache_option = " --cache={}".format(cache)
         else:
             cache_option = ""
+        if follow_symlinks:
+            follow_symlinks_option = " --follow-symlinks"
+        else:
+            follow_symlinks_option = ""
         v_option = " -v" if verbose else ""
         no_tars_md5_option = " --no_tars_md5" if no_tars_md5 else ""
-        cmd = "{}zstash create{}{}{}{} --hpss={} {}".format(
+        cmd = "{}zstash create{}{}{}{}{} --hpss={} {}".format(
             zstash_path,
             keep_option,
+            follow_symlinks_option,
             cache_option,
             v_option,
             no_tars_md5_option,
