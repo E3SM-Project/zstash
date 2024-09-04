@@ -8,7 +8,13 @@ import socket
 import sys
 
 from fair_research_login.client import NativeClient
-from globus_sdk import TransferAPIError, TransferClient, TransferData
+from globus_sdk import (
+    AccessTokenAuthorizer,
+    NativeAppAuthClient,
+    TransferAPIError,
+    TransferClient,
+    TransferData,
+)
 from globus_sdk.services.transfer.response.iterable import IterableTransferResponse
 from six.moves.urllib.parse import urlparse
 
@@ -128,13 +134,24 @@ def globus_activate(hpss: str):
     if remote_endpoint.upper() in hpss_endpoint_map.keys():
         remote_endpoint = hpss_endpoint_map.get(remote_endpoint.upper())
 
-    native_client = NativeClient(
-        client_id="6c1629cf-446c-49e7-af95-323c6412397f",
-        app_name="Zstash",
-        default_scopes="openid urn:globus:auth:scope:transfer.api.globus.org:all",
-    )
-    native_client.login(no_local_server=True, refresh_tokens=True)
-    transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
+    # Authentication -- Globus Consents
+    # Initialize the NativeAppAuthClient with the client ID
+    CLIENT_ID = "6c1629cf-446c-49e7-af95-323c6412397f"
+    client = NativeAppAuthClient(CLIENT_ID, app_name="Zstash")
+    # Start the OAuth2 flow
+    client.oauth2_start_flow(refresh_tokens=True)
+    # Get the authorization URL and prompt the user to visit it
+    authorize_url = client.oauth2_get_authorize_url()
+    print(f"Please go to this URL and login: {authorize_url}")
+    # Get the authorization code from the user
+    auth_code = input("Please enter the code you get after login here: ").strip()
+    # Exchange the authorization code for tokens
+    token_response = client.oauth2_exchange_code_for_tokens(auth_code)
+    # Extract the access token for the Globus Transfer service
+    globus_transfer_data = token_response.by_resource_server["transfer.api.globus.org"]
+    globus_transfer_token = globus_transfer_data["access_token"]
+    # Initialize the TransferClient with the obtained access token
+    transfer_authorizer = AccessTokenAuthorizer(globus_transfer_token)
     transfer_client = TransferClient(authorizer=transfer_authorizer)
 
     for ep_id in [local_endpoint, remote_endpoint]:
