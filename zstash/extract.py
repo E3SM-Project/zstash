@@ -254,7 +254,7 @@ def extract_database(
     # This is because we may have different versions of the
     # same file across many tars.
     insert_idx: int
-    iter_inx: int
+    iter_idx: int
     insert_idx, iter_idx = 0, 1
     for iter_idx in range(1, len(matches)):
         # If the filenames are unique, just increment insert_idx.
@@ -350,7 +350,7 @@ def multiprocess_extract(
     workers_to_matches: List[List[FilesRow]] = [[] for _ in range(num_workers)]
     for db_row in matches:
         tar = db_row.tar
-        workers_idx: int
+        worker_idx: int
         for worker_idx in range(len(workers_to_tars)):
             if tar in workers_to_tars[worker_idx]:
                 # This worker gets this db_row.
