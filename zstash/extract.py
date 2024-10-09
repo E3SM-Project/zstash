@@ -350,7 +350,7 @@ def multiprocess_extract(
     workers_to_matches: List[List[FilesRow]] = [[] for _ in range(num_workers)]
     for db_row in matches:
         tar = db_row.tar
-        worker_idx: int
+        worker_idx: int  # type: ignore
         for worker_idx in range(len(workers_to_tars)):
             if tar in workers_to_tars[worker_idx]:
                 # This worker gets this db_row.
@@ -445,7 +445,7 @@ def extractFiles(  # noqa: C901
         # All messages to the logger will now be sent to
         # this queue, instead of sys.stdout.
         # error: Argument 1 to "StreamHandler" has incompatible type "PrintQueue"; expected "Optional[IO[str]]"
-        sh = logging.StreamHandler(multiprocess_worker.print_queue)  # type: ignore
+        sh = logging.StreamHandler(multiprocess_worker.print_queue)
         sh.setLevel(logging.DEBUG)
         formatter: logging.Formatter = logging.Formatter("%(levelname)s: %(message)s")
         sh.setFormatter(formatter)
@@ -540,7 +540,7 @@ def extractFiles(  # noqa: C901
                 extracted_file: Optional[tarfile.ExFileObject] = tar.extractfile(tarinfo)  # type: ignore
                 if extracted_file:
                     # error: Name 'tarfile.ExFileObject' is not defined
-                    fin: tarfile.ExFileObject = extracted_file  # type: ignore
+                    fin: tarfile.ExFileObject = extracted_file
                 else:
                     raise TypeError("Invalid extracted_file={}".format(extracted_file))
                 try:
