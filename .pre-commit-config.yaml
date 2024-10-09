@@ -35,7 +35,8 @@ repos:
     rev: v1.11.2
     hooks:
       - id: mypy
-        args: ["--config=setup.cfg"]
+        args: ["--config=setup.cfg", "--install-types", "--non-interactive"]
+        exclude: test*
 
 # https://pre-commit.ci/#configuration
 ci:
