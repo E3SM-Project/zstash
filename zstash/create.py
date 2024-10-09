@@ -24,7 +24,6 @@ from .utils import (
 
 def create():
     cache: str
-    exclude: str
     cache, args = setup_create()
 
     # Check config fields
