@@ -254,7 +254,7 @@ def extract_database(
     # This is because we may have different versions of the
     # same file across many tars.
     insert_idx: int
-    iter_inx: int
+    iter_idx: int
     insert_idx, iter_idx = 0, 1
     for iter_idx in range(1, len(matches)):
         # If the filenames are unique, just increment insert_idx.
@@ -351,10 +351,10 @@ def multiprocess_extract(
     for db_row in matches:
         tar = db_row.tar
         workers_idx: int
-        for worker_idx in range(len(workers_to_tars)):
-            if tar in workers_to_tars[worker_idx]:
+        for workers_idx in range(len(workers_to_tars)):
+            if tar in workers_to_tars[workers_idx]:
                 # This worker gets this db_row.
-                workers_to_matches[worker_idx].append(db_row)
+                workers_to_matches[workers_idx].append(db_row)
 
     tar_ordering: List[str] = sorted([tar for tar in tar_to_size])
     monitor: parallel.PrintMonitor = parallel.PrintMonitor(tar_ordering)
@@ -444,8 +444,7 @@ def extractFiles(  # noqa: C901
     if multiprocess_worker:
         # All messages to the logger will now be sent to
         # this queue, instead of sys.stdout.
-        # error: Argument 1 to "StreamHandler" has incompatible type "PrintQueue"; expected "Optional[IO[str]]"
-        sh = logging.StreamHandler(multiprocess_worker.print_queue)  # type: ignore
+        sh = logging.StreamHandler(multiprocess_worker.print_queue)
         sh.setLevel(logging.DEBUG)
         formatter: logging.Formatter = logging.Formatter("%(levelname)s: %(message)s")
         sh.setFormatter(formatter)
@@ -539,8 +538,7 @@ def extractFiles(  # noqa: C901
                 # error: Name 'tarfile.ExFileObject' is not defined
                 extracted_file: Optional[tarfile.ExFileObject] = tar.extractfile(tarinfo)  # type: ignore
                 if extracted_file:
-                    # error: Name 'tarfile.ExFileObject' is not defined
-                    fin: tarfile.ExFileObject = extracted_file  # type: ignore
+                    fin: tarfile.ExFileObject = extracted_file
                 else:
                     raise TypeError("Invalid extracted_file={}".format(extracted_file))
                 try:

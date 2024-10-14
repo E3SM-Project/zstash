@@ -176,8 +176,7 @@ def add_file(
     tar: tarfile.TarFile, file_name: str, follow_symlinks: bool
 ) -> Tuple[int, int, datetime, Optional[str]]:
 
-    # FIXME: error: "TarFile" has no attribute "offset"
-    offset: int = tar.offset  # type: ignore
+    offset: int = tar.offset
     tarinfo: tarfile.TarInfo = tar.gettarinfo(file_name)
     # Change the size of any hardlinks from 0 to the size of the actual file
     if tarinfo.islnk():
@@ -215,8 +214,7 @@ def add_file(
                     fileobj.write(null_bytes * (tarfile.BLOCKSIZE - remainder))
                     blocks += 1
                 # Increase the offset by the amount already saved to the tar
-                # FIXME: error: "TarFile" has no attribute "offset"
-                tar.offset += blocks * tarfile.BLOCKSIZE  # type: ignore
+                tar.offset += blocks * tarfile.BLOCKSIZE
                 break
         f.close()
         md5 = hash_md5.hexdigest()
