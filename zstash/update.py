@@ -43,7 +43,9 @@ def update():
         hpss = config.hpss
     else:
         raise TypeError("Invalid config.hpss={}".format(config.hpss))
-    hpss_put(hpss, get_db_filename(cache), cache, keep=True)
+    hpss_put(
+        hpss, get_db_filename(cache), cache, keep=True, non_blocking=args.non_blocking
+    )
 
     globus_finalize(non_blocking=args.non_blocking)
 
@@ -242,14 +244,28 @@ def update_database(  # noqa: C901
         try:
             # Add files
             failures = add_files(
-                cur, con, itar, newfiles, cache, keep, args.follow_symlinks
+                cur,
+                con,
+                itar,
+                newfiles,
+                cache,
+                keep,
+                args.follow_symlinks,
+                non_blocking=args.non_blocking,
             )
         except FileNotFoundError:
             raise Exception("Archive update failed due to broken symlink.")
     else:
         # Add files
         failures = add_files(
-            cur, con, itar, newfiles, cache, keep, args.follow_symlinks
+            cur,
+            con,
+            itar,
+            newfiles,
+            cache,
+            keep,
+            args.follow_symlinks,
+            non_blocking=args.non_blocking,
         )
 
     # Close database

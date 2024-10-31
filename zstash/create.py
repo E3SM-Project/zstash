@@ -87,7 +87,9 @@ def create():
     failures: List[str] = create_database(cache, args)
 
     # Transfer to HPSS. Always keep a local copy.
-    hpss_put(hpss, get_db_filename(cache), cache, keep=True)
+    hpss_put(
+        hpss, get_db_filename(cache), cache, keep=True, non_blocking=args.non_blocking
+    )
 
     globus_finalize(non_blocking=args.non_blocking)
 
@@ -254,6 +256,7 @@ create table files (
                 args.keep,
                 args.follow_symlinks,
                 skip_tars_md5=args.no_tars_md5,
+                non_blocking=args.non_blocking,
             )
         except FileNotFoundError:
             raise Exception("Archive creation failed due to broken symlink.")
@@ -268,6 +271,7 @@ create table files (
             args.keep,
             args.follow_symlinks,
             skip_tars_md5=args.no_tars_md5,
+            non_blocking=args.non_blocking,
         )
 
     # Close database

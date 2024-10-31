@@ -158,7 +158,7 @@ def file_exists(name: str) -> bool:
 
 
 def globus_transfer(
-    remote_ep: str, remote_path: str, name: str, transfer_type: str
+    remote_ep: str, remote_path: str, name: str, transfer_type: str, non_blocking: bool
 ):  # noqa: C901
     global transfer_client
     global local_endpoint
@@ -247,7 +247,10 @@ def globus_transfer(
         sys.exit(1)
 
     if transfer_type == "get" and task_id:
-        globus_wait(task_id)
+        # non_blocking => do not wait for the last transfer to finish before creating a new tar
+        # not non_blocking => blocking => wait for the last transfer to finish before creating a new tar
+        if not non_blocking:
+            globus_wait(task_id)
 
 
 def globus_wait(task_id: str):
@@ -319,6 +322,8 @@ def globus_finalize(non_blocking: bool = False):
             logger.error("Exception: {}".format(e))
             sys.exit(1)
 
+    # non_blocking => do not wait for the last transfer to finish before creating a new tar
+    # not non_blocking => blocking => wait for the last transfer to finish before creating a new tar
     if not non_blocking:
         if task_id:
             globus_wait(task_id)
