@@ -14,7 +14,7 @@ import _io
 
 from .hpss import hpss_put
 from .settings import BLOCK_SIZE, TupleFilesRowNoId, TupleTarsRowNoId, config, logger
-from .utils import create_tars_table, tars_table_exists
+from .utils import create_tars_table, tars_table_exists, ts_utc
 
 
 # Minimum output file object
@@ -63,6 +63,7 @@ def add_files(
     keep: bool,
     follow_symlinks: bool,
     skip_tars_md5: bool = False,
+    non_blocking: bool = False,
 ) -> List[str]:
 
     # Now, perform the actual archiving
@@ -87,7 +88,7 @@ def add_files(
             tname = "{0:0{1}x}".format(itar, 6)
             # Create the tar file name by adding ".tar"
             tfname = "{}.tar".format(tname)
-            logger.info("Creating new tar archive {}".format(tfname))
+            logger.info(f"{ts_utc()}: Creating new tar archive {tfname}")
             # Open that tar file in the cache
             do_hash: bool
             if not skip_tars_md5:
@@ -136,12 +137,13 @@ def add_files(
         if i == nfiles - 1 or tarsize + next_file_size > maxsize:
 
             # Close current temporary file
-            logger.debug("Closing tar archive {}".format(tfname))
+            logger.debug(f"{ts_utc()}: Closing tar archive {tfname}")
             tar.close()
 
             tarsize = tarFileObject.tell()
             tar_md5: Optional[str] = tarFileObject.md5()
             tarFileObject.close()
+            logger.info(f"{ts_utc()}: (add_files): Completed archive file {tfname}")
             if not skip_tars_md5:
                 tar_tuple: TupleTarsRowNoId = (tfname, tarsize, tar_md5)
                 logger.info("tar name={}, tar size={}, tar md5={}".format(*tar_tuple))
@@ -156,7 +158,19 @@ def add_files(
                 hpss: str = config.hpss
             else:
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
-            hpss_put(hpss, os.path.join(cache, tfname), cache, keep)
+
+            # NOTE: These lines could be added under an "if debug" condition
+            # logger.info(f"{ts_utc()}: CONTENTS of CACHE upon call to hpss_put:")
+            # process = subprocess.run(["ls", "-l", "zstash"], capture_output=True, text=True)
+            # print(process.stdout)
+
+            logger.info(
+                f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {tfname}"
+            )
+            hpss_put(hpss, os.path.join(cache, tfname), cache, keep, non_blocking)
+            logger.info(
+                f"{ts_utc()}: SURFACE (add_files): Called hpss_put to dispatch archive file {tfname}"
+            )
 
             # Update database with files that have been archived
             # Add a row to the "files" table,

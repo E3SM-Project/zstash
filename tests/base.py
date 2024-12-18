@@ -325,7 +325,7 @@ class TestZstash(unittest.TestCase):
             expected_present = ["Transferring file to HPSS"]
         else:
             expected_present = ["put: HPSS is unavailable"]
-        expected_present += ["INFO: Creating new tar archive"]
+        expected_present += ["Creating new tar archive"]
         # Make sure none of the old files or directories are moved.
         expected_absent = ["ERROR", "file0", "file_empty", "empty_dir"]
         self.check_strings(cmd, output + err, expected_present, expected_absent)
