@@ -8,7 +8,7 @@ from six.moves.urllib.parse import urlparse
 
 from .globus import globus_transfer
 from .settings import get_db_filename, logger
-from .utils import run_command
+from .utils import run_command, ts_utc
 
 
 def hpss_transfer(
@@ -17,6 +17,7 @@ def hpss_transfer(
     transfer_type: str,
     cache: str,
     keep: bool = False,
+    non_blocking: bool = False,
 ):
     if hpss == "none":
         logger.info("{}: HPSS is unavailable".format(transfer_type))
@@ -86,8 +87,11 @@ def hpss_transfer(
             os.chdir(path)
 
         if scheme == "globus":
+            globus_status = "UNKNOWN"
             # Transfer file using the Globus Transfer Service
-            globus_transfer(endpoint, url_path, name, transfer_type)
+            logger.info(f"{ts_utc()}: DIVING: hpss calls globus_transfer(name={name})")
+            globus_status = globus_transfer(endpoint, url_path, name, transfer_type, non_blocking)
+            logger.info(f"{ts_utc()}: SURFACE hpss globus_transfer(name={name}) returns")
         else:
             # Transfer file using `hsi`
             command: str = 'hsi -q "cd {}; {} {}"'.format(hpss, transfer_command, name)
@@ -99,16 +103,19 @@ def hpss_transfer(
             os.chdir(cwd)
 
         if transfer_type == "put":
+            if not keep and scheme == "globus" and globus_status == "SUCCEEDED" and not non_blocking:
+                # We should not keep the local file, so delete it now that it is on HPSS
+                os.remove(file_path)
             if not keep and scheme != "globus":
                 # We should not keep the local file, so delete it now that it is on HPSS
                 os.remove(file_path)
 
 
-def hpss_put(hpss: str, file_path: str, cache: str, keep: bool = True):
+def hpss_put(hpss: str, file_path: str, cache: str, keep: bool = True, non_blocking: bool = False):
     """
     Put a file to the HPSS archive.
     """
-    hpss_transfer(hpss, file_path, "put", cache, keep)
+    hpss_transfer(hpss, file_path, "put", cache, keep, non_blocking)
 
 
 def hpss_get(hpss: str, file_path: str, cache: str):
