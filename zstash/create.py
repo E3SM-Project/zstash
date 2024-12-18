@@ -7,6 +7,7 @@ import os.path
 import sqlite3
 import sys
 from typing import Any, List, Tuple
+from datetime import datetime, timezone
 
 from six.moves.urllib.parse import urlparse
 
@@ -19,8 +20,8 @@ from .utils import (
     get_files_to_archive,
     run_command,
     tars_table_exists,
+    ts_utc,
 )
-
 
 def create():
     cache: str
@@ -37,7 +38,7 @@ def create():
         raise TypeError("Invalid config.hpss={}".format(config.hpss))
 
     # Start doing actual work
-    logger.debug("Running zstash create")
+    logger.debug(f"{ts_utc()}: Running zstash create")
     logger.debug("Local path : {}".format(path))
     logger.debug("HPSS path  : {}".format(hpss))
     logger.debug("Max size  : {}".format(config.maxsize))
@@ -54,11 +55,13 @@ def create():
     if hpss != "none":
         url = urlparse(hpss)
         if url.scheme == "globus":
+            # identify globus endpoints
+            logger.debug(f"{ts_utc()}:Calling globus_activate(hpss)")
             globus_activate(hpss)
         else:
             # config.hpss is not "none", so we need to
             # create target HPSS directory
-            logger.debug("Creating target HPSS directory")
+            logger.debug(f"{ts_utc()}:Creating target HPSS directory {hpss}")
             mkdir_command: str = "hsi -q mkdir -p {}".format(hpss)
             mkdir_error_str: str = "Could not create HPSS directory: {}".format(hpss)
             run_command(mkdir_command, mkdir_error_str)
@@ -71,7 +74,7 @@ def create():
             run_command(ls_command, ls_error_str)
 
     # Create cache directory
-    logger.debug("Creating local cache directory")
+    logger.debug(f"{ts_utc()}: Creating local cache directory")
     os.chdir(path)
     try:
         os.makedirs(cache)
@@ -84,11 +87,14 @@ def create():
     # TODO: Verify that cache is empty
 
     # Create and set up the database
+    logger.debug(f"{ts_utc()}: Calling create_database()")
     failures: List[str] = create_database(cache, args)
 
     # Transfer to HPSS. Always keep a local copy.
+    logger.debug(f"{ts_utc()}: calling hpss_put() for {get_db_filename(cache)}")
     hpss_put(hpss, get_db_filename(cache), cache, keep=True)
 
+    logger.debug(f"{ts_utc()}: calling globus_finalize()")
     globus_finalize(non_blocking=args.non_blocking)
 
     if len(failures) > 0:
@@ -129,7 +135,7 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     optional.add_argument(
         "--maxsize",
         type=float,
-        help="maximum size of tar archives (in GB, default 256)",
+        help="maximum size of tar archives (in KB, default 256)",
         default=256,
     )
     optional.add_argument(
@@ -145,7 +151,7 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     optional.add_argument(
         "--non-blocking",
         action="store_true",
-        help="do not wait for each Globus transfer until it completes.",
+        help="do not wait for each Globus transfer to complete before creating additional archive files.  This option will use more intermediate disk-space, but can increase throughput.",
     )
     optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"
@@ -185,7 +191,7 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
 
 def create_database(cache: str, args: argparse.Namespace) -> List[str]:
     # Create new database
-    logger.debug("Creating index database")
+    logger.debug(f"{ts_utc()}:Creating index database")
     if os.path.exists(get_db_filename(cache)):
         # Remove old database
         os.remove(get_db_filename(cache))
@@ -254,6 +260,7 @@ create table files (
                 args.keep,
                 args.follow_symlinks,
                 skip_tars_md5=args.no_tars_md5,
+                non_blocking=args.non_blocking,
             )
         except FileNotFoundError:
             raise Exception("Archive creation failed due to broken symlink.")
@@ -268,6 +275,7 @@ create table files (
             args.keep,
             args.follow_symlinks,
             skip_tars_md5=args.no_tars_md5,
+            non_blocking=args.non_blocking,
         )
 
     # Close database
