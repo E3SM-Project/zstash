@@ -91,7 +91,11 @@ def hpss_transfer(
             # Transfer file using the Globus Transfer Service
             logger.info(f"{ts_utc()}: DIVING: hpss calls globus_transfer(name={name})")
             globus_status = globus_transfer(endpoint, url_path, name, transfer_type, non_blocking)
-            logger.info(f"{ts_utc()}: SURFACE hpss globus_transfer(name={name}) returns")
+            logger.info(f"{ts_utc()}: SURFACE hpss globus_transfer(name={name}) returns {globus_status}")
+            # NOTE: Here, the status could be "TIMEOUT_RETRIES_EXHAUSTED", meaning a very long transfer
+            # or perhaps transfer is hanging. We should decide whether to ignore it, or cancel it, but
+            # we'd need the task_id to issue a cancellation.  Perhaps we should have globus_transfer
+            # return a tuple (task_id, status).
         else:
             # Transfer file using `hsi`
             command: str = 'hsi -q "cd {}; {} {}"'.format(hpss, transfer_command, name)

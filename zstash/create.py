@@ -61,7 +61,7 @@ def create():
         else:
             # config.hpss is not "none", so we need to
             # create target HPSS directory
-            logger.debug(f"{ts_utc()}:Creating target HPSS directory {hpss}")
+            logger.debug(f"{ts_utc()}: Creating target HPSS directory {hpss}")
             mkdir_command: str = "hsi -q mkdir -p {}".format(hpss)
             mkdir_error_str: str = "Could not create HPSS directory: {}".format(hpss)
             run_command(mkdir_command, mkdir_error_str)
@@ -135,7 +135,7 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     optional.add_argument(
         "--maxsize",
         type=float,
-        help="maximum size of tar archives (in KB, default 256)",
+        help="maximum size of tar archives (in GB, default 256)",
         default=256,
     )
     optional.add_argument(

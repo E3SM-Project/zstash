@@ -218,12 +218,15 @@ def globus_transfer(
     try:
         if task_id:
             task = transfer_client.get_task(task_id)
+            prev_task_status = task["status"]
             # one  of {ACTIVE, SUCCEEDED, FAILED, CANCELED, PENDING, INACTIVE}
-            if task["status"] == "ACTIVE":
-                logger.info(f"{ts_utc()}: Globus task_id {task_id} Still Active")
+            # NOTE: How we behave here depends upon whether we want to support mutliple active transfers.
+            # Presently, we do not, except inadvertantly (if status == PENDING)
+            if prev_task_status == "ACTIVE":
+                logger.info(f"{ts_utc()}: Previous task_id {task_id} Still Active. Returning.")
                 return "ACTIVE"
-            elif task["status"] == "SUCCEEDED":
-                logger.info(f"{ts_utc()}: Globus task_id {task_id} status = SUCCEEDED")
+            elif prev_task_status == "SUCCEEDED":
+                logger.info(f"{ts_utc()}: Previous task_id {task_id} status = SUCCEEDED. Continuing.")
                 src_ep = task["source_endpoint_id"]
                 dst_ep = task["destination_endpoint_id"]
                 label = task["label"]
@@ -234,7 +237,7 @@ def globus_transfer(
                     )
                 )
             else:
-                logger.error(f"{ts_utc()}: Transfer FAILED (task_id = {task_id})")
+                logger.error(f"{ts_utc()}: Previous task_id {task_id} status = {prev_task_status}. Continuing.")
 
         # DEBUG: review accumulated items in TransferData
         logger.info(f"{ts_utc()}: TransferData: accumulated items:")
@@ -247,7 +250,9 @@ def globus_transfer(
         logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
         task = submit_transfer_with_checks(transfer_data)
         task_id = task.get("task_id")
-        logger.info(f"{ts_utc()}: SURFACE Submit Transfer returned task_id = {task_id} for label {transfer_data['label']}")
+        # NOTE: This log message is misleading. If we have accumulated multiple tar files for transfer,
+        # the "lable" given here refers only to the LAST tarfile in the TransferData list.
+        logger.info(f"{ts_utc()}: SURFACE Submit Transfer returned new task_id = {task_id} for label {transfer_data['label']}")
 
         transfer_data = None
     except TransferAPIError as e:
@@ -264,35 +269,10 @@ def globus_transfer(
         logger.error("Exception: {}".format(e))
         sys.exit(1)
 
-    # test for blocking
+    # test for blocking on new task_id
     task_status = "UNKNOWN"
     if not non_blocking:
-        logger.info(f"{ts_utc()}: BLOCKING START: invoking task_wait for task_id = {task_id}")
-        wait_timeout = 5
-        max_retries = 3
-        retry_count = 0
-        while retry_count < max_retries:
-            try:
-                # Wait for the task to complete
-                transfer_client.task_wait(task_id, timeout=wait_timeout, polling_interval=1)
-            except GlobusHTTPError as e:
-                logger.error(f"Exception: {e}")
-            except Exception as e:
-                logger.error(f"Unexpected Exception: {e}")
-            else:
-                curr_task = transfer_client.get_task(task_id)
-                task_status = curr_task['status']
-                if task_status == "SUCCEEDED":
-                    break
-            finally:
-                retry_count += 1
-                logger.info(f"{ts_utc()}: BLOCKING retry_count = {retry_count} of {max_retries} of timeout {wait_timeout} seconds")
-
-        if retry_count == max_retries:
-            logger.info(f"{ts_utc()}: BLOCKING EXHAUSTED {max_retries} of timeout 5 seconds")
-            task_status = "EXHAUSTED_TIMEOUT_RETRIES"
-
-        logger.info(f"{ts_utc()}: BLOCKING ENDS: task_id {task_id} returned from task_wait with status {task_status}")
+        task_status = globus_block_wait(task_id=task_id, wait_timeout=7200, polling_interval=10, max_retries=5)
     else:
         logger.info(f"{ts_utc()}: NO BLOCKING (task_wait) for task_id {task_id}")
 
@@ -303,6 +283,40 @@ def globus_transfer(
         globus_wait(task_id)
 
     return task_status
+
+
+def globus_block_wait(task_id: str, wait_timeout: int, polling_interval: int, max_retries: int):
+    global transfer_client
+
+    # poll every "polling_interval" seconds to speed up small transfers.  Report every 2 hours, stop waiting aftert 5*2 = 10 hours
+    logger.info(f"{ts_utc()}: BLOCKING START: invoking task_wait for task_id = {task_id}")
+    task_status = "UNKNOWN"
+    retry_count = 0
+    while retry_count < max_retries:
+        try:
+            # Wait for the task to complete
+            transfer_client.task_wait(task_id, timeout=wait_timeout, polling_interval=10)
+        except GlobusHTTPError as e:
+            logger.error(f"Exception: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected Exception: {e}")
+        else:
+            curr_task = transfer_client.get_task(task_id)
+            task_status = curr_task['status']
+            if task_status == "SUCCEEDED":
+                break
+        finally:
+            retry_count += 1
+            logger.info(f"{ts_utc()}: BLOCKING retry_count = {retry_count} of {max_retries} of timeout {wait_timeout} seconds")
+
+    if retry_count == max_retries:
+        logger.info(f"{ts_utc()}: BLOCKING EXHAUSTED {max_retries} of timeout {wait_timeout} seconds")
+        task_status = "EXHAUSTED_TIMEOUT_RETRIES"
+
+    logger.info(f"{ts_utc()}: BLOCKING ENDS: task_id {task_id} returned from task_wait with status {task_status}")
+
+    return task_status
+
 
 def globus_wait(task_id: str):
     global transfer_client
