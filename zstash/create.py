@@ -7,7 +7,6 @@ import os.path
 import sqlite3
 import sys
 from typing import Any, List, Tuple
-from datetime import datetime, timezone
 
 from six.moves.urllib.parse import urlparse
 
