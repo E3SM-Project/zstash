@@ -16,7 +16,6 @@ from .hpss import hpss_put
 from .settings import BLOCK_SIZE, TupleFilesRowNoId, TupleTarsRowNoId, config, logger
 from .utils import create_tars_table, tars_table_exists, ts_utc
 
-import subprocess
 
 # Minimum output file object
 class HashIO(object):
@@ -165,9 +164,13 @@ def add_files(
             # process = subprocess.run(["ls", "-l", "zstash"], capture_output=True, text=True)
             # print(process.stdout)
 
-            logger.info(f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {tfname}")
+            logger.info(
+                f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {tfname}"
+            )
             hpss_put(hpss, os.path.join(cache, tfname), cache, keep, non_blocking)
-            logger.info(f"{ts_utc()}: SURFACE (add_files): Called hpss_put to dispatch archive file {tfname}")
+            logger.info(
+                f"{ts_utc()}: SURFACE (add_files): Called hpss_put to dispatch archive file {tfname}"
+            )
 
             # Update database with files that have been archived
             # Add a row to the "files" table,

@@ -90,8 +90,12 @@ def hpss_transfer(
             globus_status = "UNKNOWN"
             # Transfer file using the Globus Transfer Service
             logger.info(f"{ts_utc()}: DIVING: hpss calls globus_transfer(name={name})")
-            globus_status = globus_transfer(endpoint, url_path, name, transfer_type, non_blocking)
-            logger.info(f"{ts_utc()}: SURFACE hpss globus_transfer(name={name}) returns {globus_status}")
+            globus_status = globus_transfer(
+                endpoint, url_path, name, transfer_type, non_blocking
+            )
+            logger.info(
+                f"{ts_utc()}: SURFACE hpss globus_transfer(name={name}) returns {globus_status}"
+            )
             # NOTE: Here, the status could be "EXHAUSTED_TIMEOUT_RETRIES", meaning a very long transfer
             # or perhaps transfer is hanging. We should decide whether to ignore it, or cancel it, but
             # we'd need the task_id to issue a cancellation.  Perhaps we should have globus_transfer
@@ -107,7 +111,12 @@ def hpss_transfer(
             os.chdir(cwd)
 
         if transfer_type == "put":
-            if not keep and scheme == "globus" and globus_status == "SUCCEEDED" and not non_blocking:
+            if (
+                not keep
+                and scheme == "globus"
+                and globus_status == "SUCCEEDED"
+                and not non_blocking
+            ):
                 # We should not keep the local file, so delete it now that it is on HPSS
                 os.remove(file_path)
             if not keep and scheme != "globus":
@@ -115,7 +124,9 @@ def hpss_transfer(
                 os.remove(file_path)
 
 
-def hpss_put(hpss: str, file_path: str, cache: str, keep: bool = True, non_blocking: bool = False):
+def hpss_put(
+    hpss: str, file_path: str, cache: str, keep: bool = True, non_blocking: bool = False
+):
     """
     Put a file to the HPSS archive.
     """
