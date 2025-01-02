@@ -107,11 +107,8 @@ def hpss_transfer(
             os.chdir(cwd)
 
         if transfer_type == "put":
-            if not keep and scheme == "globus" and globus_status == "SUCCEEDED" and not non_blocking:
-                # We should not keep the local file, so delete it now that it is on HPSS
-                os.remove(file_path)
-            if not keep and scheme != "globus":
-                # We should not keep the local file, so delete it now that it is on HPSS
+            if not keep:
+              if (scheme != "globus") or (globus_status == "SUCCEEDED" and not non_blocking):
                 os.remove(file_path)
 
 

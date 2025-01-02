@@ -296,8 +296,6 @@ def globus_block_wait(task_id: str, wait_timeout: int, polling_interval: int, ma
         try:
             # Wait for the task to complete
             transfer_client.task_wait(task_id, timeout=wait_timeout, polling_interval=10)
-        except GlobusHTTPError as e:
-            logger.error(f"Exception: {e}")
         except Exception as e:
             logger.error(f"Unexpected Exception: {e}")
         else:
