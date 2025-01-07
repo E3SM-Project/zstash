@@ -112,7 +112,9 @@ def hpss_transfer(
 
         if transfer_type == "put":
             if not keep:
-                if (scheme != "globus") or (globus_status == "SUCCEEDED" and not non_blocking):
+                if (scheme != "globus") or (
+                    globus_status == "SUCCEEDED" and not non_blocking
+                ):
                     os.remove(file_path)
 
 
