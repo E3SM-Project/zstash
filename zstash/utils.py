@@ -4,15 +4,10 @@ import os
 import shlex
 import sqlite3
 import subprocess
-from datetime import datetime, timezone
 from fnmatch import fnmatch
 from typing import Any, List, Tuple
 
 from .settings import TupleTarsRow, config, logger
-
-
-def ts_utc():
-    return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
 
 
 def filter_files(subset: str, files: List[str], include: bool) -> List[str]:
