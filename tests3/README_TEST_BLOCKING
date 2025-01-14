@@ -17,7 +17,7 @@ the local copy can be deleted before the next tar-file is created.
 I. File System Setup
 ====================
 
-s one may want, or need to re-conduct testing under varied conditions, the
+As one may want, or need to re-conduct testing under varied conditions, the
 test script:
 
     test_zstash_blocking.sh
@@ -39,7 +39,7 @@ working directory:
     [CWD]/dst_data/
 
             - destination for Globus transfer of archives.
-    
+
     [CWD]/tmp_cache/
 
             - [Optional] alternative location for tar-file generation.
@@ -60,7 +60,7 @@ Note:  It never hurts to run the supplied script:
 before a test run.  This will delete any archives in the src_data/zstash
 cache and the receiving dst_data directories, and delete the src_data/zstash
 directory itself if it exists.  This ensures a clean restart for testing.
-The rad data files placed into src_data are not affected.
+The raw data files placed into src_data are not affected.
 
 II. Running the Test Script
 ===========================
@@ -84,17 +84,17 @@ If "NON_BLOCKING" is selected, the zstash flag "--non-blocking" is supplied
 to the zstash command line, and tar files continue to be created in parallel
 to running Globus transfers.
 
-It is suggested that you reun the test script with
+It is suggested that you run the test script with
 
-    test_zstash_blocking.sh (BLOCKING|NON_BLOCKING) > your_logfile 2>&1 
+    test_zstash_blocking.sh (BLOCKING|NON_BLOCKING) > your_logfile 2>&1
 
 so that your command prompt returns and you can monitor progress with
 
     snapshot.sh
 
 which will provide a view of both the tarfile cache and the destination
-directory for delivred tar files. It is also suugested that you name your
-logfile to reflect the date, and whether BLOCKING or not.
+directory for delivred tar files. It is also suggested that you name your
+logfile to reflect the date, and whether BLOCKING or not was specified.
 
 
 FINAL NOTE:  In the zstash code, the tar file "MINSIZE" parameter is taken
