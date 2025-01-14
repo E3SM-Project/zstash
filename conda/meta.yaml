@@ -1,5 +1,5 @@
 {% set name = "zstash" %}
-{% set version = "1.4.3" %}
+{% set version = "1.4.4rc1" %}
 
 package:
   name: {{ name|lower }}
