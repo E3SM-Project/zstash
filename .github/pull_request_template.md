@@ -4,9 +4,20 @@
 Select one: This pull request is...
 - [ ] a bug fix: increment the patch version
 - [ ] a small improvement: increment the minor version
+- [ ] a new feature: increment the minor version
 - [ ] an incompatible (non-backwards compatible) API change: increment the major version
 
-## 1. Does this do what we want it to do?
+Please fill out either the "Small Change" or "Big Change" section, and delete the other.
+
+## Small Change
+
+- [ ] To merge, I will use "Squash and merge". That is, this change should be a single commit.
+
+## Big Change
+
+- [ ] To merge, I will use "Create a merge commit". That is, this change is large enough to require multiple units of work (i.e., it should be multiple commits).
+
+### 1. Does this do what we want it to do?
 
 Objectives:
 - Objective 1
@@ -22,7 +33,7 @@ Required:
 If applicable:
 - [ ] Testing: this pull request adds at least one new possible command line option. I have tested using this option with and without any other option that may interact with it.
 
-## 2. Are the implementation details accurate & efficient?
+### 2. Are the implementation details accurate & efficient?
 
 Required:
 - [ ] Logic: I have visually inspected the entire pull request myself.
@@ -31,12 +42,12 @@ Required:
 If applicable:
 - [ ] Dependencies: This pull request introduces a new dependency. I have discussed this requirement with at least one other team member. The dependency is noted in `zstash/conda`, not just an `import` statement.
 
-## 3. Is this well documented?
+### 3. Is this well documented?
 
 Required:
 - [ ] Documentation: by looking at the docs, a new user could easily understand the functionality introduced by this pull request.
 
-## 4. Is this code clean?
+### 4. Is this code clean?
 
 Required:
 - [ ] Readability: The code is as simple as possible and well-commented, such that a new team member could understand what's happening.
