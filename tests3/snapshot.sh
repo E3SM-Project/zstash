@@ -10,5 +10,3 @@ ls -l src_data/zstash
 echo ""
 echo "tmp_cache:"
 ls -l tmp_cache
-
-

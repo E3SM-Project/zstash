@@ -39,7 +39,7 @@ working directory:
     [CWD]/dst_data/
 
             - destination for Globus transfer of archives.
-    
+
     [CWD]/tmp_cache/
 
             - [Optional] alternative location for tar-file generation.
@@ -86,7 +86,7 @@ to running Globus transfers.
 
 It is suggested that you run the test script with
 
-    test_zstash_blocking.sh (BLOCKING|NON_BLOCKING) > your_logfile 2>&1 
+    test_zstash_blocking.sh (BLOCKING|NON_BLOCKING) > your_logfile 2>&1
 
 so that your command prompt returns and you can monitor progress with
 
