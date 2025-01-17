@@ -1,4 +1,12 @@
-## Issue resolution
+## Summary
+
+Objectives:
+- Objective 1
+- Objective 2
+- ...
+- Objective n
+
+Issue resolution:
 - Closes #<ISSUE_NUMBER_HERE>
 
 Select one: This pull request is...
@@ -7,23 +15,19 @@ Select one: This pull request is...
 - [ ] a new feature: increment the minor version
 - [ ] an incompatible (non-backwards compatible) API change: increment the major version
 
-Please fill out either the "Small Change" or "Big Change" section, and delete the other.
+Please fill out either the "Small Change" or "Big Change" section (the latter includes the numbered subsections), and delete the other.
 
 ## Small Change
 
 - [ ] To merge, I will use "Squash and merge". That is, this change should be a single commit.
+- [ ] Logic: I have visually inspected the entire pull request myself.
+- [ ] Pre-commit checks: All the pre-commits checks have passed.
 
 ## Big Change
 
 - [ ] To merge, I will use "Create a merge commit". That is, this change is large enough to require multiple units of work (i.e., it should be multiple commits).
 
 ### 1. Does this do what we want it to do?
-
-Objectives:
-- Objective 1
-- Objective 2
-- ...
-- Objective n
 
 Required:
 - [ ] Product Management: I have confirmed with the stakeholders that the objectives above are correct and complete.
