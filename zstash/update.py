@@ -38,7 +38,7 @@ def update():
     else:
         failures = result
 
-    # Transfer to HPSS. Always keep a local copy.
+    # Transfer to HPSS. Always keep a local copy of the database.
     if config.hpss is not None:
         hpss = config.hpss
     else:
@@ -84,6 +84,13 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
         action="store_true",
     )
     optional.add_argument(
+        "--maxsize",
+        type=float,
+        help="maximum size of tar archives (in GB, default 256)",
+        default=256,
+    )
+
+    optional.add_argument(
         "--keep",
         help='if --hpss is not "none", keep the tar files in the local archive (cache) after uploading to the HPSS archive. Default is to delete the tar files. If --hpss=none, this flag has no effect.',
         action="store_true",
@@ -107,8 +114,17 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
         help="Hard copy symlinks. This is useful for preventing broken links. Note that a broken link will result in a failed update.",
     )
     args: argparse.Namespace = parser.parse_args(sys.argv[2:])
-    if args.hpss and args.hpss.lower() == "none":
+
+    if not args.hpss or args.hpss.lower() == "none":
         args.hpss = "none"
+        args.keep - True
+
+    # Copy configuration
+    # config.path = os.path.abspath(args.path)
+    config.hpss = args.hpss
+    # config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)
+    config.maxsize = int(100 * 1024 * args.maxsize)
+
     cache: str
     if args.cache:
         cache = args.cache
@@ -242,14 +258,14 @@ def update_database(  # noqa: C901
         try:
             # Add files
             failures = add_files(
-                cur, con, itar, newfiles, cache, keep, args.follow_symlinks
+                cur, con, itar, newfiles, cache, keep, args.follow_symlinks, non_blocking=args.non_blocking
             )
         except FileNotFoundError:
             raise Exception("Archive update failed due to broken symlink.")
     else:
         # Add files
         failures = add_files(
-            cur, con, itar, newfiles, cache, keep, args.follow_symlinks
+            cur, con, itar, newfiles, cache, keep, args.follow_symlinks, non_blocking=args.non_blocking
         )
 
     # Close database

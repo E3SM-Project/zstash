@@ -10,6 +10,8 @@ from .globus import globus_transfer
 from .settings import get_db_filename, logger
 from .utils import run_command, ts_utc
 
+prev_transfers = list()
+curr_transfers = list()
 
 def hpss_transfer(
     hpss: str,
@@ -19,6 +21,9 @@ def hpss_transfer(
     keep: bool = False,
     non_blocking: bool = False,
 ):
+    global prev_transfers
+    global curr_transfers
+
     if hpss == "none":
         logger.info("{}: HPSS is unavailable".format(transfer_type))
         if transfer_type == "put" and file_path != get_db_filename(cache):
@@ -71,6 +76,7 @@ def hpss_transfer(
         endpoint = url.netloc
         url_path = url.path
 
+        curr_transfers.append(file_path)
         path, name = os.path.split(file_path)
 
         # Need to be in local directory for `hsi` to work
@@ -113,10 +119,15 @@ def hpss_transfer(
         if transfer_type == "put":
             if not keep:
                 if (scheme != "globus") or (
-                    globus_status == "SUCCEEDED" and not non_blocking
+                    globus_status == "SUCCEEDED"
                 ):
-                    os.remove(file_path)
-
+                    # Note: This is intended to fulfill the default removal of successfully-transfered
+                    # tar files when keep=False, irrespective of non-blocking status
+                    logger.info(f"{ts_utc()}: DEBUG: deleting transfered files {prev_transfers}")
+                    for src_path in prev_transfers:
+                        os.remove(src_path)
+                    prev_transfers = curr_transfers
+                    curr_transfers = list()
 
 def hpss_put(
     hpss: str, file_path: str, cache: str, keep: bool = True, non_blocking: bool = False

@@ -92,7 +92,7 @@ def create():
 
     # Transfer to HPSS. Always keep a local copy.
     logger.debug(f"{ts_utc()}: calling hpss_put() for {get_db_filename(cache)}")
-    hpss_put(hpss, get_db_filename(cache), cache, keep=True)
+    hpss_put(hpss, get_db_filename(cache), cache, keep=args.keep)
 
     logger.debug(f"{ts_utc()}: calling globus_finalize()")
     globus_finalize(non_blocking=args.non_blocking)
@@ -169,9 +169,8 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     # Now that we're inside a subcommand, ignore the first two argvs
     # (zstash create)
     args: argparse.Namespace = parser.parse_args(sys.argv[2:])
-    if args.hpss and args.hpss.lower() == "none":
+    if not args.hpss or args.hpss.lower() == "none":
         args.hpss = "none"
-    if args.non_blocking:
         args.keep = True
     if args.verbose:
         logger.setLevel(logging.DEBUG)
@@ -179,7 +178,8 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     # Copy configuration
     config.path = os.path.abspath(args.path)
     config.hpss = args.hpss
-    config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)
+    # config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)
+    config.maxsize = int(100 * 1024 * args.maxsize)
     cache: str
     if args.cache:
         cache = args.cache

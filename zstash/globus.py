@@ -157,6 +157,7 @@ def file_exists(name: str) -> bool:
             return True
     return False
 
+gv_push = 0
 
 # C901 'globus_transfer' is too complex (20)
 def globus_transfer(  # noqa: C901
@@ -168,8 +169,10 @@ def globus_transfer(  # noqa: C901
     global transfer_data
     global task_id
     global archive_directory_listing
+    global gv_push
 
     logger.info(f"{ts_utc()}: Entered globus_transfer() for name = {name}")
+    logger.info(f"{ts_utc()}: DEBUG: non_blocking = {non_blocking}")
     if not transfer_client:
         globus_activate("globus://" + remote_ep)
     if not transfer_client:
@@ -215,7 +218,7 @@ def globus_transfer(  # noqa: C901
             fail_on_quota_errors=True,
         )
     transfer_data.add_item(src_path, dst_path)
-    transfer_data["label"] = subdir_label + " " + filename
+    transfer_data["label"] = label
     try:
         if task_id:
             task = transfer_client.get_task(task_id)
@@ -225,12 +228,12 @@ def globus_transfer(  # noqa: C901
             # Presently, we do not, except inadvertantly (if status == PENDING)
             if prev_task_status == "ACTIVE":
                 logger.info(
-                    f"{ts_utc()}: Previous task_id {task_id} Still Active. Returning."
+                    f"{ts_utc()}: Previous task_id {task_id} Still Active. Returning ACTIVE."
                 )
                 return "ACTIVE"
             elif prev_task_status == "SUCCEEDED":
                 logger.info(
-                    f"{ts_utc()}: Previous task_id {task_id} status = SUCCEEDED. Continuing."
+                    f"{ts_utc()}: Previous task_id {task_id} status = SUCCEEDED."
                 )
                 src_ep = task["source_endpoint_id"]
                 dst_ep = task["destination_endpoint_id"]
@@ -243,7 +246,7 @@ def globus_transfer(  # noqa: C901
                 )
             else:
                 logger.error(
-                    f"{ts_utc()}: Previous task_id {task_id} status = {prev_task_status}. Continuing."
+                    f"{ts_utc()}: Previous task_id {task_id} status = {prev_task_status}."
                 )
 
         # DEBUG: review accumulated items in TransferData
@@ -251,7 +254,8 @@ def globus_transfer(  # noqa: C901
         attribs = transfer_data.__dict__
         for item in attribs["data"]["DATA"]:
             if item["DATA_TYPE"] == "transfer_item":
-                print(f"    source item: {item['source_path']}")
+                gv_push += 1
+                print(f"   (routine)  PUSHING (#{gv_push}) STORED source item: {item['source_path']}", flush=True)
 
         # SUBMIT new transfer here
         logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
@@ -263,6 +267,7 @@ def globus_transfer(  # noqa: C901
             f"{ts_utc()}: SURFACE Submit Transfer returned new task_id = {task_id} for label {transfer_data['label']}"
         )
 
+        # Nullify the submitted transfer data structure so that a new one will be created on next call.
         transfer_data = None
     except TransferAPIError as e:
         if e.code == "NoCredException":
@@ -387,10 +392,21 @@ def globus_finalize(non_blocking: bool = False):
     global transfer_client
     global transfer_data
     global task_id
+    global gv_push
 
     last_task_id = None
 
     if transfer_data:
+        # DEBUG: review accumulated items in TransferData
+        logger.info(f"{ts_utc()}: FINAL TransferData: accumulated items:")
+        attribs = transfer_data.__dict__
+        for item in attribs["data"]["DATA"]:
+            if item["DATA_TYPE"] == "transfer_item":
+                gv_push += 1
+                print(f"    (finalize) PUSHING ({gv_push}) source item: {item['source_path']}", flush=True)
+
+        # SUBMIT new transfer here
+        logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
         try:
             last_task = submit_transfer_with_checks(transfer_data)
             last_task_id = last_task.get("task_id")
