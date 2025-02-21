@@ -157,7 +157,7 @@ def file_exists(name: str) -> bool:
             return True
     return False
 
-gv_push = 0
+gv_tarfiles_pushed = 0
 
 # C901 'globus_transfer' is too complex (20)
 def globus_transfer(  # noqa: C901
@@ -169,7 +169,7 @@ def globus_transfer(  # noqa: C901
     global transfer_data
     global task_id
     global archive_directory_listing
-    global gv_push
+    global gv_tarfiles_pushed
 
     logger.info(f"{ts_utc()}: Entered globus_transfer() for name = {name}")
     logger.info(f"{ts_utc()}: DEBUG: non_blocking = {non_blocking}")
@@ -254,8 +254,8 @@ def globus_transfer(  # noqa: C901
         attribs = transfer_data.__dict__
         for item in attribs["data"]["DATA"]:
             if item["DATA_TYPE"] == "transfer_item":
-                gv_push += 1
-                print(f"   (routine)  PUSHING (#{gv_push}) STORED source item: {item['source_path']}", flush=True)
+                gv_tarfiles_pushed += 1
+                print(f"   (routine)  PUSHING (#{gv_tarfiles_pushed}) STORED source item: {item['source_path']}", flush=True)
 
         # SUBMIT new transfer here
         logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
@@ -392,7 +392,7 @@ def globus_finalize(non_blocking: bool = False):
     global transfer_client
     global transfer_data
     global task_id
-    global gv_push
+    global gv_tarfiles_pushed
 
     last_task_id = None
 
@@ -402,8 +402,8 @@ def globus_finalize(non_blocking: bool = False):
         attribs = transfer_data.__dict__
         for item in attribs["data"]["DATA"]:
             if item["DATA_TYPE"] == "transfer_item":
-                gv_push += 1
-                print(f"    (finalize) PUSHING ({gv_push}) source item: {item['source_path']}", flush=True)
+                gv_tarfiles_pushed += 1
+                print(f"    (finalize) PUSHING ({gv_tarfiles_pushed}) source item: {item['source_path']}", flush=True)
 
         # SUBMIT new transfer here
         logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")

@@ -117,7 +117,7 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
 
     if not args.hpss or args.hpss.lower() == "none":
         args.hpss = "none"
-        args.keep - True
+        args.keep = True
 
     # Copy configuration
     # config.path = os.path.abspath(args.path)
