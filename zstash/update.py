@@ -122,8 +122,8 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
     # Copy configuration
     # config.path = os.path.abspath(args.path)
     config.hpss = args.hpss
-    # config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)
-    config.maxsize = int(100 * 1024 * args.maxsize)
+    config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)
+    # config.maxsize = int(100 * 1024 * args.maxsize) # for test purposes
 
     cache: str
     if args.cache:
