@@ -115,7 +115,7 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
     )
     args: argparse.Namespace = parser.parse_args(sys.argv[2:])
 
-    if not args.hpss or args.hpss.lower() == "none":
+    if (not args.hpss) or (args.hpss.lower() == "none"):
         args.hpss = "none"
         args.keep = True
 
