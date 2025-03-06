@@ -287,7 +287,7 @@ def globus_transfer(  # noqa: C901
     task_status = "UNKNOWN"
     if not non_blocking:
         task_status = globus_block_wait(
-            task_id=task_id, wait_timeout=7200, polling_interval=10, max_retries=5
+            task_id=task_id, wait_timeout=7200, polling_interval=900, max_retries=5
         )
     else:
         logger.info(f"{ts_utc()}: NO BLOCKING (task_wait) for task_id {task_id}")
@@ -316,7 +316,7 @@ def globus_block_wait(
         try:
             # Wait for the task to complete
             transfer_client.task_wait(
-                task_id, timeout=wait_timeout, polling_interval=10
+                task_id, timeout=wait_timeout, polling_interval=900
             )
         except Exception as e:
             logger.error(f"Unexpected Exception: {e}")
@@ -355,7 +355,7 @@ def globus_wait(task_id: str):
         with 20 second timeout limit. If the task is ACTIVE after time runs
         out 'task_wait' returns False, and True otherwise.
         """
-        while not transfer_client.task_wait(task_id, timeout=20, polling_interval=20):
+        while not transfer_client.task_wait(task_id, timeout=300, polling_interval=20):
             pass
         """
         The Globus transfer job (task) has been finished (SUCCEEDED or FAILED).
