@@ -1,10 +1,8 @@
 """
-Run the test suite with `python -m unittest tests2/test_*.py`
+Run the test suite with `python -m unittest tests_integration/test_*.py`
 
-tests2/ is a successor testing directory to tests/
-All new tests should be written in tests2/
 tests/ groups testing by zstash command (e.g., `create`, `extract`)
-tests2/ groups testing by more logical workflows that test multiple zstash commands.
+tests_integration/ groups testing by more logical workflows that test multiple zstash commands.
 
 The goal of tests2/ is to be able to follow the commands as if you were just reading a bash script.
 """
@@ -16,6 +14,8 @@ import subprocess
 import unittest
 from typing import List, Tuple
 
+# Still using unittest instead of pytest, because we need the setup and teardown methods applying to all tests across all test files.
+
 # https://bugs.python.org/issue43743
 # error: Module has no attribute "_USE_CP_SENDFILE"
 shutil._USE_CP_SENDFILE = False  # type: ignore
@@ -24,6 +24,10 @@ shutil._USE_CP_SENDFILE = False  # type: ignore
 # This should be the zstash repo itself. It should thus end in `zstash`.
 # This is used to ensure we are changing into the correct subdirectories and parent directories.
 TOP_LEVEL = os.getcwd()
+
+# TODO: add an equivalent SKIP_GLOBUS
+# Skip all HPSS tests. Decreases test runtime.
+SKIP_HPSS = False
 
 
 def create_directories(dir_names: List[str]):
@@ -81,6 +85,7 @@ def print_in_box(string):
     print("*" * 40)
 
 
+###############################################################################
 class TestZstash(unittest.TestCase):
     """
     Base test class.
@@ -91,10 +96,19 @@ class TestZstash(unittest.TestCase):
         Set up a test. This is run before every test method.
         """
         os.chdir(TOP_LEVEL)
-        # The directory we'll be working in.
-        self.work_dir = "zstash_work_dir"
-        # The HPSS path
-        self.hpss_path = None
+        # Directories
+        work_dir = "zstash_work_dir"
+
+        self.work_dir = f"{TOP_LEVEL}/{work_dir}/"
+        self.cache_dir = f"{TOP_LEVEL}/{work_dir}/zstash_cache_dir/"
+        self.dir_to_archive = f"{TOP_LEVEL}/{work_dir}/zstash_src/"
+
+        self.relative_work_dir = f"{work_dir}/"
+        self.relative_cache_dir = "zstash_cache_dir/"
+        self.relative_dir_to_archive = "zstash_src/"
+
+        self.hpss_dir = "zstash_hpss_dir"
+
         # The mtime to compare back to, to make sure we're not modifying the source directory.
         self.mtime_start = None
 
@@ -106,20 +120,25 @@ class TestZstash(unittest.TestCase):
         """
         os.chdir(TOP_LEVEL)
         print("Removing test files, both locally and at the HPSS repo")
-        for d in [self.work_dir]:
+        for d in [self.relative_work_dir]:
             if os.path.exists(d):
                 shutil.rmtree(d)
-        if self.hpss_path and self.hpss_path.lower() != "none":
-            cmd = "hsi rm -R {}".format(self.hpss_path)
+        if self.hpss_dir and self.hpss_dir.lower() != "none":
+            cmd = "hsi rm -R {}".format(self.hpss_dir)
             run_cmd(cmd)
+
+    def conditional_hpss_skip(self):
+        skip_str = "Skipping HPSS tests."
+        if SKIP_HPSS:
+            self.skipTest("SKIP_HPSS is True. {}".format(skip_str))
+        elif os.system("which hsi") != 0:
+            self.skipTest("This system does not have hsi. {}".format(skip_str))
 
     def assert_source_unchanged(self):
         """
         Assert that the source directory has not been changed.
         """
-        mtime_current = os.stat(f"{TOP_LEVEL}/{self.work_dir}/zstash_src")[
-            stat.ST_MTIME
-        ]
+        mtime_current = os.stat(f"{self.work_dir}/zstash_src")[stat.ST_MTIME]
         if self.mtime_start != mtime_current:
             self.stop(
                 f"Source directory was modified! {self.mtime_start} != {mtime_current}"
@@ -166,32 +185,32 @@ class TestZstash(unittest.TestCase):
             print_in_box(error_message)
             self.stop(error_message)
 
-    def setup_dirs(self, include_broken_symlink=True):
+    def setup_dirs(self, include_broken_symlink=False):
         """
         Set up directories for testing.
         """
         create_directories(
             [
-                self.work_dir,
-                f"{self.work_dir}/zstash_src/",
-                f"{self.work_dir}/zstash_src/empty_dir",
-                f"{self.work_dir}/zstash_src/dir1",
-                f"{self.work_dir}/zstash_src/dir2",
-                f"{self.work_dir}/zstash_not_src",
-                f"{self.work_dir}/zstash_extracted",
+                self.relative_work_dir,
+                f"{self.relative_work_dir}/zstash_src/",
+                f"{self.relative_work_dir}/zstash_src/empty_dir",
+                f"{self.relative_work_dir}/zstash_src/dir1",
+                f"{self.relative_work_dir}/zstash_src/dir2",
+                f"{self.relative_work_dir}/zstash_not_src",
+                f"{self.relative_work_dir}/zstash_extracted",
             ]
         )
         write_files(
             [
-                (f"{self.work_dir}/zstash_src/file0.txt", "file0 stuff"),
-                (f"{self.work_dir}/zstash_src/file_empty.txt", ""),
-                (f"{self.work_dir}/zstash_src/dir1/file1.txt", "file1 stuff"),
+                (f"{self.relative_work_dir}/zstash_src/file0.txt", "file0 stuff"),
+                (f"{self.relative_work_dir}/zstash_src/file_empty.txt", ""),
+                (f"{self.relative_work_dir}/zstash_src/dir1/file1.txt", "file1 stuff"),
                 (
-                    f"{self.work_dir}/zstash_not_src/file_not_included.txt",
+                    f"{self.relative_work_dir}/zstash_not_src/file_not_included.txt",
                     "file_not_included stuff",
                 ),
                 (
-                    f"{self.work_dir}/zstash_not_src/this_will_be_deleted.txt",
+                    f"{self.relative_work_dir}/zstash_not_src/this_will_be_deleted.txt",
                     "deleted stuff",
                 ),
             ]
@@ -205,17 +224,17 @@ class TestZstash(unittest.TestCase):
                 # But os.symlink('dir/original_file`, 'dir/soft_link') will soft link dir/soft_link to dir/dir/original_file!
                 # That is, the link's directory will always be used as the base path for the original file.
                 # 1) Link to a file in the same subdirectory
-                ("file0.txt", f"{self.work_dir}/zstash_src/file0_soft.txt"),
+                ("file0.txt", f"{self.relative_work_dir}/zstash_src/file0_soft.txt"),
                 # There is a way around this, though: use an absolute path.
                 # 2) Link to a file in a different subdirectory
                 (
-                    f"{TOP_LEVEL}/{self.work_dir}/zstash_src/dir1/file1.txt",
-                    f"{self.work_dir}/zstash_src/dir2/file1_soft.txt",
+                    f"{self.work_dir}/zstash_src/dir1/file1.txt",
+                    f"{self.relative_work_dir}/zstash_src/dir2/file1_soft.txt",
                 ),
                 # 3) Link to a file outside the directory to be archived
                 (
-                    f"{TOP_LEVEL}/{self.work_dir}/zstash_not_src/file_not_included.txt",
-                    f"{self.work_dir}/zstash_src/file_not_included_soft.txt",
+                    f"{self.work_dir}/zstash_not_src/file_not_included.txt",
+                    f"{self.relative_work_dir}/zstash_src/file_not_included_soft.txt",
                 ),
             ]
         )
@@ -224,34 +243,32 @@ class TestZstash(unittest.TestCase):
             [
                 # Note that here, we do need to include the relative path for both.
                 (
-                    f"{self.work_dir}/zstash_src/file0.txt",
-                    f"{self.work_dir}/zstash_src/file0_hard.txt",
+                    f"{self.relative_work_dir}/zstash_src/file0.txt",
+                    f"{self.relative_work_dir}/zstash_src/file0_hard.txt",
                 ),
                 (
-                    f"{TOP_LEVEL}/{self.work_dir}/zstash_src/dir1/file1.txt",
-                    f"{self.work_dir}/zstash_src/dir2/file1_hard.txt",
+                    f"{self.work_dir}/zstash_src/dir1/file1.txt",
+                    f"{self.relative_work_dir}/zstash_src/dir2/file1_hard.txt",
                 ),
                 (
-                    f"{TOP_LEVEL}/{self.work_dir}/zstash_not_src/file_not_included.txt",
-                    f"{self.work_dir}/zstash_src/file_not_included_hard.txt",
+                    f"{self.work_dir}/zstash_not_src/file_not_included.txt",
+                    f"{self.relative_work_dir}/zstash_src/file_not_included_hard.txt",
                 ),
                 # Also include a broken hard link
                 (
-                    f"{self.work_dir}/zstash_not_src/this_will_be_deleted.txt",
-                    f"{self.work_dir}/zstash_src/original_was_deleted_hard.txt",
+                    f"{self.relative_work_dir}/zstash_not_src/this_will_be_deleted.txt",
+                    f"{self.relative_work_dir}/zstash_src/original_was_deleted_hard.txt",
                 ),
             ],
             do_symlink=False,
         )
         if include_broken_symlink:
             os.symlink(
-                f"{self.work_dir}/zstash_not_src/this_will_be_deleted.txt",
-                f"{self.work_dir}/zstash_src/original_was_deleted_soft.txt",
+                f"{self.relative_work_dir}/zstash_not_src/this_will_be_deleted.txt",
+                f"{self.relative_work_dir}/zstash_src/original_was_deleted_soft.txt",
             )
-        os.remove(f"{self.work_dir}/zstash_not_src/this_will_be_deleted.txt")
-        self.mtime_start = os.stat(f"{TOP_LEVEL}/{self.work_dir}/zstash_src")[
-            stat.ST_MTIME
-        ]
+        os.remove(f"{self.relative_work_dir}/zstash_not_src/this_will_be_deleted.txt")
+        self.mtime_start = os.stat(f"{self.work_dir}/zstash_src")[stat.ST_MTIME]
 
 
 if __name__ == "__main__":
