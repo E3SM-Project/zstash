@@ -169,7 +169,7 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     # Now that we're inside a subcommand, ignore the first two argvs
     # (zstash create)
     args: argparse.Namespace = parser.parse_args(sys.argv[2:])
-    if not args.hpss or args.hpss.lower() == "none":
+    if (not args.hpss) or (args.hpss.lower() == "none"):
         args.hpss = "none"
         args.keep = True
     if args.verbose:
@@ -179,7 +179,6 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     config.path = os.path.abspath(args.path)
     config.hpss = args.hpss
     config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)
-    # config.maxsize = int(100 * 1024 * args.maxsize) # for test purposes
     cache: str
     if args.cache:
         cache = args.cache

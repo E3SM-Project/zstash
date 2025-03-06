@@ -123,7 +123,6 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
     # config.path = os.path.abspath(args.path)
     config.hpss = args.hpss
     config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)
-    # config.maxsize = int(100 * 1024 * args.maxsize) # for test purposes
 
     cache: str
     if args.cache:
@@ -258,14 +257,28 @@ def update_database(  # noqa: C901
         try:
             # Add files
             failures = add_files(
-                cur, con, itar, newfiles, cache, keep, args.follow_symlinks, non_blocking=args.non_blocking
+                cur,
+                con,
+                itar,
+                newfiles,
+                cache,
+                keep,
+                args.follow_symlinks,
+                non_blocking=args.non_blocking,
             )
         except FileNotFoundError:
             raise Exception("Archive update failed due to broken symlink.")
     else:
         # Add files
         failures = add_files(
-            cur, con, itar, newfiles, cache, keep, args.follow_symlinks, non_blocking=args.non_blocking
+            cur,
+            con,
+            itar,
+            newfiles,
+            cache,
+            keep,
+            args.follow_symlinks,
+            non_blocking=args.non_blocking,
         )
 
     # Close database

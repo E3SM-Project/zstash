@@ -10,8 +10,9 @@ from .globus import globus_transfer
 from .settings import get_db_filename, logger
 from .utils import run_command, ts_utc
 
-prev_transfers = list()
-curr_transfers = list()
+prev_transfers: List[str] = list()
+curr_transfers: List[str] = list()
+
 
 def hpss_transfer(
     hpss: str,
@@ -118,16 +119,17 @@ def hpss_transfer(
 
         if transfer_type == "put":
             if not keep:
-                if (scheme != "globus") or (
-                    globus_status == "SUCCEEDED"
-                ):
+                if (scheme != "globus") or (globus_status == "SUCCEEDED"):
                     # Note: This is intended to fulfill the default removal of successfully-transfered
                     # tar files when keep=False, irrespective of non-blocking status
-                    logger.info(f"{ts_utc()}: DEBUG: deleting transfered files {prev_transfers}")
+                    logger.debug(
+                        f"{ts_utc()}: deleting transfered files {prev_transfers}"
+                    )
                     for src_path in prev_transfers:
                         os.remove(src_path)
                     prev_transfers = curr_transfers
                     curr_transfers = list()
+
 
 def hpss_put(
     hpss: str, file_path: str, cache: str, keep: bool = True, non_blocking: bool = False
