@@ -25,6 +25,13 @@ def hpss_transfer(
     global prev_transfers
     global curr_transfers
 
+    logger.info(
+        f"{ts_utc()}: in hpss_transfer, prev_transfers is starting as {prev_transfers}"
+    )
+    logger.info(
+        f"{ts_utc()}: in hpss_transfer, curr_transfers is starting as {curr_transfers}"
+    )
+
     if hpss == "none":
         logger.info("{}: HPSS is unavailable".format(transfer_type))
         if transfer_type == "put" and file_path != get_db_filename(cache):
@@ -78,6 +85,9 @@ def hpss_transfer(
         url_path = url.path
 
         curr_transfers.append(file_path)
+        logger.info(
+            f"{ts_utc()}: curr_transfers has been appended to, is now {curr_transfers}"
+        )
         path, name = os.path.split(file_path)
 
         # Need to be in local directory for `hsi` to work
@@ -122,13 +132,16 @@ def hpss_transfer(
                 if (scheme != "globus") or (globus_status == "SUCCEEDED"):
                     # Note: This is intended to fulfill the default removal of successfully-transfered
                     # tar files when keep=False, irrespective of non-blocking status
-                    logger.debug(
+                    logger.info(
                         f"{ts_utc()}: deleting transfered files {prev_transfers}"
                     )
                     for src_path in prev_transfers:
                         os.remove(src_path)
                     prev_transfers = curr_transfers
                     curr_transfers = list()
+                    logger.info(
+                        f"{ts_utc()}: prev_transfers has been set to {prev_transfers}"
+                    )
 
 
 def hpss_put(

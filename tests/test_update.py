@@ -141,33 +141,64 @@ class TestUpdate(TestZstash):
             )
             self.stop(error_message)
 
-    def testUpdate(self):
-        self.helperUpdate("testUpdate", "none")
+    def helperUpdateNonEmpty(self, test_name, hpss_path, zstash_path=ZSTASH_PATH):
+        """
+        Test `zstash update`.
+        """
+        self.hpss_path = hpss_path
+        use_hpss = self.setupDirs(test_name)
+        self.create(use_hpss, zstash_path)
+        self.add_files(use_hpss, zstash_path)
+        files = os.listdir("{}/{}".format(self.test_dir, self.cache))
+        if use_hpss:
+            expected_files = ["index.db"]
+        else:
+            expected_files = [
+                "index.db",
+                "000003.tar",
+                "000004.tar",
+                "000000.tar",
+                "000001.tar",
+                "000002.tar",
+            ]
+        if not compare(files, expected_files):
+            error_message = f"The zstash cache {self.test_dir}/{self.cache} does not contain expected files.\nIt has: {files}"
+            self.stop(error_message)
 
-    def testUpdateHPSS(self):
+    # def testUpdate(self):
+    #     self.helperUpdate("testUpdate", "none")
+
+    # def testUpdateHPSS(self):
+    #     self.conditional_hpss_skip()
+    #     self.helperUpdate("testUpdateHPSS", HPSS_ARCHIVE)
+
+    # def testUpdateDryRun(self):
+    #     self.helperUpdateDryRun("testUpdateDryRun", "none")
+
+    # def testUpdateDryRunHPSS(self):
+    #     self.conditional_hpss_skip()
+    #     self.helperUpdateDryRun("testUpdateDryRunHPSS", HPSS_ARCHIVE)
+
+    # def testUpdateKeep(self):
+    #     self.helperUpdateKeep("testUpdateKeep", "none")
+
+    # def testUpdateKeepHPSS(self):
+    #     self.conditional_hpss_skip()
+    #     self.helperUpdateKeep("testUpdateKeepHPSS", HPSS_ARCHIVE)
+
+    # def testUpdateCache(self):
+    #     self.helperUpdateCache("testUpdateCache", "none")
+
+    # def testUpdateCacheHPSS(self):
+    #     self.conditional_hpss_skip()
+    #     self.helperUpdateCache("testUpdateCacheHPSS", HPSS_ARCHIVE)
+
+    def testUpdateNonEmpty(self):
+        self.helperUpdateNonEmpty("testUpdateNonEmpty", "none")
+
+    def testUpdateNonEmptyHPSS(self):
         self.conditional_hpss_skip()
-        self.helperUpdate("testUpdateHPSS", HPSS_ARCHIVE)
-
-    def testUpdateDryRun(self):
-        self.helperUpdateDryRun("testUpdateDryRun", "none")
-
-    def testUpdateDryRunHPSS(self):
-        self.conditional_hpss_skip()
-        self.helperUpdateDryRun("testUpdateDryRunHPSS", HPSS_ARCHIVE)
-
-    def testUpdateKeep(self):
-        self.helperUpdateKeep("testUpdateKeep", "none")
-
-    def testUpdateKeepHPSS(self):
-        self.conditional_hpss_skip()
-        self.helperUpdateKeep("testUpdateKeepHPSS", HPSS_ARCHIVE)
-
-    def testUpdateCache(self):
-        self.helperUpdateCache("testUpdateCache", "none")
-
-    def testUpdateCacheHPSS(self):
-        self.conditional_hpss_skip()
-        self.helperUpdateCache("testUpdateCacheHPSS", HPSS_ARCHIVE)
+        self.helperUpdateNonEmpty("testUpdateNonEmptyHPSS", HPSS_ARCHIVE)
 
 
 if __name__ == "__main__":
