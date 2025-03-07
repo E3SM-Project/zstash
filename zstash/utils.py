@@ -5,10 +5,135 @@ import shlex
 import sqlite3
 import subprocess
 from datetime import datetime, timezone
+from enum import Enum
 from fnmatch import fnmatch
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
+from urllib.parse import ParseResult, urlparse
 
-from .settings import TupleTarsRow, config, logger
+from globus_sdk import TransferClient, TransferData
+from globus_sdk.services.transfer.response.iterable import IterableTransferResponse
+
+from .settings import TupleTarsRow, logger
+
+
+class HPSSType(Enum):
+    NO_HPSS = 1
+    SAME_MACHINE_HPSS = 2
+    GLOBUS = 3
+    UNDEFINED = 4
+
+
+class GlobusInfo(object):
+    def __init__(self, hpss_path: str):
+        url: ParseResult = urlparse(hpss_path)
+        if url.scheme != "globus":
+            raise ValueError(f"Invalid Globus hpss_path={hpss_path}")
+        self.hpss_path: str = hpss_path
+        self.url: ParseResult = url
+
+        # Set in globus.globus_activate
+        self.remote_endpoint: Optional[str] = None
+        self.local_endpoint: Optional[str] = None
+        self.transfer_client: Optional[TransferClient] = None
+
+        # Set in globus.globus_transfer
+        self.archive_directory_listing: Optional[IterableTransferResponse] = None
+        self.transfer_data: Optional[TransferData] = None
+        self.task_id = None
+        self.tarfiles_pushed: int = 0
+
+
+# Class to hold configuration, as it appears in the database
+class Config(object):
+    path: Optional[str] = None
+    hpss: Optional[str] = None
+    maxsize: Optional[int] = None
+
+
+class CommandInfo(object):
+
+    def __init__(self, command_name: str):
+        self.command_name: str = command_name
+        self.dir_called_from: str = os.getcwd()
+        self.cache_dir: str = "zstash"  # # Default sub-directory to hold cache
+        self.config: Config = Config()
+        self.keep: bool = False  # Defaults to False
+        self.prev_transfers: List[str] = []
+        self.curr_transfers: List[str] = []
+        # Use set_dir_to_archive:
+        self.dir_to_archive_relative: Optional[str] = None
+        # Use set_hpss_parameters:
+        self.hpss_type: Optional[HPSSType] = None
+        self.globus_info: Optional[GlobusInfo] = None
+
+    def set_dir_to_archive(self, path: str):
+        abs_path = os.path.abspath(path)
+        if abs_path is not None:
+            self.config.path = abs_path
+            self.dir_to_archive_relative = path
+        else:
+            raise ValueError(f"Invalid path={path}")
+
+    def set_and_scale_maxsize(self, maxsize):
+        self.config.maxsize = int(1024 * 1024 * 1024 * maxsize)
+
+    def validate_maxsize(self):
+        if self.config.maxsize is not None:
+            self.config.maxsize = int(self.config.maxsize)
+        else:
+            raise ValueError("config.maxsize is undefined")
+
+    def set_hpss_parameters(self, hpss_path: str, null_hpss_allowed=False):
+        self.config.hpss = hpss_path
+        if hpss_path == "none":
+            self.hpss_type = HPSSType.NO_HPSS
+        elif hpss_path is not None:
+            url = urlparse(hpss_path)
+            if url.scheme == "globus":
+                self.hpss_type = HPSSType.GLOBUS
+                self.globus_info = GlobusInfo(hpss_path)
+            else:
+                self.hpss_type = HPSSType.SAME_MACHINE_HPSS
+        elif null_hpss_allowed:
+            self.hpss_type = HPSSType.UNDEFINED
+        else:
+            raise ValueError("hpss_path is undefined")
+        logger.debug(f"Setting hpss_type={self.hpss_type}")
+        logger.debug(f"Setting hpss={self.config.hpss}")
+
+    def update_config_using_db(self, cur: sqlite3.Cursor):
+        # Retrieve some configuration settings from database
+        # Loop through all attributes of config.
+        for attr in dir(self.config):
+            value: Any = getattr(self.config, attr)
+            if not callable(value) and not attr.startswith("__"):
+                # config.{attr} is not a function.
+                # The attribute name does not start with "__"
+                # Get the value (column 2) for attribute `attr` (column 1)
+                # i.e., for the row where column 1 is the attribute, get the value from column 2
+                cur.execute("select value from config where arg=?", (attr,))
+                value = cur.fetchone()[0]
+                # Update config with the new attribute-value pair
+                setattr(self.config, attr, value)
+        logger.debug(
+            f"Updated config using db. Now, maxsize={self.config.maxsize}, path={self.config.path}, hpss={self.config.hpss}, hpss_type={self.hpss_type}"
+        )
+
+    def get_db_name(self) -> str:
+        return os.path.join(self.cache_dir, "index.db")
+
+    def list_cache_dir(self):
+        logger.info(
+            f"Contents of cache {self.cache_dir} = {os.listdir(self.cache_dir)}"
+        )
+
+    def list_hpss_path(self):
+        if self.hpss_type == HPSSType.SAME_MACHINE_HPSS:
+            command = "hsi ls -l {}".format(self.config.hpss)
+            error_str = f"Attempted to list contents at config.hpss={self.config.hpss}"
+            run_command(command, error_str)
+        else:
+            logger.info("No HPSS path to list")
 
 
 def ts_utc():
@@ -107,22 +232,6 @@ def get_files_to_archive(cache: str, include: str, exclude: str) -> List[str]:
         files = exclude_files(exclude, files)
 
     return files
-
-
-def update_config(cur: sqlite3.Cursor):
-    # Retrieve some configuration settings from database
-    # Loop through all attributes of config.
-    for attr in dir(config):
-        value: Any = getattr(config, attr)
-        if not callable(value) and not attr.startswith("__"):
-            # config.{attr} is not a function.
-            # The attribute name does not start with "__"
-            # Get the value (column 2) for attribute `attr` (column 1)
-            # i.e., for the row where column 1 is the attribute, get the value from column 2
-            cur.execute("select value from config where arg=?", (attr,))
-            value = cur.fetchone()[0]
-            # Update config with the new attribute-value pair
-            setattr(config, attr, value)
 
 
 def create_tars_table(cur: sqlite3.Cursor, con: sqlite3.Connection):
