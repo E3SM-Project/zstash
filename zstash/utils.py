@@ -5,10 +5,69 @@ import shlex
 import sqlite3
 import subprocess
 from datetime import datetime, timezone
+from enum import Enum
 from fnmatch import fnmatch
 from typing import Any, List, Tuple
+from urllib.parse import urlparse
 
-from .settings import TupleTarsRow, config, logger
+from .settings import DEFAULT_CACHE, TupleTarsRow, config, logger
+
+
+class HPSSType(Enum):
+    NO_HPSS = 1
+    SAME_MACHINE_HPSS = 2
+    GLOBUS = 3
+
+
+class CommandInfo(object):
+    def __init__(self, command_name: str):
+        self.command_name = command_name
+
+        # Directories
+        self.dir_called_from = os.getcwd()
+        self.dir_to_archive = None
+        self.cache_dir = DEFAULT_CACHE
+
+        # HPSS
+        # self.hpss_type # Use set_hpss_parameters
+        # self.hpss_path # Use set_hpss_parameters
+
+        # Globus-specific
+        # self.globus_path # Use set_hpss_parameters
+        # remote_endpoint = None
+        # local_endpoint = None
+        # transfer_client = None
+        # transfer_data = None
+        # task_id = None
+        # archive_directory_listing = None
+
+    def set_hpss_parameters(self, hpss_path: str):
+        if hpss_path == "none":
+            self.hpss_type = HPSSType.NO_HPSS
+        else:
+            url = urlparse(hpss_path)
+            if url.scheme == "globus":
+                self.hpss_type = HPSSType.GLOBUS
+                self.globus_path = hpss_path
+            else:
+                self.hpss_type = HPSSType.SAME_MACHINE_HPSS
+                self.hpss_path = hpss_path
+
+    def get_db_name(self):
+        return os.path.join(self.cache_dir, "index.db")
+
+    def list_cache_dir(self):
+        logger.info(
+            f"Contents of cache {self.cache_dir} = {os.listdir(self.cache_dir)}"
+        )
+
+    def list_hpss_path(self):
+        if self.hpss_type == HPSSType.SAME_MACHINE_HPSS:
+            command = "hsi ls -l {}".format(self.hpss_path)
+            error_str = "Attempted to list contents at hpss_path={hpss_path}"
+            run_command(command, error_str)
+        else:
+            logger.info("No HPSS path to list")
 
 
 def ts_utc():

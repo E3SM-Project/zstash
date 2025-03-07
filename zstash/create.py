@@ -6,15 +6,16 @@ import logging
 import os.path
 import sqlite3
 import sys
-from typing import Any, List, Tuple
+from typing import Any, List
 
 from six.moves.urllib.parse import urlparse
 
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_put
 from .hpss_utils import add_files
-from .settings import DEFAULT_CACHE, config, get_db_filename, logger
+from .settings import config, get_db_filename, logger
 from .utils import (
+    CommandInfo,
     create_tars_table,
     get_files_to_archive,
     run_command,
@@ -24,8 +25,8 @@ from .utils import (
 
 
 def create():
-    cache: str
-    cache, args = setup_create()
+    ci = CommandInfo("create")
+    args = setup_create(ci)
 
     # Check config fields
     if config.path is not None:
@@ -77,7 +78,7 @@ def create():
     logger.debug(f"{ts_utc()}: Creating local cache directory")
     os.chdir(path)
     try:
-        os.makedirs(cache)
+        os.makedirs(ci.cache_dir)
     except OSError as exc:
         if exc.errno != errno.EEXIST:
             cache_error_str: str = "Cannot create local cache directory"
@@ -88,11 +89,11 @@ def create():
 
     # Create and set up the database
     logger.debug(f"{ts_utc()}: Calling create_database()")
-    failures: List[str] = create_database(cache, args)
+    failures: List[str] = create_database(ci.cache_dir, args)
 
     # Transfer to HPSS. Always keep a local copy.
-    logger.debug(f"{ts_utc()}: calling hpss_put() for {get_db_filename(cache)}")
-    hpss_put(hpss, get_db_filename(cache), cache, keep=True)
+    logger.debug(f"{ts_utc()}: calling hpss_put() for {ci.get_db_name()}")
+    hpss_put(hpss, ci.get_db_name(), ci.cache_dir, keep=True)
 
     logger.debug(f"{ts_utc()}: calling globus_finalize()")
     globus_finalize(non_blocking=args.non_blocking)
@@ -104,7 +105,7 @@ def create():
             logger.error("Failed to archive {}".format(file_path))
 
 
-def setup_create() -> Tuple[str, argparse.Namespace]:
+def setup_create(ci: CommandInfo) -> argparse.Namespace:
     # Parser
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         usage="zstash create [<args>] path", description="Create a new zstash archive"
@@ -180,13 +181,10 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     config.path = os.path.abspath(args.path)
     config.hpss = args.hpss
     config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)
-    cache: str
     if args.cache:
-        cache = args.cache
-    else:
-        cache = DEFAULT_CACHE
+        ci.cache_dir = args.cache
 
-    return cache, args
+    return args
 
 
 def create_database(cache: str, args: argparse.Namespace) -> List[str]:
