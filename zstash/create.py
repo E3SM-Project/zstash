@@ -92,7 +92,7 @@ def create():
 
     # Transfer to HPSS. Always keep a local copy.
     logger.debug(f"{ts_utc()}: calling hpss_put() for {get_db_filename(cache)}")
-    hpss_put(hpss, get_db_filename(cache), cache, keep=True)
+    hpss_put(hpss, get_db_filename(cache), cache, keep=args.keep, is_index=True)
 
     logger.debug(f"{ts_utc()}: calling globus_finalize()")
     globus_finalize(non_blocking=args.non_blocking)

@@ -43,7 +43,7 @@ def update():
         hpss = config.hpss
     else:
         raise TypeError("Invalid config.hpss={}".format(config.hpss))
-    hpss_put(hpss, get_db_filename(cache), cache, keep=True)
+    hpss_put(hpss, get_db_filename(cache), cache, keep=args.keep, is_index=True)
 
     globus_finalize(non_blocking=args.non_blocking)
 

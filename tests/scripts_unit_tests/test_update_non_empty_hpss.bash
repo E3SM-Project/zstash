@@ -84,7 +84,6 @@ hsi ls -l ${hpss_path} # 000000.tar, 000001.tar, 000002.tar, 000003.tar, 000004.
 # back in test_update.helperUpdateNonEmpty ####################################
 echo "Cache check actually performed in the unit test:"
 ls -l ${test_dir}/${cache} # just index.db
-# Strangely, showing ['index.db', '000001.tar', '000000.tar', '000002.tar', '000003.tar', '000004.tar'] on the automated test...
 
 # base.tearDown ###############################################################
 echo "Removing test files, both locally and at the HPSS repo"

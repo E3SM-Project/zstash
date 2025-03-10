@@ -21,6 +21,7 @@ def hpss_transfer(
     cache: str,
     keep: bool = False,
     non_blocking: bool = False,
+    is_index: bool = False,
 ):
     global prev_transfers
     global curr_transfers
@@ -145,12 +146,17 @@ def hpss_transfer(
 
 
 def hpss_put(
-    hpss: str, file_path: str, cache: str, keep: bool = True, non_blocking: bool = False
+    hpss: str,
+    file_path: str,
+    cache: str,
+    keep: bool = True,
+    non_blocking: bool = False,
+    is_index=False,
 ):
     """
     Put a file to the HPSS archive.
     """
-    hpss_transfer(hpss, file_path, "put", cache, keep, non_blocking)
+    hpss_transfer(hpss, file_path, "put", cache, keep, non_blocking, is_index)
 
 
 def hpss_get(hpss: str, file_path: str, cache: str):
