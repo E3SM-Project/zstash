@@ -293,7 +293,7 @@ def globus_transfer(  # noqa: C901
     task_status = "UNKNOWN"
     if not non_blocking:
         task_status = globus_block_wait(
-            task_id=task_id, wait_timeout=7200, polling_interval=900, max_retries=5
+            task_id=task_id, wait_timeout=7200, polling_interval=10, max_retries=5
         )
     else:
         logger.info(f"{ts_utc()}: NO BLOCKING (task_wait) for task_id {task_id}")
@@ -321,9 +321,13 @@ def globus_block_wait(
     while retry_count < max_retries:
         try:
             # Wait for the task to complete
-            transfer_client.task_wait(
-                task_id, timeout=wait_timeout, polling_interval=900
+            logger.info(
+                f"{ts_utc()}: on task_wait try {retry_count+1} out of {max_retries}"
             )
+            transfer_client.task_wait(
+                task_id, timeout=wait_timeout, polling_interval=10
+            )
+            logger.info(f"{ts_utc()}: done with wait")
         except Exception as e:
             logger.error(f"Unexpected Exception: {e}")
         else:

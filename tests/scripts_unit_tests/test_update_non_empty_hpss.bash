@@ -4,7 +4,6 @@ hpss_path=zstash_test # Set via `HPSS_ARCHIVE = "zstash_test"`
 cache=zstash # Set via `self.cache = "zstash"`
 
 # base.setupDirs ##############################################################
-use_hpss=true
 test_dir=zstash_test
 
 # Create files and directories
