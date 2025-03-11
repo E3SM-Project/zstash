@@ -5,7 +5,6 @@ hpss_path="globus://${hpss_globus_endpoint}/~/zstash_test/"
 cache=zstash # Set via `self.cache = "zstash"`
 
 # base.setupDirs ##############################################################
-use_hpss=true
 test_dir=zstash_test
 
 # Create files and directories
