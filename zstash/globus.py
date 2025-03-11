@@ -158,6 +158,9 @@ def file_exists(name: str) -> bool:
     return False
 
 
+global_variable_tarfiles_pushed = 0
+
+
 # C901 'globus_transfer' is too complex (20)
 def globus_transfer(  # noqa: C901
     remote_ep: str, remote_path: str, name: str, transfer_type: str, non_blocking: bool
@@ -168,8 +171,10 @@ def globus_transfer(  # noqa: C901
     global transfer_data
     global task_id
     global archive_directory_listing
+    global global_variable_tarfiles_pushed
 
     logger.info(f"{ts_utc()}: Entered globus_transfer() for name = {name}")
+    logger.debug(f"{ts_utc()}: non_blocking = {non_blocking}")
     if not transfer_client:
         globus_activate("globus://" + remote_ep)
     if not transfer_client:
@@ -215,7 +220,7 @@ def globus_transfer(  # noqa: C901
             fail_on_quota_errors=True,
         )
     transfer_data.add_item(src_path, dst_path)
-    transfer_data["label"] = subdir_label + " " + filename
+    transfer_data["label"] = label
     try:
         if task_id:
             task = transfer_client.get_task(task_id)
@@ -225,12 +230,12 @@ def globus_transfer(  # noqa: C901
             # Presently, we do not, except inadvertantly (if status == PENDING)
             if prev_task_status == "ACTIVE":
                 logger.info(
-                    f"{ts_utc()}: Previous task_id {task_id} Still Active. Returning."
+                    f"{ts_utc()}: Previous task_id {task_id} Still Active. Returning ACTIVE."
                 )
                 return "ACTIVE"
             elif prev_task_status == "SUCCEEDED":
                 logger.info(
-                    f"{ts_utc()}: Previous task_id {task_id} status = SUCCEEDED. Continuing."
+                    f"{ts_utc()}: Previous task_id {task_id} status = SUCCEEDED."
                 )
                 src_ep = task["source_endpoint_id"]
                 dst_ep = task["destination_endpoint_id"]
@@ -243,7 +248,7 @@ def globus_transfer(  # noqa: C901
                 )
             else:
                 logger.error(
-                    f"{ts_utc()}: Previous task_id {task_id} status = {prev_task_status}. Continuing."
+                    f"{ts_utc()}: Previous task_id {task_id} status = {prev_task_status}."
                 )
 
         # DEBUG: review accumulated items in TransferData
@@ -251,7 +256,11 @@ def globus_transfer(  # noqa: C901
         attribs = transfer_data.__dict__
         for item in attribs["data"]["DATA"]:
             if item["DATA_TYPE"] == "transfer_item":
-                print(f"    source item: {item['source_path']}")
+                global_variable_tarfiles_pushed += 1
+                print(
+                    f"   (routine)  PUSHING (#{global_variable_tarfiles_pushed}) STORED source item: {item['source_path']}",
+                    flush=True,
+                )
 
         # SUBMIT new transfer here
         logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
@@ -263,6 +272,7 @@ def globus_transfer(  # noqa: C901
             f"{ts_utc()}: SURFACE Submit Transfer returned new task_id = {task_id} for label {transfer_data['label']}"
         )
 
+        # Nullify the submitted transfer data structure so that a new one will be created on next call.
         transfer_data = None
     except TransferAPIError as e:
         if e.code == "NoCredException":
@@ -310,9 +320,13 @@ def globus_block_wait(
     while retry_count < max_retries:
         try:
             # Wait for the task to complete
+            logger.info(
+                f"{ts_utc()}: on task_wait try {retry_count+1} out of {max_retries}"
+            )
             transfer_client.task_wait(
                 task_id, timeout=wait_timeout, polling_interval=10
             )
+            logger.info(f"{ts_utc()}: done with wait")
         except Exception as e:
             logger.error(f"Unexpected Exception: {e}")
         else:
@@ -350,7 +364,7 @@ def globus_wait(task_id: str):
         with 20 second timeout limit. If the task is ACTIVE after time runs
         out 'task_wait' returns False, and True otherwise.
         """
-        while not transfer_client.task_wait(task_id, timeout=20, polling_interval=20):
+        while not transfer_client.task_wait(task_id, timeout=300, polling_interval=20):
             pass
         """
         The Globus transfer job (task) has been finished (SUCCEEDED or FAILED).
@@ -387,10 +401,24 @@ def globus_finalize(non_blocking: bool = False):
     global transfer_client
     global transfer_data
     global task_id
+    global global_variable_tarfiles_pushed
 
     last_task_id = None
 
     if transfer_data:
+        # DEBUG: review accumulated items in TransferData
+        logger.info(f"{ts_utc()}: FINAL TransferData: accumulated items:")
+        attribs = transfer_data.__dict__
+        for item in attribs["data"]["DATA"]:
+            if item["DATA_TYPE"] == "transfer_item":
+                global_variable_tarfiles_pushed += 1
+                print(
+                    f"    (finalize) PUSHING ({global_variable_tarfiles_pushed}) source item: {item['source_path']}",
+                    flush=True,
+                )
+
+        # SUBMIT new transfer here
+        logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
         try:
             last_task = submit_transfer_with_checks(transfer_data)
             last_task_id = last_task.get("task_id")

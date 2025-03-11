@@ -165,7 +165,7 @@ def add_files(
             # print(process.stdout)
 
             logger.info(
-                f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {tfname}"
+                f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {tfname} [keep, non_blocking] = [{keep}, {non_blocking}]"
             )
             hpss_put(hpss, os.path.join(cache, tfname), cache, keep, non_blocking)
             logger.info(

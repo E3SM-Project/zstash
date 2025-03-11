@@ -10,6 +10,9 @@ from .globus import globus_transfer
 from .settings import get_db_filename, logger
 from .utils import run_command, ts_utc
 
+prev_transfers: List[str] = list()
+curr_transfers: List[str] = list()
+
 
 def hpss_transfer(
     hpss: str,
@@ -18,7 +21,18 @@ def hpss_transfer(
     cache: str,
     keep: bool = False,
     non_blocking: bool = False,
+    is_index: bool = False,
 ):
+    global prev_transfers
+    global curr_transfers
+
+    logger.info(
+        f"{ts_utc()}: in hpss_transfer, prev_transfers is starting as {prev_transfers}"
+    )
+    # logger.debug(
+    #     f"{ts_utc()}: in hpss_transfer, curr_transfers is starting as {curr_transfers}"
+    # )
+
     if hpss == "none":
         logger.info("{}: HPSS is unavailable".format(transfer_type))
         if transfer_type == "put" and file_path != get_db_filename(cache):
@@ -71,6 +85,10 @@ def hpss_transfer(
         endpoint = url.netloc
         url_path = url.path
 
+        curr_transfers.append(file_path)
+        # logger.debug(
+        #     f"{ts_utc()}: curr_transfers has been appended to, is now {curr_transfers}"
+        # )
         path, name = os.path.split(file_path)
 
         # Need to be in local directory for `hsi` to work
@@ -112,19 +130,33 @@ def hpss_transfer(
 
         if transfer_type == "put":
             if not keep:
-                if (scheme != "globus") or (
-                    globus_status == "SUCCEEDED" and not non_blocking
-                ):
-                    os.remove(file_path)
+                if (scheme != "globus") or (globus_status == "SUCCEEDED"):
+                    # Note: This is intended to fulfill the default removal of successfully-transfered
+                    # tar files when keep=False, irrespective of non-blocking status
+                    logger.debug(
+                        f"{ts_utc()}: deleting transfered files {prev_transfers}"
+                    )
+                    for src_path in prev_transfers:
+                        os.remove(src_path)
+                    prev_transfers = curr_transfers
+                    curr_transfers = list()
+                    logger.info(
+                        f"{ts_utc()}: prev_transfers has been set to {prev_transfers}"
+                    )
 
 
 def hpss_put(
-    hpss: str, file_path: str, cache: str, keep: bool = True, non_blocking: bool = False
+    hpss: str,
+    file_path: str,
+    cache: str,
+    keep: bool = True,
+    non_blocking: bool = False,
+    is_index=False,
 ):
     """
     Put a file to the HPSS archive.
     """
-    hpss_transfer(hpss, file_path, "put", cache, keep, non_blocking)
+    hpss_transfer(hpss, file_path, "put", cache, keep, non_blocking, is_index)
 
 
 def hpss_get(hpss: str, file_path: str, cache: str):
