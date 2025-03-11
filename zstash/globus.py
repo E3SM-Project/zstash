@@ -158,8 +158,7 @@ def file_exists(name: str) -> bool:
     return False
 
 
-# TODO: What does gv stand for? Globus something? Global variable?
-gv_tarfiles_pushed = 0
+global_variable_tarfiles_pushed = 0
 
 
 # C901 'globus_transfer' is too complex (20)
@@ -172,7 +171,7 @@ def globus_transfer(  # noqa: C901
     global transfer_data
     global task_id
     global archive_directory_listing
-    global gv_tarfiles_pushed
+    global global_variable_tarfiles_pushed
 
     logger.info(f"{ts_utc()}: Entered globus_transfer() for name = {name}")
     logger.debug(f"{ts_utc()}: non_blocking = {non_blocking}")
@@ -257,9 +256,9 @@ def globus_transfer(  # noqa: C901
         attribs = transfer_data.__dict__
         for item in attribs["data"]["DATA"]:
             if item["DATA_TYPE"] == "transfer_item":
-                gv_tarfiles_pushed += 1
+                global_variable_tarfiles_pushed += 1
                 print(
-                    f"   (routine)  PUSHING (#{gv_tarfiles_pushed}) STORED source item: {item['source_path']}",
+                    f"   (routine)  PUSHING (#{global_variable_tarfiles_pushed}) STORED source item: {item['source_path']}",
                     flush=True,
                 )
 
@@ -402,7 +401,7 @@ def globus_finalize(non_blocking: bool = False):
     global transfer_client
     global transfer_data
     global task_id
-    global gv_tarfiles_pushed
+    global global_variable_tarfiles_pushed
 
     last_task_id = None
 
@@ -412,9 +411,9 @@ def globus_finalize(non_blocking: bool = False):
         attribs = transfer_data.__dict__
         for item in attribs["data"]["DATA"]:
             if item["DATA_TYPE"] == "transfer_item":
-                gv_tarfiles_pushed += 1
+                global_variable_tarfiles_pushed += 1
                 print(
-                    f"    (finalize) PUSHING ({gv_tarfiles_pushed}) source item: {item['source_path']}",
+                    f"    (finalize) PUSHING ({global_variable_tarfiles_pushed}) source item: {item['source_path']}",
                     flush=True,
                 )
 
