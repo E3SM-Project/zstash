@@ -5,10 +5,110 @@ import shlex
 import sqlite3
 import subprocess
 from datetime import datetime, timezone
+from enum import Enum
 from fnmatch import fnmatch
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
+from urllib.parse import urlparse
 
-from .settings import TupleTarsRow, config, logger
+from .settings import DEFAULT_CACHE, TupleTarsRow, config, logger
+
+
+class HPSSType(Enum):
+    NO_HPSS = 1
+    SAME_MACHINE_HPSS = 2
+    GLOBUS = 3
+
+
+class GlobusInfo(object):
+    def __init__(self, hpss_path: str):
+        url = urlparse(hpss_path)
+        if url.scheme != "globus":
+            raise ValueError(f"Invalid Globus hpss_path={hpss_path}")
+        self.hpss_path = hpss_path
+        self.url = url
+        
+        # Set in globus.globus_activate
+        self.remote_endpoint = None
+        self.local_endpoint = None
+        self.transfer_client = None
+
+        # transfer_data = None
+        # task_id = None
+        # archive_directory_listing = None
+
+# Class to hold configuration, as it appears in the database
+class Config(object):
+    path: Optional[str] = None
+    hpss: Optional[str] = None
+    maxsize: Optional[int] = None
+
+class CommandInfo(object):
+    def __init__(self, command_name: str):
+        self.command_name = command_name
+        self.dir_called_from = os.getcwd()
+        self.cache_dir = DEFAULT_CACHE
+        self.config = Config()
+        self.keep = False # Defaults to False
+        self.prev_transfers = []
+        self.curr_transfers = []
+
+        # Use set_dir_to_archive
+        self.dir_to_archive_absolute = None
+        self.dir_to_archive_relative = None
+
+        # Use set_maxsize
+        self.maxsize = None
+
+        # Use set_hpss_parameters
+        self.hpss_path = None
+        self.hpss_type = None
+        self.globus_info = None
+
+    def set_dir_to_archive(self, path: str):
+        abs_path = os.path.abspath(path)
+        if abs_path is not None:
+            self.dir_to_archive_absolute = abs_path
+            self.dir_to_archive_relative = path
+        else:
+            raise ValueError(f"Invalid path={path}")
+
+    def set_maxsize(self, maxsize):
+        self.maxsize = int(1024 * 1024 * 1024 * maxsize)
+
+    def set_hpss_parameters(self, hpss_path: str):
+        self.hpss_path = hpss_path
+        if hpss_path == "none":
+            self.hpss_type = HPSSType.NO_HPSS
+        elif hpss_path is not None:
+            url = urlparse(hpss_path)
+            if url.scheme == "globus":
+                self.hpss_type = HPSSType.GLOBUS
+                self.globus_info = GlobusInfo(hpss_path)
+            else:
+                self.hpss_type = HPSSType.SAME_MACHINE_HPSS
+        else:
+            raise ValueError(f"Invalid hpss_path={hpss_path}")
+        
+    def update_config(self):
+        self.config.path = self.dir_to_archive_absolute
+        self.config.hpss = self.hpss_path
+        self.config.maxsize = self.maxsize
+
+    def get_db_name(self) -> str:
+        return os.path.join(self.cache_dir, "index.db")
+
+    def list_cache_dir(self):
+        logger.info(
+            f"Contents of cache {self.cache_dir} = {os.listdir(self.cache_dir)}"
+        )
+
+    def list_hpss_path(self):
+        if self.hpss_type == HPSSType.SAME_MACHINE_HPSS:
+            command = "hsi ls -l {}".format(self.hpss_path)
+            error_str = "Attempted to list contents at hpss_path={hpss_path}"
+            run_command(command, error_str)
+        else:
+            logger.info("No HPSS path to list")
 
 
 def ts_utc():

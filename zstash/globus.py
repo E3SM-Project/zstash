@@ -13,15 +13,15 @@ from globus_sdk.services.transfer.response.iterable import IterableTransferRespo
 from six.moves.urllib.parse import urlparse
 
 from .settings import logger
-from .utils import ts_utc
+from .utils import GlobusInfo, ts_utc
 
-hpss_endpoint_map = {
+HPSS_ENDPOINT_MAP = {
     "ALCF": "de463ec4-6d04-11e5-ba46-22000b92c6ec",
     "NERSC": "9cd89cfd-6d04-11e5-ba46-22000b92c6ec",
 }
 
 # This is used if the `globus_endpoint_uuid` is not set in `~/.zstash.ini`
-regex_endpoint_map = {
+REGEX_ENDPOINT_MAP = {
     r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
     r"blueslogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
     r"chrlogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
@@ -73,26 +73,19 @@ def submit_transfer_with_checks(transfer_data):
     return task
 
 
-def globus_activate(hpss: str):
+def globus_activate(globus_info: GlobusInfo):
     """
     Read the local globus endpoint UUID from ~/.zstash.ini.
     If the ini file does not exist, create an ini file with empty values,
     and try to find the local endpoint UUID based on the FQDN
     """
-    global transfer_client
-    global local_endpoint
-    global remote_endpoint
-
-    url = urlparse(hpss)
-    if url.scheme != "globus":
-        return
-    remote_endpoint = url.netloc
+    globus_info.remote_endpoint = globus_info.url.netloc
 
     ini_path = os.path.expanduser("~/.zstash.ini")
     ini = configparser.ConfigParser()
     if ini.read(ini_path):
         if "local" in ini.sections():
-            local_endpoint = ini["local"].get("globus_endpoint_uuid")
+            globus_info.local_endpoint = ini["local"].get("globus_endpoint_uuid")
     else:
         ini["local"] = {"globus_endpoint_uuid": ""}
         try:
@@ -101,33 +94,31 @@ def globus_activate(hpss: str):
         except Exception as e:
             logger.error(e)
             sys.exit(1)
-    if not local_endpoint:
+    if not globus_info.local_endpoint:
         fqdn = socket.getfqdn()
         if re.fullmatch(r"n.*\.local", fqdn) and os.getenv("HOSTNAME", "NA").startswith(
             "compy"
         ):
             fqdn = "compy.pnl.gov"
-        for pattern in regex_endpoint_map.keys():
+        for pattern in REGEX_ENDPOINT_MAP.keys():
             if re.fullmatch(pattern, fqdn):
-                local_endpoint = regex_endpoint_map.get(pattern)
+                globus_info.local_endpoint = REGEX_ENDPOINT_MAP.get(pattern)
                 break
     # FQDN is not set on Perlmutter at NERSC
-    if not local_endpoint:
+    if not globus_info.local_endpoint:
         nersc_hostname = os.environ.get("NERSC_HOST")
         if nersc_hostname and (
             nersc_hostname == "perlmutter" or nersc_hostname == "unknown"
         ):
-            local_endpoint = regex_endpoint_map.get(r"perlmutter.*\.nersc\.gov")
-    if not local_endpoint:
+            globus_info.local_endpoint = REGEX_ENDPOINT_MAP.get(r"perlmutter.*\.nersc\.gov")
+    if not globus_info.local_endpoint:
         logger.error(
-            "{} does not have the local Globus endpoint set nor could one be found in regex_endpoint_map.".format(
-                ini_path
-            )
+            f"{ini_path} does not have the local Globus endpoint set nor could one be found in REGEX_ENDPOINT_MAP."
         )
         sys.exit(1)
 
-    if remote_endpoint.upper() in hpss_endpoint_map.keys():
-        remote_endpoint = hpss_endpoint_map.get(remote_endpoint.upper())
+    if globus_info.remote_endpoint.upper() in HPSS_ENDPOINT_MAP.keys():
+        globus_info.remote_endpoint = HPSS_ENDPOINT_MAP.get(remote_endpoint.upper())
 
     native_client = NativeClient(
         client_id="6c1629cf-446c-49e7-af95-323c6412397f",
@@ -136,15 +127,13 @@ def globus_activate(hpss: str):
     )
     native_client.login(no_local_server=True, refresh_tokens=True)
     transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
-    transfer_client = TransferClient(authorizer=transfer_authorizer)
+    globus_info.transfer_client = TransferClient(authorizer=transfer_authorizer)
 
-    for ep_id in [local_endpoint, remote_endpoint]:
-        r = transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
+    for ep_id in [globus_info.local_endpoint, globus_info.remote_endpoint]:
+        r = globus_info.transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
         if r.get("code") == "AutoActivationFailed":
             logger.error(
-                "The {} endpoint is not activated or the current activation expires soon. Please go to https://app.globus.org/file-manager/collections/{} and (re)activate the endpoint.".format(
-                    ep_id, ep_id
-                )
+                f"The {ep_id} endpoint is not activated or the current activation expires soon. Please go to https://app.globus.org/file-manager/collections/{ep_id} and (re)activate the endpoint."
             )
             sys.exit(1)
 
