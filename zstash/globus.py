@@ -14,6 +14,8 @@ from globus_sdk import TransferAPIError, TransferClient, TransferData
 from .settings import logger
 from .utils import GlobusInfo, ts_utc
 
+ZSTASH_CLIENT_ID = "6c1629cf-446c-49e7-af95-323c6412397f"
+
 HPSS_ENDPOINT_MAP = {
     "ALCF": "de463ec4-6d04-11e5-ba46-22000b92c6ec",
     "NERSC": "9cd89cfd-6d04-11e5-ba46-22000b92c6ec",
@@ -30,10 +32,43 @@ REGEX_ENDPOINT_MAP = {
     r"perlmutter.*\.nersc\.gov": "6bdc7956-fc0f-4ad2-989c-7aa5ee643a79",
 }
 
+# Last updated 2025-04-08
+ENDPOINT_TO_NAME_MAP = {
+    "08925f04-569f-11e7-bef8-22000b9a448b": "Invalid, presumably Theta",
+    "15288284-7006-4041-ba1a-6b52501e49f1": "LCRC Improv DTN",
+    "68fbd2fa-83d7-11e9-8e63-029d279f7e24": "pic#compty-dtn",
+    "6bdc7956-fc0f-4ad2-989c-7aa5ee643a79": "NERSC Perlmutter",
+    "6c54cade-bde5-45c1-bdea-f4bd71dba2cc": "Globus Tutorial Collection 1",  # The Unit test endpoint
+    "9cd89cfd-6d04-11e5-ba46-22000b92c6ec": "NERSC HPSS",
+    "de463ec4-6d04-11e5-ba46-22000b92c6ec": "Invalid, presumably ALCF HPSS",
+}
+
+
+def ep_to_name(endpoint_id: str) -> str:
+    if endpoint_id in ENDPOINT_TO_NAME_MAP:
+        return ENDPOINT_TO_NAME_MAP[endpoint_id]
+    else:
+        return endpoint_id  # Just use the endpoint_id itself
+
+
+def log_current_endpoints(globus_info: GlobusInfo):
+    if globus_info.local_endpoint:
+        local = ep_to_name(globus_info.local_endpoint)
+    else:
+        local = "undefined"
+    logger.debug(f"local endpoint={local}")
+    if globus_info.remote_endpoint:
+        remote = ep_to_name(globus_info.remote_endpoint)
+    else:
+        remote = "undefined"
+    logger.debug(f"remote endpoint={remote}")
+
 
 def check_endpoint_version_5(globus_info: GlobusInfo, ep_id):
     if not globus_info.transfer_client:
         raise ValueError("transfer_client is undefined")
+    log_current_endpoints(globus_info)
+    logger.debug(f"check_endpoint_version_5. endpoint={ep_to_name(ep_id)}")
     output = globus_info.transfer_client.get_endpoint(ep_id)
     version = output.get("gcs_version", "0.0")
     if output["gcs_version"] is None:
@@ -55,8 +90,10 @@ def submit_transfer_with_checks(globus_info: GlobusInfo):
                 if check_endpoint_version_5(globus_info, ep_id):
                     scopes += f" *https://auth.globus.org/scopes/{ep_id}/data_access"
             scopes += " ]"
-            native_client = NativeClient(
-                client_id="6c1629cf-446c-49e7-af95-323c6412397f", app_name="Zstash"
+            native_client = NativeClient(client_id=ZSTASH_CLIENT_ID, app_name="Zstash")
+            log_current_endpoints(globus_info)
+            logger.debug(
+                "submit_transfer_with_checks. Calling login, which may print 'Please Paste your Auth Code Below:'"
             )
             native_client.login(requested_scopes=scopes)
             # Quit here and tell user to re-try
@@ -130,15 +167,25 @@ def globus_activate(globus_info: GlobusInfo, alt_hpss: str = ""):
         )
 
     native_client = NativeClient(
-        client_id="6c1629cf-446c-49e7-af95-323c6412397f",
+        client_id=ZSTASH_CLIENT_ID,
         app_name="Zstash",
         default_scopes="openid urn:globus:auth:scope:transfer.api.globus.org:all",
+    )
+    log_current_endpoints(globus_info)
+    logger.debug(
+        "globus_activate. Calling login, which may print 'Please Paste your Auth Code Below:'"
     )
     native_client.login(no_local_server=True, refresh_tokens=True)
     transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
     globus_info.transfer_client = TransferClient(authorizer=transfer_authorizer)
 
+    log_current_endpoints(globus_info)
     for ep_id in [globus_info.local_endpoint, globus_info.remote_endpoint]:
+        if ep_id:
+            ep_name = ep_to_name(ep_id)
+        else:
+            ep_name = "undefined"
+        logger.debug(f"globus_activate. endpoint={ep_name}")
         r = globus_info.transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
         if r.get("code") == "AutoActivationFailed":
             logger.error(
