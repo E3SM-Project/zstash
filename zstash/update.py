@@ -18,7 +18,7 @@ from .utils import CommandInfo, HPSSType, get_files_to_archive
 
 def update():
     command_info = CommandInfo("update")
-    args: argparse.Namespace = setup_update(command_info)
+    args: argparse.Namespace = setup_update(command_info, sys.argv)
 
     failures: Optional[List[str]] = update_database(command_info, args)
     if failures is None:
@@ -37,7 +37,7 @@ def update():
             logger.error(f"Archiving {file_path}")
 
 
-def setup_update(command_info: CommandInfo) -> argparse.Namespace:
+def setup_update(command_info: CommandInfo, arg_list: List[str]) -> argparse.Namespace:
     # Parser
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         usage="zstash update [<args>]", description="Update an existing zstash archive"
@@ -96,7 +96,7 @@ def setup_update(command_info: CommandInfo) -> argparse.Namespace:
         action="store_true",
         help="Hard copy symlinks. This is useful for preventing broken links. Note that a broken link will result in a failed update.",
     )
-    args: argparse.Namespace = parser.parse_args(sys.argv[2:])
+    args: argparse.Namespace = parser.parse_args(arg_list[2:])
 
     if (not args.hpss) or (args.hpss.lower() == "none"):
         args.hpss = "none"

@@ -25,7 +25,7 @@ from .utils import (
 
 def create():
     command_info = CommandInfo("create")
-    args = setup_create(command_info)
+    args = setup_create(command_info, sys.argv)
 
     # Start doing actual work
     logger.debug(f"{ts_utc()}: Running zstash create")
@@ -99,7 +99,7 @@ def create():
             logger.error(f"Failed to archive {file_path}")
 
 
-def setup_create(command_info: CommandInfo) -> argparse.Namespace:
+def setup_create(command_info: CommandInfo, arg_list: List[str]) -> argparse.Namespace:
     # Parser
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         usage="zstash create [<args>] path", description="Create a new zstash archive"
@@ -163,7 +163,7 @@ def setup_create(command_info: CommandInfo) -> argparse.Namespace:
     )
     # Now that we're inside a subcommand, ignore the first two argvs
     # (zstash create)
-    args: argparse.Namespace = parser.parse_args(sys.argv[2:])
+    args: argparse.Namespace = parser.parse_args(arg_list[2:])
     if (not args.hpss) or (args.hpss.lower() == "none"):
         args.hpss = "none"
         args.keep = True

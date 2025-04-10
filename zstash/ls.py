@@ -18,7 +18,7 @@ def ls():
     Supports the '-l' argument for more information.
     """
     command_info = CommandInfo("ls")
-    args: argparse.Namespace = setup_ls(command_info)
+    args: argparse.Namespace = setup_ls(command_info, sys.argv)
     matches: List[FilesRow] = ls_database(command_info, args)
 
     print_matches(args, matches)
@@ -28,7 +28,7 @@ def ls():
         print_matches(args, tar_matches)
 
 
-def setup_ls(command_info: CommandInfo) -> argparse.Namespace:
+def setup_ls(command_info: CommandInfo, arg_list: List[str]) -> argparse.Namespace:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         usage="zstash ls [<args>] [files]",
         description="List the files from an existing archive. If `files` is specified, then only the files specified will be listed. If `hpss=none`, then this will list the directories and files in the current directory excluding the cache.",
@@ -63,7 +63,7 @@ def setup_ls(command_info: CommandInfo) -> argparse.Namespace:
     )
 
     parser.add_argument("files", nargs="*", default=["*"])
-    args: argparse.Namespace = parser.parse_args(sys.argv[2:])
+    args: argparse.Namespace = parser.parse_args(arg_list[2:])
 
     if args.hpss and (args.hpss.lower() == "none"):
         args.hpss = "none"
@@ -120,12 +120,7 @@ def ls_database(command_info: CommandInfo, args: argparse.Namespace) -> List[Fil
     if matches_ == []:
         raise FileNotFoundError("There was nothing to ls.")
 
-    # Remove duplicates
-    matches_ = list(set(matches_))
-    matches: List[FilesRow] = list(map(FilesRow, matches_))
-
-    # Sort by tape and order within tapes (offset)
-    matches = sorted(matches, key=lambda t: (t.tar, t.offset))
+    matches: List[FilesRow] = process_matches_files(matches_)
 
     if args.long:
         # Get the names of the columns
@@ -138,6 +133,32 @@ def ls_database(command_info: CommandInfo, args: argparse.Namespace) -> List[Fil
     con.close()
 
     return matches
+
+
+def process_matches_files(matches_: List[TupleFilesRow]) -> List[FilesRow]:
+    # Remove duplicates
+    matches_ = list(set(matches_))
+    matches: List[FilesRow] = list(map(FilesRow, matches_))
+
+    # Sort by tape and order within tapes (offset)
+    matches = sorted(matches, key=lambda t: (t.tar, t.offset))
+    return matches
+
+
+def print_matches(
+    args: argparse.Namespace, matches: Union[List[FilesRow], List[TarsRow]]
+):
+    # Print the results
+    match: Union[FilesRow, TarsRow]
+    for match in matches:
+        if args.long:
+            # Print all contents of each match
+            for col in match.to_tuple():
+                print(col, end="\t")
+            print("")
+        else:
+            # Just print the name
+            print(match.name)
 
 
 def ls_tars_database(
@@ -156,12 +177,7 @@ def ls_tars_database(
     cur.execute("select * from tars")
     matches_: List[TupleTarsRow] = cur.fetchall()
 
-    # Remove duplicates
-    matches_ = list(set(matches_))
-    matches: List[TarsRow] = list(map(TarsRow, matches_))
-
-    # Sort by name
-    matches = sorted(matches, key=lambda t: (t.name))
+    matches: List[TarsRow] = process_matches_tars(matches_)
 
     if matches != []:
         print("\nTars:")
@@ -178,17 +194,11 @@ def ls_tars_database(
     return matches
 
 
-def print_matches(
-    args: argparse.Namespace, matches: Union[List[FilesRow], List[TarsRow]]
-):
-    # Print the results
-    match: Union[FilesRow, TarsRow]
-    for match in matches:
-        if args.long:
-            # Print all contents of each match
-            for col in match.to_tuple():
-                print(col, end="\t")
-            print("")
-        else:
-            # Just print the name
-            print(match.name)
+def process_matches_tars(matches_: List[TupleTarsRow]) -> List[TarsRow]:
+    # Remove duplicates
+    matches_ = list(set(matches_))
+    matches: List[TarsRow] = list(map(TarsRow, matches_))
+
+    # Sort by name
+    matches = sorted(matches, key=lambda t: (t.name))
+    return matches

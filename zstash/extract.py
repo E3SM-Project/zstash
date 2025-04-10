@@ -30,7 +30,7 @@ def extract(do_extract_files: bool = True):
     extract the archived data based on the file pattern (if given).
     """
     command_info = CommandInfo("extract")
-    args: argparse.Namespace = setup_extract(command_info)
+    args: argparse.Namespace = setup_extract(command_info, sys.argv)
     failures: List[FilesRow] = extract_database(command_info, args, do_extract_files)
 
     if failures:
@@ -53,7 +53,7 @@ def extract(do_extract_files: bool = True):
         )
 
 
-def setup_extract(command_info: CommandInfo) -> argparse.Namespace:
+def setup_extract(command_info: CommandInfo, arg_list: List[str]) -> argparse.Namespace:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         usage="zstash extract [<args>] [files]",
         description="Extract files from existing archive",
@@ -91,7 +91,7 @@ def setup_extract(command_info: CommandInfo) -> argparse.Namespace:
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
     parser.add_argument("files", nargs="*", default=["*"])
-    args: argparse.Namespace = parser.parse_args(sys.argv[2:])
+    args: argparse.Namespace = parser.parse_args(arg_list[2:])
 
     if args.hpss and (args.hpss.lower() == "none"):
         args.hpss = "none"
@@ -108,44 +108,6 @@ def setup_extract(command_info: CommandInfo) -> argparse.Namespace:
     command_info.set_hpss_parameters(args.hpss, null_hpss_allowed=True)
 
     return args
-
-
-def parse_tars_option(tars: str, first_tar: str, last_tar: str) -> List[str]:
-    tar_str_list: List[str] = tars.split(",")
-    tar_list: List[str] = []
-    tar_str: str
-    for tar_str in tar_str_list:
-        if tar_str.startswith('"'):
-            tar_str = tar_str[1:]
-        if tar_str.endswith('"'):
-            tar_str = tar_str[:-1]
-        if tar_str.startswith("-"):
-            tar_str = "{}{}".format(first_tar, tar_str)
-        elif tar_str.endswith("-"):
-            tar_str = "{}{}".format(tar_str, last_tar)
-        m: Optional[re.Match]
-        m = re.match("(.*)-(.*)", tar_str)
-        if m:
-            m1: str = m.group(1)
-            m2: str = m.group(2)
-            # Remove .tar suffix
-            if m1.endswith(".tar"):
-                m1 = m1[:-4]
-            if m2.endswith(".tar"):
-                m2 = m2[:-4]
-            beginning_tar: int = int(m1, 16)
-            ending_tar: int = int(m2, 16)
-            t: int
-            for t in range(beginning_tar, ending_tar + 1):
-                tar_list.append("{:06x}".format(t))
-        else:
-            # Remove .tar suffix
-            if tar_str.endswith(".tar"):
-                tar_str = tar_str[:-4]
-            tar_list.append(tar_str)
-    # Remove duplicates and sort tar_list
-    tar_list = sorted(list(set(tar_list)))
-    return tar_list
 
 
 def extract_database(
@@ -223,6 +185,69 @@ def extract_database(
     if matches_ == []:
         raise FileNotFoundError("There was nothing to extract.")
 
+    matches: List[FilesRow] = process_matches(matches_)
+
+    # Retrieve from tapes
+    failures: List[FilesRow]
+    if args.workers > 1:
+        logger.debug("Running zstash {} with multiprocessing".format(cmd))
+        failures = multiprocess_extract(
+            args.workers,
+            command_info,
+            matches,
+            do_extract_files,
+            cur,
+            args,
+        )
+    else:
+        failures = extractFiles(command_info, matches, do_extract_files, cur, args)
+
+    # Close database
+    logger.debug("Closing index database")
+    con.close()
+
+    return failures
+
+
+def parse_tars_option(tars: str, first_tar: str, last_tar: str) -> List[str]:
+    tar_str_list: List[str] = tars.split(",")
+    tar_list: List[str] = []
+    tar_str: str
+    for tar_str in tar_str_list:
+        if tar_str.startswith('"'):
+            tar_str = tar_str[1:]
+        if tar_str.endswith('"'):
+            tar_str = tar_str[:-1]
+        if tar_str.startswith("-"):
+            tar_str = "{}{}".format(first_tar, tar_str)
+        elif tar_str.endswith("-"):
+            tar_str = "{}{}".format(tar_str, last_tar)
+        m: Optional[re.Match]
+        m = re.match("(.*)-(.*)", tar_str)
+        if m:
+            m1: str = m.group(1)
+            m2: str = m.group(2)
+            # Remove .tar suffix
+            if m1.endswith(".tar"):
+                m1 = m1[:-4]
+            if m2.endswith(".tar"):
+                m2 = m2[:-4]
+            beginning_tar: int = int(m1, 16)
+            ending_tar: int = int(m2, 16)
+            t: int
+            for t in range(beginning_tar, ending_tar + 1):
+                tar_list.append("{:06x}".format(t))
+        else:
+            # Remove .tar suffix
+            if tar_str.endswith(".tar"):
+                tar_str = tar_str[:-4]
+            tar_list.append(tar_str)
+    # Remove duplicates and sort tar_list
+    tar_list = sorted(list(set(tar_list)))
+    return tar_list
+
+
+def process_matches(matches_: List[TupleFilesRow]) -> List[FilesRow]:
     matches: List[FilesRow] = list(map(lambda match: FilesRow(match), matches_))
 
     # Sort by the filename, tape (so the tar archive),
@@ -250,27 +275,7 @@ def extract_database(
     # Sort by tape and offset, so that we make sure
     # that extract the files by tape order.
     matches.sort(key=lambda t: (t.tar, t.offset))
-
-    # Retrieve from tapes
-    failures: List[FilesRow]
-    if args.workers > 1:
-        logger.debug("Running zstash {} with multiprocessing".format(cmd))
-        failures = multiprocess_extract(
-            args.workers,
-            command_info,
-            matches,
-            do_extract_files,
-            cur,
-            args,
-        )
-    else:
-        failures = extractFiles(command_info, matches, do_extract_files, cur, args)
-
-    # Close database
-    logger.debug("Closing index database")
-    con.close()
-
-    return failures
+    return matches
 
 
 def multiprocess_extract(
@@ -287,6 +292,42 @@ def multiprocess_extract(
     A single unit of work is a tar and all of
     the files in it to extract.
     """
+    tar_ordering, workers_to_matches = prepare_multiprocess(num_workers, matches)
+    monitor: parallel.PrintMonitor = parallel.PrintMonitor(tar_ordering)
+
+    # The return value for extractFiles will be added here.
+    failure_queue: multiprocessing.Queue[FilesRow] = multiprocessing.Queue()
+    processes: List[multiprocessing.Process] = []
+    for matches in workers_to_matches:
+        tars_for_this_worker: List[str] = list(set(match.tar for match in matches))
+        worker: parallel.ExtractWorker = parallel.ExtractWorker(
+            monitor, tars_for_this_worker, failure_queue
+        )
+        process: multiprocessing.Process = multiprocessing.Process(
+            target=extractFiles,
+            args=(command_info, matches, do_extract_files, cur, args, worker),
+            daemon=True,
+        )
+        process.start()
+        processes.append(process)
+
+    # While the processes are running, we need to empty the queue.
+    # Otherwise, it causes hanging.
+    # No need to join() each of the processes when doing this,
+    # because we'll be in this loop until completion.
+    failures: List[FilesRow] = []
+    while any(p.is_alive() for p in processes):
+        while not failure_queue.empty():
+            failures.append(failure_queue.get())
+
+    # Sort the failures, since they can come in at any order.
+    failures.sort(key=lambda t: (t.name, t.tar, t.offset))
+    return failures
+
+
+def prepare_multiprocess(
+    num_workers: int, matches: List[FilesRow]
+) -> Tuple[List[str], List[List[FilesRow]]]:
     # A dict of tar -> size of files in it.
     # This is because we're trying to balance the load between
     # the processes.
@@ -340,58 +381,7 @@ def multiprocess_extract(
                 workers_to_matches[workers_idx].append(db_row)
 
     tar_ordering: List[str] = sorted([tar for tar in tar_to_size])
-    monitor: parallel.PrintMonitor = parallel.PrintMonitor(tar_ordering)
-
-    # The return value for extractFiles will be added here.
-    failure_queue: multiprocessing.Queue[FilesRow] = multiprocessing.Queue()
-    processes: List[multiprocessing.Process] = []
-    for matches in workers_to_matches:
-        tars_for_this_worker: List[str] = list(set(match.tar for match in matches))
-        worker: parallel.ExtractWorker = parallel.ExtractWorker(
-            monitor, tars_for_this_worker, failure_queue
-        )
-        process: multiprocessing.Process = multiprocessing.Process(
-            target=extractFiles,
-            args=(command_info, matches, do_extract_files, cur, args, worker),
-            daemon=True,
-        )
-        process.start()
-        processes.append(process)
-
-    # While the processes are running, we need to empty the queue.
-    # Otherwise, it causes hanging.
-    # No need to join() each of the processes when doing this,
-    # because we'll be in this loop until completion.
-    failures: List[FilesRow] = []
-    while any(p.is_alive() for p in processes):
-        while not failure_queue.empty():
-            failures.append(failure_queue.get())
-
-    # Sort the failures, since they can come in at any order.
-    failures.sort(key=lambda t: (t.name, t.tar, t.offset))
-    return failures
-
-
-def check_sizes_match(cur, tfname):
-    match: bool
-    if cur and tars_table_exists(cur):
-        logger.info(f"{tfname} exists. Checking expected size matches actual size.")
-        actual_size = os.path.getsize(tfname)
-        name_only = os.path.split(tfname)[1]
-        cur.execute(f"select size from tars where name is '{name_only}';")
-        expected_size: int = cur.fetchall()[0][0]
-        if expected_size != actual_size:
-            logger.info(
-                f"{name_only}: expected size={expected_size} != {actual_size}=actual_size"
-            )
-            match = False
-        else:
-            # Sizes match
-            match = True
-    else:
-        # Cannot access size information; assume the sizes match.
-        match = True
-    return match
+    return tar_ordering, workers_to_matches
 
 
 # FIXME: C901 'extractFiles' is too complex (33)
@@ -626,6 +616,28 @@ def extractFiles(  # noqa: C901
         for f in failures:
             multiprocess_worker.failure_queue.put(f)
     return failures
+
+
+def check_sizes_match(cur, tfname):
+    match: bool
+    if cur and tars_table_exists(cur):
+        logger.info(f"{tfname} exists. Checking expected size matches actual size.")
+        actual_size = os.path.getsize(tfname)
+        name_only = os.path.split(tfname)[1]
+        cur.execute(f"select size from tars where name is '{name_only}';")
+        expected_size: int = cur.fetchall()[0][0]
+        if expected_size != actual_size:
+            logger.info(
+                f"{name_only}: expected size={expected_size} != {actual_size}=actual_size"
+            )
+            match = False
+        else:
+            # Sizes match
+            match = True
+    else:
+        # Cannot access size information; assume the sizes match.
+        match = True
+    return match
 
 
 def should_extract_file(db_row: FilesRow) -> bool:
