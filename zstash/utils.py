@@ -92,6 +92,16 @@ class CommandInfo(object):
             if url.scheme == "globus":
                 self.hpss_type = HPSSType.GLOBUS
                 self.globus_info = GlobusInfo(hpss_path)
+                globus_cfg: str = os.path.expanduser("~/.globus-native-apps.cfg")
+                logger.info(f"Checking if {globus_cfg} exists")
+                if os.path.exists(globus_cfg):
+                    logger.info(
+                        f"{globus_cfg} exists. If this file does not have the proper settings, it may cause a TransferAPIError (e.g., 'Token is not active', 'No credentials supplied')"
+                    )
+                else:
+                    logger.info(
+                        f"{globus_cfg} does not exist. zstash will need to prompt for authentications twice, and then you will need to re-run."
+                    )
             else:
                 self.hpss_type = HPSSType.SAME_MACHINE_HPSS
         elif null_hpss_allowed:
