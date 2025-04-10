@@ -82,6 +82,20 @@ def check_endpoint_version_5(globus_info: GlobusInfo, ep_id):
     return False
 
 
+def check_consents(globus_info: GlobusInfo):
+    scopes = "urn:globus:auth:scope:transfer.api.globus.org:all["
+    for ep_id in [globus_info.remote_endpoint, globus_info.local_endpoint]:
+        if check_endpoint_version_5(globus_info, ep_id):
+            scopes += f" *https://auth.globus.org/scopes/{ep_id}/data_access"
+    scopes += " ]"
+    native_client = NativeClient(client_id=ZSTASH_CLIENT_ID, app_name="Zstash")
+    log_current_endpoints(globus_info)
+    logger.debug(
+        "check_consents. Calling login, which may print 'Please Paste your Auth Code Below:'"
+    )
+    native_client.login(requested_scopes=scopes)
+
+
 # Used exclusively in globus_transfer
 def file_exists(globus_info: GlobusInfo, name: str) -> bool:
     if not globus_info.archive_directory_listing:
@@ -151,17 +165,7 @@ def submit_transfer_with_checks(globus_info: GlobusInfo):
         task = globus_info.transfer_client.submit_transfer(globus_info.transfer_data)
     except TransferAPIError as err:
         if err.info.consent_required:
-            scopes = "urn:globus:auth:scope:transfer.api.globus.org:all["
-            for ep_id in [globus_info.remote_endpoint, globus_info.local_endpoint]:
-                if check_endpoint_version_5(globus_info, ep_id):
-                    scopes += f" *https://auth.globus.org/scopes/{ep_id}/data_access"
-            scopes += " ]"
-            native_client = NativeClient(client_id=ZSTASH_CLIENT_ID, app_name="Zstash")
-            log_current_endpoints(globus_info)
-            logger.debug(
-                "submit_transfer_with_checks. Calling login, which may print 'Please Paste your Auth Code Below:'"
-            )
-            native_client.login(requested_scopes=scopes)
+            check_consents(globus_info)
             # Quit here and tell user to re-try
             print(
                 "Consents added, please re-run the previous command to start transfer"
