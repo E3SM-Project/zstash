@@ -9,4 +9,4 @@ def check():
     """
     # This basically just goes through the process of extracting the files,
     # but doesn't actually save the output.
-    extract.extract(keep_files=False)
+    extract.extract(do_extract_files=False)

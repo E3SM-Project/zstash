@@ -20,29 +20,18 @@ import _io
 
 from . import parallel
 from .hpss import hpss_get
-from .settings import (
-    BLOCK_SIZE,
-    DEFAULT_CACHE,
-    TIME_TOL,
-    FilesRow,
-    TupleFilesRow,
-    config,
-    get_db_filename,
-    logger,
-)
-from .utils import tars_table_exists, update_config
+from .settings import BLOCK_SIZE, TIME_TOL, FilesRow, TupleFilesRow, logger
+from .utils import CommandInfo, HPSSType, tars_table_exists
 
 
-def extract(keep_files: bool = True):
+def extract(do_extract_files: bool = True):
     """
     Given an HPSS path in the zstash database or passed via the command line,
     extract the archived data based on the file pattern (if given).
     """
-    args: argparse.Namespace
-    cache: str
-    args, cache = setup_extract()
-
-    failures: List[FilesRow] = extract_database(args, cache, keep_files)
+    command_info = CommandInfo("extract")
+    args: argparse.Namespace = setup_extract(command_info, sys.argv)
+    failures: List[FilesRow] = extract_database(command_info, args, do_extract_files)
 
     if failures:
         logger.error("Encountered an error for files:")
@@ -56,7 +45,7 @@ def extract(keep_files: bool = True):
         for tar in broken_tars:
             logger.error(tar)
     else:
-        verb: str = "extracting" if keep_files else "checking"
+        verb: str = "extracting" if do_extract_files else "checking"
         logger.info(
             'No failures detected when {} the files. If you have a log file, run "grep -i Exception <log-file>" to double check.'.format(
                 verb
@@ -64,7 +53,7 @@ def extract(keep_files: bool = True):
         )
 
 
-def setup_extract() -> Tuple[argparse.Namespace, str]:
+def setup_extract(command_info: CommandInfo, arg_list: List[str]) -> argparse.Namespace:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         usage="zstash extract [<args>] [files]",
         description="Extract files from existing archive",
@@ -102,20 +91,122 @@ def setup_extract() -> Tuple[argparse.Namespace, str]:
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
     parser.add_argument("files", nargs="*", default=["*"])
-    args: argparse.Namespace = parser.parse_args(sys.argv[2:])
-    if args.hpss and args.hpss.lower() == "none":
+    args: argparse.Namespace = parser.parse_args(arg_list[2:])
+
+    if args.hpss and (args.hpss.lower() == "none"):
         args.hpss = "none"
-    if args.cache:
-        cache = args.cache
-    else:
-        cache = DEFAULT_CACHE
     # Note: setting logging level to anything other than DEBUG doesn't work with
     # multiple workers. This must have someting to do with the custom logger
     # implemented for multiple workers.
     if args.verbose or args.workers > 1:
         logger.setLevel(logging.DEBUG)
 
-    return args, cache
+    if args.cache:
+        command_info.cache_dir = args.cache
+    command_info.keep = args.keep
+    command_info.set_dir_to_archive(os.getcwd())
+    command_info.set_hpss_parameters(args.hpss, null_hpss_allowed=True)
+
+    return args
+
+
+def extract_database(
+    command_info: CommandInfo, args: argparse.Namespace, do_extract_files: bool
+) -> List[FilesRow]:
+
+    # Open database
+    logger.debug("Opening index database")
+    if not os.path.exists(command_info.get_db_name()):
+        # Will need to retrieve from HPSS
+        if command_info.hpss_type != HPSSType.UNDEFINED:
+            hpss_get(command_info, command_info.get_db_name())
+        else:
+            error_str: str = (
+                "--hpss argument is required when local copy of database is unavailable"
+            )
+            logger.error(error_str)
+            raise ValueError(error_str)
+    con: sqlite3.Connection = sqlite3.connect(
+        command_info.get_db_name(), detect_types=sqlite3.PARSE_DECLTYPES
+    )
+    cur: sqlite3.Cursor = con.cursor()
+
+    command_info.update_config_using_db(cur)
+    command_info.validate_maxsize()
+
+    if command_info.hpss_type in [HPSSType.NO_HPSS, HPSSType.UNDEFINED]:
+        if command_info.config.hpss != "none":
+            raise ValueError(f"Invalid config.hpss={command_info.config.hpss}")
+        # If not using HPSS, always keep the files.
+        command_info.keep = True
+    # else: keep command_info.keep set to args.keep
+
+    # Start doing actual work
+    cmd: str = "extract" if do_extract_files else "check"
+
+    logger.debug("Running zstash " + cmd)
+    logger.debug(f"Local path : {command_info.config.path}")
+    logger.debug(f"HPSS path  : {command_info.config.hpss}")
+    logger.debug(f"Max size  : {command_info.config.maxsize}")
+    logger.debug(f"Keep local tar files : {command_info.keep}")
+
+    matches_: List[TupleFilesRow] = []
+    if args.tars is not None:
+        # Ignore default value for args.files ("*")
+        if args.files != ["*"]:
+            raise ValueError("If --tars is used, <files> should not be listed.")
+        tar_names_initial: List[Tuple[str]] = cur.execute(
+            "select distinct tar from files"
+        ).fetchall()
+        tar_names: List[str] = sorted([x for (x,) in tar_names_initial])
+        # Remove `.tar` with `[:-4]` for `parse_tars_option` to work properly
+        tar_list: List[str] = parse_tars_option(
+            args.tars, tar_names[0][:-4], tar_names[-1][:-4]
+        )
+        for tar in tar_list:
+            cur.execute(
+                "select * from files where tar GLOB ?",
+                (tar + ".tar",),
+            )
+            matches_ = matches_ + cur.fetchall()
+    else:
+        # Find matching files
+        for args_file in args.files:
+            cur.execute(
+                "select * from files where name GLOB ? or tar GLOB ?",
+                (args_file, args_file),
+            )
+            match: List[TupleFilesRow] = cur.fetchall()
+            if match:
+                matches_ = matches_ + match
+            else:
+                logger.info("No matches for {}".format(args_file))
+
+    if matches_ == []:
+        raise FileNotFoundError("There was nothing to extract.")
+
+    matches: List[FilesRow] = process_matches(matches_)
+
+    # Retrieve from tapes
+    failures: List[FilesRow]
+    if args.workers > 1:
+        logger.debug("Running zstash {} with multiprocessing".format(cmd))
+        failures = multiprocess_extract(
+            args.workers,
+            command_info,
+            matches,
+            do_extract_files,
+            cur,
+            args,
+        )
+    else:
+        failures = extractFiles(command_info, matches, do_extract_files, cur, args)
+
+    # Close database
+    logger.debug("Closing index database")
+    con.close()
+
+    return failures
 
 
 def parse_tars_option(tars: str, first_tar: str, last_tar: str) -> List[str]:
@@ -156,94 +247,7 @@ def parse_tars_option(tars: str, first_tar: str, last_tar: str) -> List[str]:
     return tar_list
 
 
-def extract_database(
-    args: argparse.Namespace, cache: str, keep_files: bool
-) -> List[FilesRow]:
-
-    # Open database
-    logger.debug("Opening index database")
-    if not os.path.exists(get_db_filename(cache)):
-        # Will need to retrieve from HPSS
-        if args.hpss is not None:
-            config.hpss = args.hpss
-            if config.hpss is not None:
-                hpss: str = config.hpss
-            else:
-                raise TypeError("Invalid config.hpss={}".format(config.hpss))
-            hpss_get(hpss, get_db_filename(cache), cache)
-        else:
-            error_str: str = (
-                "--hpss argument is required when local copy of database is unavailable"
-            )
-            logger.error(error_str)
-
-            raise ValueError(error_str)
-    con: sqlite3.Connection = sqlite3.connect(
-        get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES
-    )
-    cur: sqlite3.Cursor = con.cursor()
-
-    update_config(cur)
-    if config.maxsize is not None:
-        maxsize = config.maxsize
-    else:
-        raise TypeError("Invalid config.maxsize={}".format(config.maxsize))
-    config.maxsize = int(maxsize)
-
-    # The command line arg should always have precedence
-    if args.hpss is not None:
-        config.hpss = args.hpss
-    keep: bool
-    if config.hpss == "none":
-        # If no HPSS is available, always keep the files.
-        keep = True
-    else:
-        keep = args.keep
-
-    # Start doing actual work
-    cmd: str = "extract" if keep_files else "check"
-
-    logger.debug("Running zstash " + cmd)
-    logger.debug("Local path : {}".format(config.path))
-    logger.debug("HPSS path  : {}".format(config.hpss))
-    logger.debug("Max size  : {}".format(config.maxsize))
-    logger.debug("Keep local tar files : {}".format(keep))
-
-    matches_: List[TupleFilesRow] = []
-    if args.tars is not None:
-        # Ignore default value for args.files ("*")
-        if args.files != ["*"]:
-            raise ValueError("If --tars is used, <files> should not be listed.")
-        tar_names_initial: List[Tuple[str]] = cur.execute(
-            "select distinct tar from files"
-        ).fetchall()
-        tar_names: List[str] = sorted([x for (x,) in tar_names_initial])
-        # Remove `.tar` with `[:-4]` for `parse_tars_option` to work properly
-        tar_list: List[str] = parse_tars_option(
-            args.tars, tar_names[0][:-4], tar_names[-1][:-4]
-        )
-        for tar in tar_list:
-            cur.execute(
-                "select * from files where tar GLOB ?",
-                (tar + ".tar",),
-            )
-            matches_ = matches_ + cur.fetchall()
-    else:
-        # Find matching files
-        for args_file in args.files:
-            cur.execute(
-                "select * from files where name GLOB ? or tar GLOB ?",
-                (args_file, args_file),
-            )
-            match: List[TupleFilesRow] = cur.fetchall()
-            if match:
-                matches_ = matches_ + match
-            else:
-                logger.info("No matches for {}".format(args_file))
-
-    if matches_ == []:
-        raise FileNotFoundError("There was nothing to extract.")
-
+def process_matches(matches_: List[TupleFilesRow]) -> List[FilesRow]:
     matches: List[FilesRow] = list(map(lambda match: FilesRow(match), matches_))
 
     # Sort by the filename, tape (so the tar archive),
@@ -271,30 +275,14 @@ def extract_database(
     # Sort by tape and offset, so that we make sure
     # that extract the files by tape order.
     matches.sort(key=lambda t: (t.tar, t.offset))
-
-    # Retrieve from tapes
-    failures: List[FilesRow]
-    if args.workers > 1:
-        logger.debug("Running zstash {} with multiprocessing".format(cmd))
-        failures = multiprocess_extract(
-            args.workers, matches, keep_files, keep, cache, cur, args
-        )
-    else:
-        failures = extractFiles(matches, keep_files, keep, cache, cur, args)
-
-    # Close database
-    logger.debug("Closing index database")
-    con.close()
-
-    return failures
+    return matches
 
 
 def multiprocess_extract(
     num_workers: int,
+    command_info: CommandInfo,
     matches: List[FilesRow],
-    keep_files: bool,
-    keep_tars: Optional[bool],
-    cache: str,
+    do_extract_files: bool,
     cur: sqlite3.Cursor,
     args: argparse.Namespace,
 ) -> List[FilesRow]:
@@ -304,6 +292,42 @@ def multiprocess_extract(
     A single unit of work is a tar and all of
     the files in it to extract.
     """
+    tar_ordering, workers_to_matches = prepare_multiprocess(num_workers, matches)
+    monitor: parallel.PrintMonitor = parallel.PrintMonitor(tar_ordering)
+
+    # The return value for extractFiles will be added here.
+    failure_queue: multiprocessing.Queue[FilesRow] = multiprocessing.Queue()
+    processes: List[multiprocessing.Process] = []
+    for matches in workers_to_matches:
+        tars_for_this_worker: List[str] = list(set(match.tar for match in matches))
+        worker: parallel.ExtractWorker = parallel.ExtractWorker(
+            monitor, tars_for_this_worker, failure_queue
+        )
+        process: multiprocessing.Process = multiprocessing.Process(
+            target=extractFiles,
+            args=(command_info, matches, do_extract_files, cur, args, worker),
+            daemon=True,
+        )
+        process.start()
+        processes.append(process)
+
+    # While the processes are running, we need to empty the queue.
+    # Otherwise, it causes hanging.
+    # No need to join() each of the processes when doing this,
+    # because we'll be in this loop until completion.
+    failures: List[FilesRow] = []
+    while any(p.is_alive() for p in processes):
+        while not failure_queue.empty():
+            failures.append(failure_queue.get())
+
+    # Sort the failures, since they can come in at any order.
+    failures.sort(key=lambda t: (t.name, t.tar, t.offset))
+    return failures
+
+
+def prepare_multiprocess(
+    num_workers: int, matches: List[FilesRow]
+) -> Tuple[List[str], List[List[FilesRow]]]:
     # A dict of tar -> size of files in it.
     # This is because we're trying to balance the load between
     # the processes.
@@ -357,66 +381,14 @@ def multiprocess_extract(
                 workers_to_matches[workers_idx].append(db_row)
 
     tar_ordering: List[str] = sorted([tar for tar in tar_to_size])
-    monitor: parallel.PrintMonitor = parallel.PrintMonitor(tar_ordering)
-
-    # The return value for extractFiles will be added here.
-    failure_queue: multiprocessing.Queue[FilesRow] = multiprocessing.Queue()
-    processes: List[multiprocessing.Process] = []
-    for matches in workers_to_matches:
-        tars_for_this_worker: List[str] = list(set(match.tar for match in matches))
-        worker: parallel.ExtractWorker = parallel.ExtractWorker(
-            monitor, tars_for_this_worker, failure_queue
-        )
-        process: multiprocessing.Process = multiprocessing.Process(
-            target=extractFiles,
-            args=(matches, keep_files, keep_tars, cache, cur, args, worker),
-            daemon=True,
-        )
-        process.start()
-        processes.append(process)
-
-    # While the processes are running, we need to empty the queue.
-    # Otherwise, it causes hanging.
-    # No need to join() each of the processes when doing this,
-    # because we'll be in this loop until completion.
-    failures: List[FilesRow] = []
-    while any(p.is_alive() for p in processes):
-        while not failure_queue.empty():
-            failures.append(failure_queue.get())
-
-    # Sort the failures, since they can come in at any order.
-    failures.sort(key=lambda t: (t.name, t.tar, t.offset))
-    return failures
-
-
-def check_sizes_match(cur, tfname):
-    match: bool
-    if cur and tars_table_exists(cur):
-        logger.info(f"{tfname} exists. Checking expected size matches actual size.")
-        actual_size = os.path.getsize(tfname)
-        name_only = os.path.split(tfname)[1]
-        cur.execute(f"select size from tars where name is '{name_only}';")
-        expected_size: int = cur.fetchall()[0][0]
-        if expected_size != actual_size:
-            logger.info(
-                f"{name_only}: expected size={expected_size} != {actual_size}=actual_size"
-            )
-            match = False
-        else:
-            # Sizes match
-            match = True
-    else:
-        # Cannot access size information; assume the sizes match.
-        match = True
-    return match
+    return tar_ordering, workers_to_matches
 
 
 # FIXME: C901 'extractFiles' is too complex (33)
 def extractFiles(  # noqa: C901
+    command_info: CommandInfo,
     files: List[FilesRow],
-    keep_files: bool,
-    keep_tars: Optional[bool],
-    cache: str,
+    do_extract_files: bool,
     cur: sqlite3.Cursor,
     args: argparse.Namespace,
     multiprocess_worker: Optional[parallel.ExtractWorker] = None,
@@ -425,11 +397,11 @@ def extractFiles(  # noqa: C901
     Given a list of database rows, extract the files from the
     tar archives to the current location on disk.
 
-    If keep_files is False, the files are not extracted.
+    If do_extract_files is False, the files are not extracted.
     This is used for when checking if the files in an HPSS
     repository are valid.
 
-    If keep_tars is True, the tar archives that are downloaded are kept,
+    If command_info.keep is True, the tar archives that are downloaded are kept,
     even after the program has terminated. Otherwise, they are deleted.
 
     If running in parallel, then multiprocess_worker is the Worker
@@ -437,6 +409,7 @@ def extractFiles(  # noqa: C901
     We need a reference to it so we can signal it to print
     the contents of what's in its print queue.
     """
+
     failures: List[FilesRow] = []
     tfname: str
     newtar: bool = True
@@ -458,17 +431,13 @@ def extractFiles(  # noqa: C901
         # Open new tar archive
         if newtar:
             newtar = False
-            tfname = os.path.join(cache, files_row.tar)
+            tfname = os.path.join(command_info.cache_dir, files_row.tar)
             # Everytime we're extracting a new tar, if running in parallel,
             # let the process know.
             # This is to synchronize the print statements.
             if multiprocess_worker:
                 multiprocess_worker.set_curr_tar(files_row.tar)
 
-            if config.hpss is not None:
-                hpss: str = config.hpss
-            else:
-                raise TypeError("Invalid config.hpss={}".format(config.hpss))
             tries: int = args.retries + 1
             # Set to True to test the `--retries` option with a forced failure.
             # Then run `python -m unittest tests.test_extract.TestExtract.testExtractRetries`
@@ -487,7 +456,7 @@ def extractFiles(  # noqa: C901
                         test_retry = False
                         raise RuntimeError
                     if do_retrieve:
-                        hpss_get(hpss, tfname, cache)
+                        hpss_get(command_info, tfname)
                         if not check_sizes_match(cur, tfname):
                             raise RuntimeError(
                                 f"{tfname} size does not match expected size."
@@ -506,12 +475,12 @@ def extractFiles(  # noqa: C901
             tar: tarfile.TarFile = tarfile.open(tfname, "r")
 
         # Extract file
-        cmd: str = "Extracting" if keep_files else "Checking"
+        cmd: str = "Extracting" if do_extract_files else "Checking"
         logger.info(cmd + " %s" % (files_row.name))
         # if multiprocess_worker:
         #     print('{} is {} {} from {}'.format(multiprocess_worker, cmd, file[1], file[5]))
 
-        if keep_files and not should_extract_file(files_row):
+        if do_extract_files and not should_extract_file(files_row):
             # If we were going to extract, but aren't
             # because a matching file is on disk
             msg: str = "Not extracting {}, because it"
@@ -520,7 +489,7 @@ def extractFiles(  # noqa: C901
             logger.info(msg.format(files_row.name))
 
         # True if we should actually extract the file from the tar
-        extract_this_file: bool = keep_files and should_extract_file(files_row)
+        extract_this_file: bool = do_extract_files and should_extract_file(files_row)
 
         try:
             # Seek file position
@@ -623,16 +592,19 @@ def extractFiles(  # noqa: C901
 
             if multiprocess_worker:
                 multiprocess_worker.done_enqueuing_output_for_tar(files_row.tar)
-
             # Open new archive next time
             newtar = True
 
             # Delete this tar if the corresponding command-line arg was used.
-            if not keep_tars:
+            logger.debug(f"hpss type={command_info.hpss_type}")
+            if not command_info.keep:
                 if tfname is not None:
+                    logger.debug(f"Removing tar archive {tfname}")
                     os.remove(tfname)
                 else:
-                    raise TypeError("Invalid tfname={}".format(tfname))
+                    raise TypeError(f"Invalid tfname={tfname}")
+            else:
+                logger.debug(f"Keeping tar archive {tfname}")
 
     if multiprocess_worker:
         # If there are things left to print, print them.
@@ -644,6 +616,28 @@ def extractFiles(  # noqa: C901
         for f in failures:
             multiprocess_worker.failure_queue.put(f)
     return failures
+
+
+def check_sizes_match(cur, tfname):
+    match: bool
+    if cur and tars_table_exists(cur):
+        logger.info(f"{tfname} exists. Checking expected size matches actual size.")
+        actual_size = os.path.getsize(tfname)
+        name_only = os.path.split(tfname)[1]
+        cur.execute(f"select size from tars where name is '{name_only}';")
+        expected_size: int = cur.fetchall()[0][0]
+        if expected_size != actual_size:
+            logger.info(
+                f"{name_only}: expected size={expected_size} != {actual_size}=actual_size"
+            )
+            match = False
+        else:
+            # Sizes match
+            match = True
+    else:
+        # Cannot access size information; assume the sizes match.
+        match = True
+    return match
 
 
 def should_extract_file(db_row: FilesRow) -> bool:
