@@ -111,6 +111,50 @@ def check_consents(globus_info: GlobusInfo):
     native_client.login(requested_scopes=scopes)
 
 
+# Used exclusively in globus_activate
+def set_local_endpoint(globus_info: GlobusInfo):
+    ini_path = os.path.expanduser("~/.zstash.ini")
+    ini = configparser.ConfigParser()
+    if ini.read(ini_path):
+        if "local" in ini.sections():
+            globus_info.local_endpoint = ini["local"].get("globus_endpoint_uuid")
+            logger.debug(
+                f"globus endpoint in ~/.zstash.ini: {ep_to_name(globus_info.local_endpoint)}"
+            )
+    else:
+        ini["local"] = {"globus_endpoint_uuid": ""}
+        try:
+            with open(ini_path, "w") as f:
+                ini.write(f)
+        except Exception as e:
+            logger.error(e)
+            sys.exit(1)
+    if not globus_info.local_endpoint:
+        fqdn = socket.getfqdn()
+        if re.fullmatch(r"n.*\.local", fqdn) and os.getenv("HOSTNAME", "NA").startswith(
+            "compy"
+        ):
+            fqdn = "compy.pnl.gov"
+        for pattern in REGEX_ENDPOINT_MAP.keys():
+            if re.fullmatch(pattern, fqdn):
+                globus_info.local_endpoint = REGEX_ENDPOINT_MAP.get(pattern)
+                break
+    # FQDN is not set on Perlmutter at NERSC
+    if not globus_info.local_endpoint:
+        nersc_hostname = os.environ.get("NERSC_HOST")
+        if nersc_hostname and (
+            nersc_hostname == "perlmutter" or nersc_hostname == "unknown"
+        ):
+            globus_info.local_endpoint = REGEX_ENDPOINT_MAP.get(
+                r"perlmutter.*\.nersc\.gov"
+            )
+    if not globus_info.local_endpoint:
+        logger.error(
+            f"{ini_path} does not have the local Globus endpoint set nor could one be found in REGEX_ENDPOINT_MAP."
+        )
+        sys.exit(1)
+
+
 # Used exclusively in globus_transfer
 def file_exists(globus_info: GlobusInfo, name: str) -> bool:
     if not globus_info.archive_directory_listing:
@@ -260,45 +304,7 @@ def globus_activate(globus_info: GlobusInfo, alt_hpss: str = ""):  # noqa: C901
         globus_info.remote_endpoint = globus_info.url.netloc
     else:
         globus_info.remote_endpoint = globus_info.url.netloc
-
-    ini_path = os.path.expanduser("~/.zstash.ini")
-    ini = configparser.ConfigParser()
-    if ini.read(ini_path):
-        if "local" in ini.sections():
-            globus_info.local_endpoint = ini["local"].get("globus_endpoint_uuid")
-    else:
-        ini["local"] = {"globus_endpoint_uuid": ""}
-        try:
-            with open(ini_path, "w") as f:
-                ini.write(f)
-        except Exception as e:
-            logger.error(e)
-            sys.exit(1)
-    if not globus_info.local_endpoint:
-        fqdn = socket.getfqdn()
-        if re.fullmatch(r"n.*\.local", fqdn) and os.getenv("HOSTNAME", "NA").startswith(
-            "compy"
-        ):
-            fqdn = "compy.pnl.gov"
-        for pattern in REGEX_ENDPOINT_MAP.keys():
-            if re.fullmatch(pattern, fqdn):
-                globus_info.local_endpoint = REGEX_ENDPOINT_MAP.get(pattern)
-                break
-    # FQDN is not set on Perlmutter at NERSC
-    if not globus_info.local_endpoint:
-        nersc_hostname = os.environ.get("NERSC_HOST")
-        if nersc_hostname and (
-            nersc_hostname == "perlmutter" or nersc_hostname == "unknown"
-        ):
-            globus_info.local_endpoint = REGEX_ENDPOINT_MAP.get(
-                r"perlmutter.*\.nersc\.gov"
-            )
-    if not globus_info.local_endpoint:
-        logger.error(
-            f"{ini_path} does not have the local Globus endpoint set nor could one be found in REGEX_ENDPOINT_MAP."
-        )
-        sys.exit(1)
-
+    set_local_endpoint(globus_info)
     if globus_info.remote_endpoint.upper() in HPSS_ENDPOINT_MAP.keys():
         globus_info.remote_endpoint = HPSS_ENDPOINT_MAP.get(
             globus_info.remote_endpoint.upper()
