@@ -68,6 +68,21 @@ def log_current_endpoints(globus_info: GlobusInfo):
     logger.debug(f"remote endpoint={remote}")
 
 
+def set_clients(globus_info: GlobusInfo):
+    native_client = NativeClient(
+        client_id=ZSTASH_CLIENT_ID,
+        app_name="Zstash",
+        default_scopes="openid urn:globus:auth:scope:transfer.api.globus.org:all",
+    )
+    log_current_endpoints(globus_info)
+    logger.debug(
+        "set_clients. Calling login, which may print 'Please Paste your Auth Code Below:'"
+    )
+    native_client.login(no_local_server=True, refresh_tokens=True)
+    transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
+    globus_info.transfer_client = TransferClient(authorizer=transfer_authorizer)
+
+
 def check_endpoint_version_5(globus_info: GlobusInfo, ep_id):
     if not globus_info.transfer_client:
         raise ValueError("transfer_client is undefined")
@@ -230,7 +245,8 @@ def globus_wait(globus_info: GlobusInfo, alternative_task_id=None):
 # Primary functions ###########################################################
 
 
-def globus_activate(globus_info: GlobusInfo, alt_hpss: str = ""):
+# C901 'globus_activate' is too complex (19)
+def globus_activate(globus_info: GlobusInfo, alt_hpss: str = ""):  # noqa: C901
     """
     Read the local globus endpoint UUID from ~/.zstash.ini.
     If the ini file does not exist, create an ini file with empty values,
@@ -287,20 +303,8 @@ def globus_activate(globus_info: GlobusInfo, alt_hpss: str = ""):
         globus_info.remote_endpoint = HPSS_ENDPOINT_MAP.get(
             globus_info.remote_endpoint.upper()
         )
-
-    native_client = NativeClient(
-        client_id=ZSTASH_CLIENT_ID,
-        app_name="Zstash",
-        default_scopes="openid urn:globus:auth:scope:transfer.api.globus.org:all",
-    )
     log_current_endpoints(globus_info)
-    logger.debug(
-        "globus_activate. Calling login, which may print 'Please Paste your Auth Code Below:'"
-    )
-    native_client.login(no_local_server=True, refresh_tokens=True)
-    transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
-    globus_info.transfer_client = TransferClient(authorizer=transfer_authorizer)
-
+    set_clients(globus_info)
     log_current_endpoints(globus_info)
     for ep_id in [globus_info.local_endpoint, globus_info.remote_endpoint]:
         if ep_id:
@@ -308,6 +312,8 @@ def globus_activate(globus_info: GlobusInfo, alt_hpss: str = ""):
         else:
             ep_name = "undefined"
         logger.debug(f"globus_activate. endpoint={ep_name}")
+        if not globus_info.transfer_client:
+            raise ValueError("Was unable to instantiate transfer_client")
         r = globus_info.transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
         if r.get("code") == "AutoActivationFailed":
             logger.error(
