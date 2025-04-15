@@ -3,13 +3,19 @@ from __future__ import absolute_import, print_function
 import argparse
 import logging
 import sys
+from typing import List
 
 from .hpss import hpss_chgrp
 from .settings import logger
 
 
 def chgrp():
+    args: argparse.Namespace = setup_chgrp(sys.argv)
+    recurse: bool = True if args.R else False
+    hpss_chgrp(args.hpss, args.group, recurse)
 
+
+def setup_chgrp(arg_list: List[str]) -> argparse.Namespace:
     # Parser
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         usage="zstash chgrp [<args>] group hpss_archive",
@@ -24,12 +30,9 @@ def chgrp():
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
 
-    args: argparse.Namespace = parser.parse_args(sys.argv[2:])
+    args: argparse.Namespace = parser.parse_args(arg_list[2:])
     if args.hpss and args.hpss.lower() == "none":
         args.hpss = "none"
-
-    # Start doing actual work
     if args.verbose:
         logger.setLevel(logging.DEBUG)
-    recurse: bool = True if args.R else False
-    hpss_chgrp(args.hpss, args.group, recurse)
+    return args
