@@ -114,8 +114,7 @@ def setup_update(command_info: CommandInfo, arg_list: List[str]) -> argparse.Nam
     return args
 
 
-# C901 'update_database' is too complex (20)
-def update_database(  # noqa: C901
+def update_database(
     command_info: CommandInfo, args: argparse.Namespace
 ) -> Optional[List[str]]:
     # Open database

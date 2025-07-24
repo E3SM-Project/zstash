@@ -6,7 +6,7 @@ import os.path
 import re
 import socket
 import sys
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from fair_research_login.client import NativeClient
@@ -188,6 +188,84 @@ def file_exists(globus_info: GlobusInfo, name: str) -> bool:
 
 
 # Used exclusively in globus_transfer
+def compute_transfer_paths(
+    globus_info: GlobusInfo, remote_path: str, name: str, transfer_type: str
+) -> Tuple[str, str, str, str]:
+    if not (globus_info.local_endpoint and globus_info.remote_endpoint):
+        raise ValueError(
+            f"Undefined value: local_endpoint={globus_info.local_endpoint} & remote_endpoint={globus_info.remote_endpoint}"
+        )
+    if transfer_type == "get":
+        src_ep = globus_info.remote_endpoint
+        src_path = os.path.join(remote_path, name)
+        dst_ep = globus_info.local_endpoint
+        dst_path = os.path.join(os.getcwd(), name)
+    elif transfer_type == "put":
+        src_ep = globus_info.local_endpoint
+        src_path = os.path.join(os.getcwd(), name)
+        dst_ep = globus_info.remote_endpoint
+        dst_path = os.path.join(remote_path, name)
+    else:
+        raise ValueError(f"Invalid transfer_type: {transfer_type}")
+    return src_ep, src_path, dst_ep, dst_path
+
+
+# Used exclusively in globus_transfer
+def build_transfer_label(remote_path: str, name: str) -> str:
+    subdir: str = os.path.basename(os.path.normpath(remote_path))
+    subdir_label: str = re.sub("[^A-Za-z0-9_ -]", "", subdir)
+    filename: str = name.split(".")[0]
+    label: str = subdir_label + " " + filename
+    return label
+
+
+# Used exclusively in globus_transfer
+def handle_previous_task(globus_info: GlobusInfo) -> Optional[str]:
+    if not globus_info.transfer_client:
+        raise ValueError("transfer_client is undefined")
+    task = globus_info.transfer_client.get_task(globus_info.task_id)
+    prev_task_status = task["status"]
+    # one  of {ACTIVE, SUCCEEDED, FAILED, CANCELED, PENDING, INACTIVE}
+    # NOTE: How we behave here depends upon whether we want to support mutliple active transfers.
+    # Presently, we do not, except inadvertantly (if status == PENDING)
+    if prev_task_status == "ACTIVE":
+        logger.info(
+            f"{ts_utc()}: Previous task_id {globus_info.task_id} Still Active. Returning ACTIVE."
+        )
+        return "ACTIVE"
+    elif prev_task_status == "SUCCEEDED":
+        logger.info(
+            f"{ts_utc()}: Previous task_id {globus_info.task_id} status = SUCCEEDED."
+        )
+        src_ep = task["source_endpoint_id"]
+        dst_ep = task["destination_endpoint_id"]
+        label = task["label"]
+        ts = ts_utc()
+        logger.info(
+            f"{ts}:Globus transfer {globus_info.task_id}, from {src_ep} to {dst_ep}: {label} succeeded"
+        )
+    else:
+        logger.error(
+            f"{ts_utc()}: Previous task_id {globus_info.task_id} status = {prev_task_status}."
+        )
+    return None
+
+
+# Used exclusively in globus_transfer
+def log_accumulated_transfer_items(globus_info: GlobusInfo):
+    # DEBUG: review accumulated items in TransferData
+    logger.info(f"{ts_utc()}: TransferData: accumulated items:")
+    attribs = globus_info.transfer_data.__dict__
+    for item in attribs["data"]["DATA"]:
+        if item["DATA_TYPE"] == "transfer_item":
+            globus_info.tarfiles_pushed += 1
+            print(
+                f"   (routine)  PUSHING (#{globus_info.tarfiles_pushed}) STORED source item: {item['source_path']}",
+                flush=True,
+            )
+
+
+# Used exclusively in globus_transfer
 def globus_block_wait(
     globus_info: GlobusInfo, wait_timeout: int, polling_interval: int, max_retries: int
 ):
@@ -311,8 +389,7 @@ def globus_wait(globus_info: GlobusInfo, alternative_task_id=None):
 # Primary functions ###########################################################
 
 
-# C901 'globus_activate' is too complex (19)
-def globus_activate(globus_info: GlobusInfo, alt_hpss: str = ""):  # noqa: C901
+def globus_activate(globus_info: GlobusInfo, alt_hpss: str = ""):
     """
     Read the local globus endpoint UUID from ~/.zstash.ini.
     If the ini file does not exist, create an ini file with empty values,
@@ -350,8 +427,7 @@ def globus_activate(globus_info: GlobusInfo, alt_hpss: str = ""):  # noqa: C901
             sys.exit(1)
 
 
-# C901 'globus_transfer' is too complex (20)
-def globus_transfer(  # noqa: C901
+def globus_transfer(
     globus_info: GlobusInfo,
     remote_ep: str,
     remote_path: str,
@@ -381,23 +457,14 @@ def globus_transfer(  # noqa: C901
                 f"Remote file globus://{remote_ep}{remote_path}/{name} does not exist"
             )
             sys.exit(1)
-
-    if transfer_type == "get":
-        src_ep = globus_info.remote_endpoint
-        src_path = os.path.join(remote_path, name)
-        dst_ep = globus_info.local_endpoint
-        dst_path = os.path.join(os.getcwd(), name)
-    else:
-        src_ep = globus_info.local_endpoint
-        src_path = os.path.join(os.getcwd(), name)
-        dst_ep = globus_info.remote_endpoint
-        dst_path = os.path.join(remote_path, name)
-
-    subdir = os.path.basename(os.path.normpath(remote_path))
-    subdir_label = re.sub("[^A-Za-z0-9_ -]", "", subdir)
-    filename = name.split(".")[0]
-    label = subdir_label + " " + filename
-
+    src_ep: str
+    src_path: str
+    dst_ep: str
+    dst_path: str
+    src_ep, src_path, dst_ep, dst_path = compute_transfer_paths(
+        globus_info, remote_path, name, transfer_type
+    )
+    label: str = build_transfer_label(remote_path, name)
     if not globus_info.transfer_data:
         globus_info.transfer_data = TransferData(
             globus_info.transfer_client,
@@ -412,43 +479,10 @@ def globus_transfer(  # noqa: C901
     globus_info.transfer_data["label"] = label
     try:
         if globus_info.task_id:
-            task = globus_info.transfer_client.get_task(globus_info.task_id)
-            prev_task_status = task["status"]
-            # one  of {ACTIVE, SUCCEEDED, FAILED, CANCELED, PENDING, INACTIVE}
-            # NOTE: How we behave here depends upon whether we want to support mutliple active transfers.
-            # Presently, we do not, except inadvertantly (if status == PENDING)
-            if prev_task_status == "ACTIVE":
-                logger.info(
-                    f"{ts_utc()}: Previous task_id {globus_info.task_id} Still Active. Returning ACTIVE."
-                )
-                return "ACTIVE"
-            elif prev_task_status == "SUCCEEDED":
-                logger.info(
-                    f"{ts_utc()}: Previous task_id {globus_info.task_id} status = SUCCEEDED."
-                )
-                src_ep = task["source_endpoint_id"]
-                dst_ep = task["destination_endpoint_id"]
-                label = task["label"]
-                ts = ts_utc()
-                logger.info(
-                    f"{ts}:Globus transfer {globus_info.task_id}, from {src_ep} to {dst_ep}: {label} succeeded"
-                )
-            else:
-                logger.error(
-                    f"{ts_utc()}: Previous task_id {globus_info.task_id} status = {prev_task_status}."
-                )
-
-        # DEBUG: review accumulated items in TransferData
-        logger.info(f"{ts_utc()}: TransferData: accumulated items:")
-        attribs = globus_info.transfer_data.__dict__
-        for item in attribs["data"]["DATA"]:
-            if item["DATA_TYPE"] == "transfer_item":
-                globus_info.tarfiles_pushed += 1
-                print(
-                    f"   (routine)  PUSHING (#{globus_info.tarfiles_pushed}) STORED source item: {item['source_path']}",
-                    flush=True,
-                )
-
+            relevant_prev_task_status: Optional[str] = handle_previous_task(globus_info)
+            if relevant_prev_task_status:
+                return relevant_prev_task_status
+        log_accumulated_transfer_items(globus_info)
         # SUBMIT new transfer here
         logger.info(
             f"{ts_utc()}: DIVING: Submit Transfer for {globus_info.transfer_data['label']}"
@@ -460,7 +494,6 @@ def globus_transfer(  # noqa: C901
         logger.info(
             f"{ts_utc()}: SURFACE Submit Transfer returned new task_id = {globus_info.task_id} for label {globus_info.transfer_data['label']}"
         )
-
         # Nullify the submitted transfer data structure so that a new one will be created on next call.
         globus_info.transfer_data = None
     except TransferAPIError as e:
