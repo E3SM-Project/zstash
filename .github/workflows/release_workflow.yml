@@ -32,7 +32,7 @@ jobs:
             hashFiles('conda/dev.yml') }}
 
       - name: Build Conda Environment
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: zstash_dev
           miniforge-variant: Miniforge3
