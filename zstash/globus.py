@@ -20,13 +20,13 @@ from .utils import GlobusInfo, ts_utc
 ZSTASH_CLIENT_ID: str = "6c1629cf-446c-49e7-af95-323c6412397f"
 
 HPSS_ENDPOINT_MAP: Dict[str, str] = {
-    # "ALCF": "de463ec4-6d04-11e5-ba46-22000b92c6ec",
+    "ALCF": "de463ec4-6d04-11e5-ba46-22000b92c6ec",
     "NERSC": "9cd89cfd-6d04-11e5-ba46-22000b92c6ec",
 }
 
 # This is used if the `globus_endpoint_uuid` is not set in `~/.zstash.ini`
 REGEX_ENDPOINT_MAP: Dict[str, str] = {
-    # r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
+    r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
     r"blueslogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
     r"chrlogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
     r"b\d+\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
@@ -57,6 +57,8 @@ def ep_to_name(endpoint_id: str) -> str:
 
 
 def log_current_endpoints(globus_info: GlobusInfo):
+    local: str
+    remote: str
     if globus_info.local_endpoint:
         local = ep_to_name(globus_info.local_endpoint)
     else:
@@ -86,17 +88,21 @@ def set_clients(globus_info: GlobusInfo):
     logger.debug(
         "set_clients. Calling login, which may print 'Please Paste your Auth Code Below:'"
     )
-    all_scopes: str = get_all_endpoint_scopes(
-        list(HPSS_ENDPOINT_MAP.values()) + list(REGEX_ENDPOINT_MAP.values())
-    )
-    native_client.login(
-        requested_scopes=all_scopes, no_local_server=True, refresh_tokens=True
-    )
+    if globus_info.local_endpoint and globus_info.remote_endpoint:
+        all_scopes: str = get_all_endpoint_scopes(
+            [globus_info.local_endpoint, globus_info.remote_endpoint]
+        )
+        native_client.login(
+            requested_scopes=all_scopes, no_local_server=True, refresh_tokens=True
+        )
+    else:
+        native_client.login(no_local_server=True, refresh_tokens=True)
     transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
     globus_info.transfer_client = TransferClient(authorizer=transfer_authorizer)
 
 
-def check_endpoint_version_5(globus_info: GlobusInfo, ep_id):
+# Used exclusively by check_consents
+def check_endpoint_version_5(globus_info: GlobusInfo, ep_id: str) -> bool:
     if not globus_info.transfer_client:
         raise ValueError("transfer_client is undefined")
     log_current_endpoints(globus_info)
@@ -110,10 +116,13 @@ def check_endpoint_version_5(globus_info: GlobusInfo, ep_id):
     return False
 
 
+# Used exclusively by submit_transfer_with_checks, exclusively when there is a TransferAPIError
+# This function is really to diagnose an error: are the consents ok?
+# That is, we don't *need* to check consents or endpoint versions if everything worked out fine.
 def check_consents(globus_info: GlobusInfo):
     scopes = "urn:globus:auth:scope:transfer.api.globus.org:all["
     for ep_id in [globus_info.remote_endpoint, globus_info.local_endpoint]:
-        if check_endpoint_version_5(globus_info, ep_id):
+        if ep_id and check_endpoint_version_5(globus_info, ep_id):
             scopes += f" *https://auth.globus.org/scopes/{ep_id}/data_access"
     scopes += " ]"
     native_client = NativeClient(client_id=ZSTASH_CLIENT_ID, app_name="Zstash")
