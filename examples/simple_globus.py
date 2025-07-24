@@ -2,7 +2,7 @@ import configparser
 import os
 import re
 import shutil
-from typing import Optional
+from typing import List, Optional
 from urllib.parse import ParseResult, urlparse
 
 from fair_research_login.client import NativeClient
@@ -11,10 +11,15 @@ from globus_sdk.response import GlobusHTTPResponse
 
 # Minimal example of how Globus is used in zstash
 # 1. Log into endpoints at globus.org
+# File Manager > Add the endpoints in the "Collection" fields
 # 2. To start fresh, with no consents:
-# https://app.globus.org/settings/consents > Manage Your Consents > Globus Endpoint Performance Monitoring > rescind all"
+# https://auth.globus.org/v2/web/consents > Manage Your Consents > Globus Endpoint Performance Monitoring > rescind all"
 
-HSI_DIR = "zstash_debugging_20250415_v2"
+HSI_DIR: str = "zstash_test_370_20250723"
+ENDPOINT_NAME: str = (
+    "LCRC Improv DTN"  # Change this to the name of the endpoint you want to use
+)
+REQUEST_SCOPES_EARLY: bool = True  # False will emulate zstash behavior
 
 # Globus-specific settings ####################################################
 GLOBUS_CFG: str = os.path.expanduser("~/.globus-native-apps.cfg")
@@ -24,6 +29,7 @@ NAME_TO_ENDPOINT_MAP = {
     # "Globus Tutorial Collection 1": "6c54cade-bde5-45c1-bdea-f4bd71dba2cc",  # The Unit test endpoint
     "NERSC HPSS": "9cd89cfd-6d04-11e5-ba46-22000b92c6ec",
     "NERSC Perlmutter": "6bdc7956-fc0f-4ad2-989c-7aa5ee643a79",
+    "LCRC Improv DTN": "15288284-7006-4041-ba1a-6b52501e49f1",
 }
 
 
@@ -35,40 +41,52 @@ def main():
         os.remove(INI_PATH)
     if os.path.exists(GLOBUS_CFG):
         os.remove(GLOBUS_CFG)
+    skipped_second_auth: bool = False
     try:
-        simple_transfer("toy_run")
+        skipped_second_auth = simple_transfer("toy_run")
     except RuntimeError:
         print("Now that we have the authentications, let's re-run.")
-    # /global/homes/f/forsyth/.globus-native-apps.cfg does not exist. zstash will need to prompt for authentications twice, and then you will need to re-run.
-    #
-    # Might ask for 1st authentication prompt:
-    # Please paste the following URL in a browser:
-    # Authenticated for the 1st time!
-    #
-    # Might ask for 2nd authentication prompt:
-    # Please paste the following URL in a browser:
-    # Authenticated for the 2nd time!
-    # Consents added, please re-run the previous command to start transfer
-    # Now that we have the authentications, let's re-run.
-    os.chdir(base_dir)
-    print(f"Now in {os.getcwd()}")
-    assert os.path.exists(INI_PATH)
-    assert os.path.exists(GLOBUS_CFG)
-    simple_transfer("real_run")
-    # /global/homes/f/forsyth/.globus-native-apps.cfg exists. If this file does not have the proper settings, it may cause a TransferAPIError (e.g., 'Token is not active', 'No credentials supplied')
-    #
-    # Might ask for 1st authentication prompt:
-    # Authenticated for the 1st time!
-    #
-    # Bypassed 2nd authentication.
-    #
-    # Wait for task to complete, wait_timeout=300
-    print(f"To see transferred files, run: hsi ls {HSI_DIR}")
-    # To see transferred files, run: hsi ls zstash_debugging_20250415_v2
-    # Shows file0.txt
+    print(f"For toy_run, skipped_second_auth={skipped_second_auth}")
+    if skipped_second_auth:
+        # We want to enter this block!
+        print(
+            "We didn't need to authenticate a second time! That means we don't have to re-run the previous command to start the transfer!"
+        )
+    else:
+        # Without `get_all_endpoint_scopes`, we ended up in this block!
+        #
+        # /global/homes/f/forsyth/.globus-native-apps.cfg does not exist. zstash will need to prompt for authentications twice, and then you will need to re-run.
+        #
+        # Might ask for 1st authentication prompt:
+        # Please paste the following URL in a browser:
+        # Authenticated for the 1st time!
+        #
+        # Might ask for 2nd authentication prompt:
+        # Please paste the following URL in a browser:
+        # Authenticated for the 2nd time!
+        # Consents added, please re-run the previous command to start transfer
+        # Now that we have the authentications, let's re-run.
+        os.chdir(base_dir)
+        print(f"Now in {os.getcwd()}")
+        assert os.path.exists(INI_PATH)
+        assert os.path.exists(GLOBUS_CFG)
+        skipped_second_auth = simple_transfer("real_run")
+        print(f"For real_run, skipped_second_auth={skipped_second_auth}")
+        # /global/homes/f/forsyth/.globus-native-apps.cfg exists. If this file does not have the proper settings, it may cause a TransferAPIError (e.g., 'Token is not active', 'No credentials supplied')
+        #
+        # Might ask for 1st authentication prompt:
+        # Authenticated for the 1st time!
+        #
+        # Bypassed 2nd authentication.
+        #
+        # Wait for task to complete, wait_timeout=300
+        print(f"To see transferred files, run: hsi ls {HSI_DIR}")
+        # To see transferred files, run: hsi ls zstash_debugging_20250415_v2
+        # Shows file0.txt
+    assert skipped_second_auth
 
 
-def simple_transfer(run_dir: str):
+def simple_transfer(run_dir: str) -> bool:
     hpss_path = f"globus://{NAME_TO_ENDPOINT_MAP['NERSC HPSS']}/~/{HSI_DIR}"
     if os.path.exists(run_dir):
         shutil.rmtree(run_dir)
@@ -104,9 +122,9 @@ def simple_transfer(run_dir: str):
         with open(INI_PATH, "w") as f:
             ini.write(f)
     if not local_endpoint:
-        nersc_hostname = os.environ.get("NERSC_HOST")
-        assert nersc_hostname == "perlmutter"
-        local_endpoint = NAME_TO_ENDPOINT_MAP["NERSC Perlmutter"]
+        # nersc_hostname = os.environ.get("NERSC_HOST")
+        # assert nersc_hostname == "perlmutter"
+        local_endpoint = NAME_TO_ENDPOINT_MAP[ENDPOINT_NAME]
     native_client = NativeClient(
         client_id=ZSTASH_CLIENT_ID,
         app_name="Zstash",
@@ -115,7 +133,13 @@ def simple_transfer(run_dir: str):
     # May print 'Please Paste your Auth Code Below:'
     # This is the 1st authentication prompt!
     print("Might ask for 1st authentication prompt:")
-    native_client.login(no_local_server=True, refresh_tokens=True)
+    if REQUEST_SCOPES_EARLY:
+        all_scopes: str = get_all_endpoint_scopes(list(NAME_TO_ENDPOINT_MAP.values()))
+        native_client.login(
+            requested_scopes=all_scopes, no_local_server=True, refresh_tokens=True
+        )
+    else:
+        native_client.login(no_local_server=True, refresh_tokens=True)
     print("Authenticated for the 1st time!")
     transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
     transfer_client: TransferClient = TransferClient(authorizer=transfer_authorizer)
@@ -147,9 +171,11 @@ def simple_transfer(run_dir: str):
     transfer_data.add_item(src_path, dst_path)
     transfer_data["label"] = label
     task: GlobusHTTPResponse
+    skipped_second_auth: bool = False
     try:
         task = transfer_client.submit_transfer(transfer_data)
         print("Bypassed 2nd authentication.")
+        skipped_second_auth = True
     except TransferAPIError as err:
         if err.info.consent_required:
             scopes = "urn:globus:auth:scope:transfer.api.globus.org:all["
@@ -177,6 +203,14 @@ def simple_transfer(run_dir: str):
     curr_task: GlobusHTTPResponse = transfer_client.get_task(task_id)
     task_status = curr_task["status"]
     assert task_status == "SUCCEEDED"
+    return skipped_second_auth
+
+
+def get_all_endpoint_scopes(endpoints: List[str]) -> str:
+    inner = " ".join(
+        [f"*https://auth.globus.org/scopes/{ep}/data_access" for ep in endpoints]
+    )
+    return f"urn:globus:auth:scope:transfer.api.globus.org:all[{inner}]"
 
 
 # Run #########################################################################

@@ -6,6 +6,7 @@ import os.path
 import re
 import socket
 import sys
+from typing import Dict, List
 from urllib.parse import urlparse
 
 from fair_research_login.client import NativeClient
@@ -16,16 +17,16 @@ from .utils import GlobusInfo, ts_utc
 
 # Constants ###################################################################
 
-ZSTASH_CLIENT_ID = "6c1629cf-446c-49e7-af95-323c6412397f"
+ZSTASH_CLIENT_ID: str = "6c1629cf-446c-49e7-af95-323c6412397f"
 
-HPSS_ENDPOINT_MAP = {
-    "ALCF": "de463ec4-6d04-11e5-ba46-22000b92c6ec",
+HPSS_ENDPOINT_MAP: Dict[str, str] = {
+    # "ALCF": "de463ec4-6d04-11e5-ba46-22000b92c6ec",
     "NERSC": "9cd89cfd-6d04-11e5-ba46-22000b92c6ec",
 }
 
 # This is used if the `globus_endpoint_uuid` is not set in `~/.zstash.ini`
-REGEX_ENDPOINT_MAP = {
-    r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
+REGEX_ENDPOINT_MAP: Dict[str, str] = {
+    # r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
     r"blueslogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
     r"chrlogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
     r"b\d+\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
@@ -35,7 +36,7 @@ REGEX_ENDPOINT_MAP = {
 }
 
 # Last updated 2025-04-08
-ENDPOINT_TO_NAME_MAP = {
+ENDPOINT_TO_NAME_MAP: Dict[str, str] = {
     "08925f04-569f-11e7-bef8-22000b9a448b": "Invalid, presumably Theta",
     "15288284-7006-4041-ba1a-6b52501e49f1": "LCRC Improv DTN",
     "68fbd2fa-83d7-11e9-8e63-029d279f7e24": "pic#compty-dtn",
@@ -68,6 +69,13 @@ def log_current_endpoints(globus_info: GlobusInfo):
     logger.debug(f"remote endpoint={remote}")
 
 
+def get_all_endpoint_scopes(endpoints: List[str]) -> str:
+    inner = " ".join(
+        [f"*https://auth.globus.org/scopes/{ep}/data_access" for ep in endpoints]
+    )
+    return f"urn:globus:auth:scope:transfer.api.globus.org:all[{inner}]"
+
+
 def set_clients(globus_info: GlobusInfo):
     native_client = NativeClient(
         client_id=ZSTASH_CLIENT_ID,
@@ -78,7 +86,12 @@ def set_clients(globus_info: GlobusInfo):
     logger.debug(
         "set_clients. Calling login, which may print 'Please Paste your Auth Code Below:'"
     )
-    native_client.login(no_local_server=True, refresh_tokens=True)
+    all_scopes: str = get_all_endpoint_scopes(
+        list(HPSS_ENDPOINT_MAP.values()) + list(REGEX_ENDPOINT_MAP.values())
+    )
+    native_client.login(
+        requested_scopes=all_scopes, no_local_server=True, refresh_tokens=True
+    )
     transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
     globus_info.transfer_client = TransferClient(authorizer=transfer_authorizer)
 
