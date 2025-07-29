@@ -144,14 +144,6 @@ def add_files(
             tar_md5: Optional[str] = tarFileObject.md5()
             tarFileObject.close()
             logger.info(f"{ts_utc()}: (add_files): Completed archive file {tfname}")
-            if not skip_tars_md5:
-                tar_tuple: TupleTarsRowNoId = (tfname, tarsize, tar_md5)
-                logger.info("tar name={}, tar size={}, tar md5={}".format(*tar_tuple))
-                if not tars_table_exists(cur):
-                    # Need to create tars table
-                    create_tars_table(cur, con)
-                cur.execute("insert into tars values (NULL,?,?,?)", tar_tuple)
-                con.commit()
 
             # Transfer tar to HPSS
             if config.hpss is not None:
@@ -159,10 +151,9 @@ def add_files(
             else:
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
 
-            # NOTE: These lines could be added under an "if debug" condition
-            # logger.info(f"{ts_utc()}: CONTENTS of CACHE upon call to hpss_put:")
-            # process = subprocess.run(["ls", "-l", "zstash"], capture_output=True, text=True)
-            # print(process.stdout)
+            logger.info(
+                f"Contents of the cache prior to `hpss_put`: {os.listdir(os.path.join(cache, tfname))}"
+            )
 
             logger.info(
                 f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {tfname} [keep, non_blocking] = [{keep}, {non_blocking}]"
@@ -172,7 +163,33 @@ def add_files(
                 f"{ts_utc()}: SURFACE (add_files): Called hpss_put to dispatch archive file {tfname}"
             )
 
-            # Update database with files that have been archived
+            if not skip_tars_md5:
+                tar_tuple: TupleTarsRowNoId = (tfname, tarsize, tar_md5)
+                logger.info("tar name={}, tar size={}, tar md5={}".format(*tar_tuple))
+                if not tars_table_exists(cur):
+                    # Need to create tars table
+                    create_tars_table(cur, con)
+                # We're done adding files to the tar.
+                # And we've transferred it to HPSS.
+                # Now we can insert the tar into the database.
+                cur.execute("SELECT COUNT(*) FROM tars WHERE name = ?", (tfname,))
+                if cur.fetchone()[0] == 0:
+                    # Typical case
+                    # Doesn't exist - insert new
+                    cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
+                else:
+                    # Unusual case
+                    # Exists - update with new size and md5
+                    logger.warning(
+                        f"Possible database corruption. Updated existing tar {tfname} with new size {tarsize}"
+                    )
+                    cur.execute(
+                        "UPDATE tars SET size = ?, md5 = ? WHERE name = ?",
+                        (tarsize, tar_md5, tfname),
+                    )
+                con.commit()
+
+            # Update database with the individual files that have been archived
             # Add a row to the "files" table,
             # the last 6 columns matching the values of `archived`
             cur.executemany("insert into files values (NULL,?,?,?,?,?,?)", archived)

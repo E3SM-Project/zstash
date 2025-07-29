@@ -13,7 +13,7 @@ import sys
 import tarfile
 import traceback
 from datetime import datetime
-from typing import DefaultDict, List, Optional, Tuple
+from typing import DefaultDict, List, Optional, Set, Tuple
 
 import _hashlib
 import _io
@@ -390,25 +390,75 @@ def multiprocess_extract(
 
 
 def check_sizes_match(cur, tfname):
-    match: bool
     if cur and tars_table_exists(cur):
         logger.info(f"{tfname} exists. Checking expected size matches actual size.")
-        actual_size = os.path.getsize(tfname)
-        name_only = os.path.split(tfname)[1]
-        cur.execute(f"select size from tars where name is '{name_only}';")
-        expected_size: int = cur.fetchall()[0][0]
-        if expected_size != actual_size:
-            logger.info(
-                f"{name_only}: expected size={expected_size} != {actual_size}=actual_size"
+        actual_size: int = os.path.getsize(tfname)
+        name_only: str = os.path.split(tfname)[1]
+
+        # Get ALL entries for this tar name
+        cur.execute("SELECT size FROM tars WHERE name = ?", (name_only,))
+        results = cur.fetchall()
+
+        if not results:
+            # Cannot access size information; assume the sizes match.
+            logger.error(f"No database entries found for {name_only}")
+            return True
+
+        # Check for multiple entries
+        if len(results) > 1:
+            # Extract just the size values
+            sizes: List[int] = [row[0] for row in results]
+            unique_sizes: Set[int] = set(sizes)
+
+            logger.error(
+                f"{name_only}: Found {len(results)} database entries for this tar"
             )
-            match = False
+            logger.error(f"{name_only}: Database sizes: {sizes}")
+
+            if len(unique_sizes) > 1:
+                # Multiple entries with different sizes.
+                for unique_size in unique_sizes:
+                    if unique_size == actual_size:
+                        logger.info(
+                            f"{name_only}: There exists at least one entry with the same size as the actual file size: {unique_size}. "
+                        )
+                        break
+                error_msg = (
+                    f"{name_only}: Database corruption detected! "
+                    f"Found {len(results)} entries with {len(unique_sizes)} different sizes: {list(unique_sizes)}. "
+                    f"Actual file size: {actual_size}. "
+                    f"Database cleanup required before proceeding."
+                )
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+            else:
+                # Multiple entries, but they all have the same size
+                logger.warning(
+                    f"{name_only}: Found {len(results)} duplicate database entries, "
+                    f"but all have the same size ({sizes[0]}). Consider cleaning up duplicates."
+                )
+                expected_size = sizes[0]
+        else:
+            # Single entry - normal case
+            expected_size = results[0][0]
+
+        # Now check if actual size matches expected size
+        if expected_size != actual_size:
+            error_msg = (
+                f"{name_only}: Size mismatch! "
+                f"Expected={expected_size} != {actual_size}=actual. "
+                f"Difference={actual_size - expected_size}."
+            )
+            logger.error(error_msg)
+            return False
         else:
             # Sizes match
-            match = True
+            logger.info(f"{name_only}: Size check passed ({actual_size} bytes)")
+            return True
     else:
         # Cannot access size information; assume the sizes match.
-        match = True
-    return match
+        logger.debug("Cannot access tar size information; assuming sizes match")
+        return True
 
 
 # FIXME: C901 'extractFiles' is too complex (33)
