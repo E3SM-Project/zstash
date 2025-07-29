@@ -1,0 +1,280 @@
+# TODO: Commit these changes
+# TODO: Factor out functions in this script
+# TODO: Run the unit tests too
+# TODO: Add any functionality added to create to update as well.
+# TODO: Add any new parameters to the usage docs
+
+setup()
+{
+  echo "##########################################################################################################"
+  local case_name="${1}"
+  local src_prefix="${2}"
+  echo "Testing: ${case_name}"
+  rm -rf ${src_prefix}_check
+  mkdir -p ${src_prefix}_check
+  rm -rf ${src_prefix}_create
+  mkdir -p ${src_prefix}_create
+  cd ${src_prefix}_create
+
+  mkdir zstash_demo
+  mkdir zstash_demo/empty_dir
+  mkdir zstash_demo/dir
+  echo -n '' > zstash_demo/file_empty.txt
+  echo 'file0 stuff' > zstash_demo/dir/file0.txt
+}
+
+run_test_cases()
+{
+    # Before running the first time:
+    # globus.org
+    # Authenticate into LCRC Improv DTN, NERSC Perlmutter
+    # Run toy problem:
+    #
+    # source /lcrc/soft/climate/e3sm-unified/load_latest_e3sm_unified_chrysalis.sh
+    # cd /lcrc/group/e3sm/ac.forsyth2/zstash_testing/test_20250729
+    # mkdir zstash_demo; echo 'file0 stuff' > zstash_demo/file0.txt
+    # Chrysalis: 15288284-7006-4041-ba1a-6b52501e49f1
+    # Perlmutter: 6bdc7956-fc0f-4ad2-989c-7aa5ee643a79
+    # zstash create --hpss=globus://6bdc7956-fc0f-4ad2-989c-7aa5ee643a79/global/homes/f/forsyth/zstash/tests/manual_run zstash_demo
+    # Will prompt for LCRC AND NERSC authentication, and then paste generated auth code one time.
+
+    # Before each run:
+    # Perlmutter:
+    # cd /global/homes/f/forsyth/zstash/tests/
+    # rm -rf test_database_corruption
+    #
+    # Chrysalis:
+    # cd ~/ez/zstash/
+    # conda activate zstash-377-20250728
+    # pre-commit run --all-files
+    # python -m pip install .
+    # cd tests/scripts
+    # ./database_corruption.bash
+
+    SRC_DIR=/lcrc/group/e3sm/ac.forsyth2/zstash_testing/test_database_corruption # Chrysalis
+    DST_DIR=globus://6bdc7956-fc0f-4ad2-989c-7aa5ee643a79/global/homes/f/forsyth/zstash/tests/test_database_corruption # Perlmutter
+
+    success_count=0
+    fail_count=0
+    review_str=""
+
+    # Standard cases ##########################################################
+
+
+    # Case 1: zstash create, check from different directory
+    case_name="normal"
+    src_prefix=${SRC_DIR}/${case_name}
+    setup ${case_name} ${src_prefix}
+    cd ${src_prefix}_create
+    zstash create --hpss=${DST_DIR}/${case_name} zstash_demo 2>&1 | tee create.log
+    grep "INFO: Adding 000000.tar to the database." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_create/create.log,"
+    else
+        ((success_count++))
+    fi
+    cd ${src_prefix}_check
+    zstash check --hpss=${DST_DIR}/${case_name} 2>&1 | tee check.log
+    grep "INFO: 000000.tar: Found a single database entry." check.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_check/check.log,"
+    else
+        ((success_count++))
+    fi
+
+
+    # Case 2: zstash create, check from same directory (i.e., an index.db already exists)
+    case_name="check_from_same_dir"
+    src_prefix=${SRC_DIR}/${case_name}
+    setup ${case_name} ${src_prefix}
+    cd ${src_prefix}_create
+    zstash create --hpss=${DST_DIR}/${case_name} zstash_demo 2>&1 | tee create.log
+    grep "INFO: Adding 000000.tar to the database." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_create/create.log,"
+    else
+        ((success_count++))
+    fi
+    # Do NOT change directory
+    zstash check --hpss=${DST_DIR}/${case_name} 2>&1 | tee check.log
+    grep "INFO: 000000.tar: Found a single database entry." check.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_check/check.log,"
+    else
+        ((success_count++))
+    fi
+
+
+    # Corrupted database cases ################################################
+    # --for-developers-force-database-corruption is set on `zstash create`
+
+
+    # Case 3: Duplicates detected! Error out on create. Don't even get to check.
+    case_name="error_on_create"
+    src_prefix=${SRC_DIR}/${case_name}
+    setup ${case_name} ${src_prefix}
+    cd ${src_prefix}_create
+    zstash create --hpss=${DST_DIR}/${case_name} --for-developers-force-database-corruption="simulate_row_existing" --error-on-duplicate-tar zstash_demo 2>&1 | tee create.log
+    grep "INFO: TESTING/DEBUGGING ONLY: Simulating row existing for 000000.tar." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_create/create.log,"
+    else
+        ((success_count++))
+    fi
+    grep "ERROR: Database corruption detected! 000000.tar is already in the database." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+    else
+        ((success_count++))
+    fi
+
+
+    # Case 4: Duplicates detected! Overwrite them. Proceed with check, as usual.
+    case_name="overwrite_duplicate"
+    src_prefix=${SRC_DIR}/${case_name}
+    setup ${case_name} ${src_prefix}
+    cd ${src_prefix}_create
+    zstash create --hpss=${DST_DIR}/${case_name} --for-developers-force-database-corruption="simulate_row_existing_bad_size" --overwrite-duplicate-tars zstash_demo 2>&1 | tee create.log
+    grep "INFO: TESTING/DEBUGGING ONLY: Simulating row existing with bad size for 000000.tar." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_create/create.log,"
+    else
+        ((success_count++))
+    fi
+    grep "WARNING: Database corruption detected! 000000.tar is already in the database." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+    else
+        ((success_count++))
+    fi
+    grep "WARNING: Updating existing tar 000000.tar to proceed." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+    else
+        ((success_count++))
+    fi
+    cd ${src_prefix}_check
+    # We should have ovewritten the wrong size with the real size, so check should pass.
+    zstash check --hpss=${DST_DIR}/${case_name} 2>&1 | tee check.log
+    grep "INFO: 000000.tar: Found a single database entry." check.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_check/check.log,"
+    else
+        ((success_count++))
+    fi
+
+
+    # Case 5: Duplicates detected! Allow them. Error out on check because duplicates are present.
+    case_name="check_detects_duplicate"
+    src_prefix=${SRC_DIR}/${case_name}
+    setup ${case_name} ${src_prefix}
+    cd ${src_prefix}_create
+    zstash create --hpss=${DST_DIR}/${case_name} --for-developers-force-database-corruption="simulate_row_existing" zstash_demo 2>&1 | tee create.log
+    grep "INFO: TESTING/DEBUGGING ONLY: Simulating row existing for 000000.tar." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_create/create.log,"
+    else
+        ((success_count++))
+    fi
+    grep "WARNING: Database corruption detected! 000000.tar is already in the database." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+    else
+        ((success_count++))
+    fi
+    grep "WARNING: Adding a new entry for 000000.tar." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+    else
+        ((success_count++))
+    fi
+    cd ${src_prefix}_check
+    zstash check --hpss=${DST_DIR}/${case_name} --error-on-duplicate-tar 2>&1 | tee check.log
+    grep "ERROR: Database corruption detected! Found 2 database entries for 000000.tar with sizes" check.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_check/check.log,"
+    else
+        ((success_count++))
+    fi
+
+
+    # Case 6: Duplicates detected! Allow them. Error out on check because none of the sizes match.
+    case_name="check_finds_no_matching_size"
+    src_prefix=${SRC_DIR}/${case_name}
+    setup ${case_name} ${src_prefix}
+    cd ${src_prefix}_create
+    zstash create --hpss=${DST_DIR}/${case_name} --for-developers-force-database-corruption="simulate_no_correct_size" zstash_demo 2>&1 | tee create.log
+    grep "INFO: TESTING/DEBUGGING ONLY: Simulating no correct size for 000000.tar." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_create/create.log,"
+    else
+        ((success_count++))
+    fi
+    cd ${src_prefix}_check
+    zstash check --hpss=${DST_DIR}/${case_name} 2>&1 | tee check.log
+    grep "INFO: 000000.tar: No database entries match the actual file size:" check.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_check/check.log,"
+    else
+        ((success_count++))
+    fi
+
+
+    # Case 7: Duplicates detected! Allow them. Pass check because at least one of the sizes match.
+    case_name="check_finds_a_matching_size"
+    src_prefix=${SRC_DIR}/${case_name}
+    setup ${case_name} ${src_prefix}
+    cd ${src_prefix}_create
+    zstash create --hpss=${DST_DIR}/${case_name} --for-developers-force-database-corruption="simulate_row_existing_bad_size" zstash_demo 2>&1 | tee create.log
+    grep "INFO: TESTING/DEBUGGING ONLY: Simulating row existing with bad size for 000000.tar." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_create/create.log,"
+    else
+        ((success_count++))
+    fi
+    grep "WARNING: Database corruption detected! 000000.tar is already in the database." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+    else
+        ((success_count++))
+    fi
+    grep "WARNING: Adding a new entry for 000000.tar." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+    else
+        ((success_count++))
+    fi
+    cd ${src_prefix}_check
+    zstash check --hpss=${DST_DIR}/${case_name} 2>&1 | tee check.log
+    grep "INFO: 000000.tar: Found a database entry with the same size as the actual file size:" check.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_check/check.log,"
+    else
+        ((success_count++))
+    fi
+
+
+    # Summary
+    echo "Success count: ${success_count}"
+    echo "Fail count: ${fail_count}"
+    echo "Review: ${review_str}"
+}
+
+run_test_cases
+
+# Success count: 20
+# Fail count: 0
+# Review:

@@ -64,6 +64,9 @@ def add_files(
     follow_symlinks: bool,
     skip_tars_md5: bool = False,
     non_blocking: bool = False,
+    error_on_duplicate_tar: bool = False,
+    overwrite_duplicate_tars: bool = False,
+    force_database_corruption: str = "",
 ) -> List[str]:
 
     # Now, perform the actual archiving
@@ -152,7 +155,7 @@ def add_files(
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
 
             logger.info(
-                f"Contents of the cache prior to `hpss_put`: {os.listdir(os.path.join(cache, tfname))}"
+                f"Contents of the cache prior to `hpss_put`: {os.listdir(cache)}"
             )
 
             logger.info(
@@ -169,24 +172,75 @@ def add_files(
                 if not tars_table_exists(cur):
                     # Need to create tars table
                     create_tars_table(cur, con)
+
+                # For developers only! For debugging purposes only!
+                if force_database_corruption == "simulate_row_existing":
+                    # Tested by database_corruption.bash Cases 3, 5
+                    logger.info(
+                        f"TESTING/DEBUGGING ONLY: Simulating row existing for {tfname}."
+                    )
+                    cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
+                elif force_database_corruption == "simulate_row_existing_bad_size":
+                    # Tested by database_corruption.bash CaseS 4, 7
+                    logger.info(
+                        f"TESTING/DEBUGGING ONLY: Simulating row existing with bad size for {tfname}."
+                    )
+                    cur.execute(
+                        "INSERT INTO tars VALUES (NULL,?,?,?)",
+                        (tfname, tarsize + 1000, tar_md5),
+                    )
+
                 # We're done adding files to the tar.
                 # And we've transferred it to HPSS.
                 # Now we can insert the tar into the database.
                 cur.execute("SELECT COUNT(*) FROM tars WHERE name = ?", (tfname,))
-                if cur.fetchone()[0] == 0:
-                    # Typical case
-                    # Doesn't exist - insert new
-                    cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
-                else:
-                    # Unusual case
-                    # Exists - update with new size and md5
-                    logger.warning(
-                        f"Possible database corruption. Updated existing tar {tfname} with new size {tarsize}"
+                tar_count: int = cur.fetchone()[0]
+                if tar_count != 0:
+                    error_str: str = (
+                        f"Database corruption detected! {tfname} is already in the database."
+                    )
+                    if error_on_duplicate_tar:
+                        # Tested by database_corruption.bash Case 3
+                        # Exists - error out
+                        logger.error(error_str)
+                        raise RuntimeError(error_str)
+                    elif overwrite_duplicate_tars:
+                        # Tested by database_corruption.bash Case 4
+                        # Exists - update with new size and md5
+                        logger.warning(error_str)
+                        logger.warning(f"Updating existing tar {tfname} to proceed.")
+                        cur.execute(
+                            "UPDATE tars SET size = ?, md5 = ? WHERE name = ?",
+                            (tarsize, tar_md5, tfname),
+                        )
+                    else:
+                        # Tested by database_corruption.bash Cases 5,7
+                        # Proceed as if we're in the typical case -- insert new
+                        logger.warning(error_str)
+                        logger.warning(f"Adding a new entry for {tfname}.")
+                        cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
+                elif force_database_corruption == "simulate_no_correct_size":
+                    # Tested by database_corruption.bash Case 6
+                    # For developers only! For debugging purposes only!
+                    # Add this tar twice, with different sizes.
+                    logger.info(
+                        f"TESTING/DEBUGGING ONLY: Simulating no correct size for {tfname}."
                     )
                     cur.execute(
-                        "UPDATE tars SET size = ?, md5 = ? WHERE name = ?",
-                        (tarsize, tar_md5, tfname),
+                        "INSERT INTO tars VALUES (NULL,?,?,?)",
+                        (tfname, tarsize + 1000, tar_md5),
                     )
+                    cur.execute(
+                        "INSERT INTO tars VALUES (NULL,?,?,?)",
+                        (tfname, tarsize + 2000, tar_md5),
+                    )
+                else:
+                    # Tested by database_corruption.bash Cases 1,2
+                    # Typical case
+                    # Doesn't exist - insert new
+                    logger.info(f"Adding {tfname} to the database.")
+                    cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
+
                 con.commit()
 
             # Update database with the individual files that have been archived
