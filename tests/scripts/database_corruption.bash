@@ -1,8 +1,4 @@
-# TODO: Commit these changes
-# TODO: Factor out functions in this script
-# TODO: Run the unit tests too
-# TODO: Add any functionality added to create to update as well.
-# TODO: Add any new parameters to the usage docs
+# TODO: Run the unit tests on Perlmutter
 
 setup()
 {
@@ -58,6 +54,15 @@ run_test_cases()
     fail_count=0
     review_str=""
 
+    # Test case explanations ##################################################
+    # 1.`zstash create`, then run `zstash_check` from a different directory.
+    # 2. `zstash create`, then run `zstash_check` from a directory that already has `zstash/index.db`.
+    # 3. `zstash_create` with `--for-developers-force-database-corruption="simulate_row_existing" --error-on-duplicate-tar`. Errors out on create, so we don't even get to check.
+    # 4. `zstash create` with `--for-developers-force-database-corruption="simulate_row_existing_bad_size" --overwrite-duplicate-tars`. We see there's a duplicate tar and we overwrite it with the latest data. `zstash check` confirms the tar is correct.
+    # 5. `zstash create` with `--for-developers-force-database-corruption="simulate_row_existing"`. We simply add a duplicate tar, but `zstash check` with `--error-on-duplicate-tar` errors out because it finds two entries for the same tar.
+    # 6. `zstash create` with `--for-developers-force-database-corruption="simulate_no_correct_size"` to construct a very bad database: two entries for the same tar, both with incorrect sizes. `zstash check` confirms that no entries match the actual file size.
+    # 7. `zstash create` with `--for-developers-force-database-corruption="simulate_row_existing_bad_size"`. We add a duplicate tar, but with the wrong size. `zstash check` confirms that the other entry matches the actual file size, so it succeeds.
+
     # Standard cases ##########################################################
 
 
@@ -98,12 +103,12 @@ run_test_cases()
     else
         ((success_count++))
     fi
-    # Do NOT change directory
+    cd zstash_demo # Use a directory that already has a zstash/index.db!
     zstash check --hpss=${DST_DIR}/${case_name} 2>&1 | tee check.log
     grep "INFO: 000000.tar: Found a single database entry." check.log
     if [ $? != 0 ]; then
         ((fail_count++))
-        review_str+="${case_name}_check/check.log,"
+        review_str+="${case_name}_create/zstash_demo/check.log," # Notice this is a different path!
     else
         ((success_count++))
     fi

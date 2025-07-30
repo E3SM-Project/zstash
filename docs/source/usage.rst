@@ -56,6 +56,8 @@ Additional optional arguments:
   than MAXSIZE except when individual input files exceed MAXSIZE (as 
   individual files are never split up between different tar files).
 * ``--non-blocking`` Zstash will submit a Globus transfer and immediately create a subsequent tarball. That is, Zstash will not wait until the transfer completes to start creating a subsequent tarball. On machines where it takes more time to create a tarball than transfer it, each Globus transfer will have one file. On machines where it takes less time to create a tarball than transfer it, the first transfer will have one file, but the number of tarballs in subsequent transfers will grow finding dynamically the most optimal number of tarballs per transfer. NOTE: zstash is currently always non-blocking.
+* ``--error-on-duplicate-tar`` Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash's behavior will depend on whether or not the --overwrite-duplicate-tar flag is set.
+* ``--overwrite-duplicate-tars`` If a duplicate tar is encountered, overwrite the existing tar file with the new one (i.e., it will assume the latest tar is the correct one). If this flag is not set, zstash will permit multiple entries for the same tar in its database.
 * ``-v`` increases output verbosity.
 
 Local tar files as well as the sqlite3 index database (index.db) will be stored
@@ -153,6 +155,7 @@ where
   an incomplete tar file, then the archive you're checking
   must have been created using ``zstash >= v1.1.0``.
 * ``--tars`` to specify specific tars to check. See below for example usage.
+* ``--error-on-duplicate-tar`` Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash will check if the sizes and md5sums match *at least one* of the tars.
 * ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to check (standard wildcards supported).
 
@@ -240,6 +243,8 @@ where
   they have been extracted from the archive. Normally, they are deleted after
   successful transfer.
 * ``--non-blocking`` Zstash will submit a Globus transfer and immediately create a subsequent tarball. That is, Zstash will not wait until the transfer completes to start creating a subsequent tarball. On machines where it takes more time to create a tarball than transfer it, each Globus transfer will have one file. On machines where it takes less time to create a tarball than transfer it, the first transfer will have one file, but the number of tarballs in subsequent transfers will grow finding dynamically the most optimal number of tarballs per transfer. NOTE: zstash is currently always non-blocking.
+* ``--error-on-duplicate-tar`` Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash's behavior will depend on whether or not the --overwrite-duplicate-tar flag is set.
+* ``--overwrite-duplicate-tars`` If a duplicate tar is encountered, overwrite the existing tar file with the new one (i.e., it will assume the latest tar is the correct one). If this flag is not set, zstash will permit multiple entries for the same tar in its database.
 * ``-v`` increases output verbosity.
 
 Note: in the event that an update includes revisions to files previously archived, ``zstash update``
@@ -319,6 +324,7 @@ where
   an incomplete tar file, then the archive you're extracting from
   must have been created using ``zstash >= v1.1.0``.
 * ``--tars`` to	specify	specific tars to extract. See "Check" above for example usage.
+* ``--error-on-duplicate-tar`` Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash will check if the sizes and md5sums match *at least one* of the tars.
 * ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to be extracted (standard wildcards supported).
 
