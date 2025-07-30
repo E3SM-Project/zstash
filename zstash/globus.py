@@ -6,6 +6,7 @@ import os.path
 import re
 import socket
 import sys
+from typing import Dict, List
 
 from fair_research_login.client import NativeClient
 from globus_sdk import TransferAPIError, TransferClient, TransferData
@@ -15,13 +16,13 @@ from six.moves.urllib.parse import urlparse
 from .settings import logger
 from .utils import ts_utc
 
-hpss_endpoint_map = {
+hpss_endpoint_map: Dict[str, str] = {
     "ALCF": "de463ec4-6d04-11e5-ba46-22000b92c6ec",
     "NERSC": "9cd89cfd-6d04-11e5-ba46-22000b92c6ec",
 }
 
 # This is used if the `globus_endpoint_uuid` is not set in `~/.zstash.ini`
-regex_endpoint_map = {
+regex_endpoint_map: Dict[str, str] = {
     r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
     r"blueslogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
     r"chrlogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
@@ -39,6 +40,16 @@ task_id = None
 archive_directory_listing: IterableTransferResponse = None
 
 
+def get_all_endpoint_scopes(endpoints: List[str]) -> str:
+    inner = " ".join(
+        [f"*https://auth.globus.org/scopes/{ep}/data_access" for ep in endpoints]
+    )
+    return f"urn:globus:auth:scope:transfer.api.globus.org:all[{inner}]"
+
+
+# Used exclusively by submit_transfer_with_checks, exclusively when there is a TransferAPIError
+# This function is really to diagnose an error: are the endpoints ok?
+# That is, we don't *need* to check endpoint versions if everything worked out fine.
 def check_endpoint_version_5(ep_id):
     output = transfer_client.get_endpoint(ep_id)
     version = output.get("gcs_version", "0.0")
@@ -56,7 +67,7 @@ def submit_transfer_with_checks(transfer_data):
         if err.info.consent_required:
             scopes = "urn:globus:auth:scope:transfer.api.globus.org:all["
             for ep_id in [remote_endpoint, local_endpoint]:
-                if check_endpoint_version_5(ep_id):
+                if ep_id and check_endpoint_version_5(ep_id):
                     scopes += f" *https://auth.globus.org/scopes/{ep_id}/data_access"
             scopes += " ]"
             native_client = NativeClient(
@@ -86,6 +97,16 @@ def globus_activate(hpss: str):
     url = urlparse(hpss)
     if url.scheme != "globus":
         return
+    globus_cfg: str = os.path.expanduser("~/.globus-native-apps.cfg")
+    logger.info(f"Checking if {globus_cfg} exists")
+    if os.path.exists(globus_cfg):
+        logger.info(
+            f"{globus_cfg} exists. If this file does not have the proper settings, it may cause a TransferAPIError (e.g., 'Token is not active', 'No credentials supplied')"
+        )
+    else:
+        logger.info(
+            f"{globus_cfg} does not exist. zstash will need to prompt for authentications twice, and then you will need to re-run."
+        )
     remote_endpoint = url.netloc
 
     ini_path = os.path.expanduser("~/.zstash.ini")
@@ -134,7 +155,13 @@ def globus_activate(hpss: str):
         app_name="Zstash",
         default_scopes="openid urn:globus:auth:scope:transfer.api.globus.org:all",
     )
-    native_client.login(no_local_server=True, refresh_tokens=True)
+    if local_endpoint and remote_endpoint:
+        all_scopes: str = get_all_endpoint_scopes([local_endpoint, remote_endpoint])
+        native_client.login(
+            requested_scopes=all_scopes, no_local_server=True, refresh_tokens=True
+        )
+    else:
+        native_client.login(no_local_server=True, refresh_tokens=True)
     transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
     transfer_client = TransferClient(authorizer=transfer_authorizer)
 
