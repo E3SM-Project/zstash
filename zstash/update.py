@@ -12,49 +12,32 @@ from typing import List, Optional, Tuple
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_get, hpss_put
 from .hpss_utils import add_files
-from .settings import (
-    DEFAULT_CACHE,
-    TIME_TOL,
-    FilesRow,
-    TupleFilesRow,
-    config,
-    get_db_filename,
-    logger,
-)
-from .utils import get_files_to_archive, update_config
+from .settings import TIME_TOL, FilesRow, TupleFilesRow, logger
+from .utils import CommandInfo, HPSSType, get_files_to_archive
 
 
 def update():
+    command_info = CommandInfo("update")
+    args: argparse.Namespace = setup_update(command_info, sys.argv)
 
-    args: argparse.Namespace
-    cache: str
-    args, cache = setup_update()
-
-    result: Optional[List[str]] = update_database(args, cache)
-
-    if result is None:
+    failures: Optional[List[str]] = update_database(command_info, args)
+    if failures is None:
         # There was either nothing to update or `--dry-run` was set.
         return
-    else:
-        failures = result
 
-    # Transfer to HPSS. Always keep a local copy of the database.
-    if config.hpss is not None:
-        hpss = config.hpss
-    else:
-        raise TypeError("Invalid config.hpss={}".format(config.hpss))
-    hpss_put(hpss, get_db_filename(cache), cache, keep=args.keep, is_index=True)
+    hpss_put(command_info, command_info.get_db_name())
 
-    globus_finalize(non_blocking=args.non_blocking)
+    if command_info.globus_info:
+        globus_finalize(command_info.globus_info, non_blocking=args.non_blocking)
 
     # List failures
     if len(failures) > 0:
         logger.warning("Some files could not be archived")
         for file_path in failures:
-            logger.error("Archiving {}".format(file_path))
+            logger.error(f"Archiving {file_path}")
 
 
-def setup_update() -> Tuple[argparse.Namespace, str]:
+def setup_update(command_info: CommandInfo, arg_list: List[str]) -> argparse.Namespace:
     # Parser
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         usage="zstash update [<args>]", description="Update an existing zstash archive"
@@ -113,89 +96,73 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
         action="store_true",
         help="Hard copy symlinks. This is useful for preventing broken links. Note that a broken link will result in a failed update.",
     )
-    args: argparse.Namespace = parser.parse_args(sys.argv[2:])
+    args: argparse.Namespace = parser.parse_args(arg_list[2:])
 
     if (not args.hpss) or (args.hpss.lower() == "none"):
         args.hpss = "none"
         args.keep = True
-
-    # Copy configuration
-    # config.path = os.path.abspath(args.path)
-    config.hpss = args.hpss
-    config.maxsize = int(1024 * 1024 * 1024 * args.maxsize)
-
-    cache: str
-    if args.cache:
-        cache = args.cache
-    else:
-        cache = DEFAULT_CACHE
     if args.verbose:
         logger.setLevel(logging.DEBUG)
 
-    return args, cache
+    if args.cache:
+        command_info.cache_dir = args.cache
+    command_info.keep = args.keep
+    command_info.set_dir_to_archive(os.getcwd())
+    command_info.set_and_scale_maxsize(args.maxsize)
+    command_info.set_hpss_parameters(args.hpss)
+
+    return args
 
 
-# C901 'update_database' is too complex (20)
-def update_database(  # noqa: C901
-    args: argparse.Namespace, cache: str
+def update_database(
+    command_info: CommandInfo, args: argparse.Namespace
 ) -> Optional[List[str]]:
     # Open database
     logger.debug("Opening index database")
-    if not os.path.exists(get_db_filename(cache)):
+    if not os.path.exists(command_info.get_db_name()):
         # The database file doesn't exist in the cache.
         # We need to retrieve it from HPSS
-        if args.hpss is not None:
-            config.hpss = args.hpss
-            if config.hpss is not None:
-                hpss: str = config.hpss
-            else:
-                raise TypeError("Invalid config.hpss={}".format(config.hpss))
-            globus_activate(hpss)
-            hpss_get(hpss, get_db_filename(cache), cache)
+        if command_info.hpss_type != HPSSType.NO_HPSS:
+            if command_info.globus_info:
+                globus_activate(command_info.globus_info)
+            hpss_get(command_info, command_info.get_db_name())
         else:
+            # NOTE: while --hpss is required in `create`, it is optional in `update`!
+            # If --hpss is not provided, we assume it is 'none' => HPSSType.NO_HPSS
             error_str: str = (
-                "--hpss argument is required when local copy of database is unavailable"
+                "--hpss argument (!= none) is required when local copy of database is unavailable"
             )
             logger.error(error_str)
             raise ValueError(error_str)
 
     con: sqlite3.Connection = sqlite3.connect(
-        get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES
+        command_info.get_db_name(), detect_types=sqlite3.PARSE_DECLTYPES
     )
     cur: sqlite3.Cursor = con.cursor()
 
-    update_config(cur)
+    command_info.update_config_using_db(cur)
+    command_info.validate_maxsize()
 
-    if config.maxsize is not None:
-        maxsize = config.maxsize
-    else:
-        raise TypeError("Invalid config.maxsize={}".format(config.maxsize))
-    config.maxsize = int(maxsize)
-
-    keep: bool
-    # The command line arg should always have precedence
-    if args.hpss == "none":
-        # If no HPSS is available, always keep the files.
-        keep = True
-    else:
-        # If HPSS is used, let the user specify whether or not to keep the files.
-        keep = args.keep
-
-    if args.hpss is not None:
-        config.hpss = args.hpss
+    if command_info.hpss_type == HPSSType.NO_HPSS:
+        # If not using HPSS, always keep the files.
+        command_info.keep = True
+    # else: keep command_info.keep set to args.keep
 
     # Start doing actual work
     logger.debug("Running zstash update")
-    logger.debug("Local path : {}".format(config.path))
-    logger.debug("HPSS path  : {}".format(config.hpss))
-    logger.debug("Max size  : {}".format(maxsize))
-    logger.debug("Keep local tar files  : {}".format(keep))
+    logger.debug(f"Local path : {command_info.config.path}")
+    logger.debug(f"HPSS path  : {command_info.config.hpss}")
+    logger.debug(f"Max size  : {command_info.config.maxsize}")
+    logger.debug(f"Keep local tar files  : {command_info.keep}")
 
-    files: List[str] = get_files_to_archive(cache, args.include, args.exclude)
+    files: List[str] = get_files_to_archive(
+        command_info.cache_dir, args.include, args.exclude
+    )
 
     # Eliminate files that are already archived and up to date
     newfiles: List[str] = []
     for file_path in files:
+        # logger.debug(f"file_path={file_path}")
         statinfo: os.stat_result = os.lstat(file_path)
         mdtime_new: datetime = datetime.utcfromtimestamp(statinfo.st_mtime)
         mode: int = statinfo.st_mode
@@ -212,6 +179,7 @@ def update_database(  # noqa: C901
         while True:
             # Get the corresponding row in the 'files' table
             match_: Optional[TupleFilesRow] = cur.fetchone()
+            # logger.debug(f"match_={match_}")
             if match_ is None:
                 break
             else:
@@ -233,6 +201,10 @@ def update_database(  # noqa: C901
         con.commit()
         con.close()
         return None
+    # else:
+    #     logger.debug(f"Number of files to update: {len(newfiles)}")
+    #     for f in newfiles:
+    #         logger.debug(f)
 
     # --dry-run option
     if args.dry_run:
@@ -257,12 +229,12 @@ def update_database(  # noqa: C901
         try:
             # Add files
             failures = add_files(
+                command_info,
                 cur,
                 con,
                 itar,
                 newfiles,
-                cache,
-                keep,
+                command_info.keep,
                 args.follow_symlinks,
                 non_blocking=args.non_blocking,
             )
@@ -271,12 +243,11 @@ def update_database(  # noqa: C901
     else:
         # Add files
         failures = add_files(
+            command_info,
             cur,
             con,
             itar,
             newfiles,
-            cache,
-            keep,
             args.follow_symlinks,
             non_blocking=args.non_blocking,
         )

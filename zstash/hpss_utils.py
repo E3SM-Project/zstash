@@ -13,8 +13,8 @@ import _hashlib
 import _io
 
 from .hpss import hpss_put
-from .settings import BLOCK_SIZE, TupleFilesRowNoId, TupleTarsRowNoId, config, logger
-from .utils import create_tars_table, tars_table_exists, ts_utc
+from .settings import BLOCK_SIZE, TupleFilesRowNoId, TupleTarsRowNoId, logger
+from .utils import CommandInfo, create_tars_table, tars_table_exists, ts_utc
 
 
 # Minimum output file object
@@ -55,12 +55,11 @@ class HashIO(object):
 
 
 def add_files(
+    command_info: CommandInfo,
     cur: sqlite3.Cursor,
     con: sqlite3.Connection,
     itar: int,
     files: List[str],
-    cache: str,
-    keep: bool,
     follow_symlinks: bool,
     skip_tars_md5: bool = False,
     non_blocking: bool = False,
@@ -96,7 +95,9 @@ def add_files(
                 do_hash = True
             else:
                 do_hash = False
-            tarFileObject = HashIO(os.path.join(cache, tfname), "wb", do_hash)
+            tarFileObject = HashIO(
+                os.path.join(command_info.cache_dir, tfname), "wb", do_hash
+            )
             # FIXME: error: Argument "fileobj" to "open" has incompatible type "HashIO"; expected "Optional[IO[bytes]]"
             tar = tarfile.open(mode="w", fileobj=tarFileObject, dereference=follow_symlinks)  # type: ignore
 
@@ -130,11 +131,12 @@ def add_files(
         # Close tar archive if current file is the last one or
         # if adding one more would push us over the limit.
         next_file_size: int = tar.gettarinfo(current_file).size
-        if config.maxsize is not None:
-            maxsize: int = config.maxsize
-        else:
-            raise TypeError("Invalid config.maxsize={}".format(config.maxsize))
-        if i == nfiles - 1 or tarsize + next_file_size > maxsize:
+        command_info.validate_maxsize()
+        if not command_info.config.maxsize:
+            raise ValueError("config.maxsize is undefined")
+        if (i == nfiles - 1) or (
+            tarsize + next_file_size > command_info.config.maxsize
+        ):
 
             # Close current temporary file
             logger.debug(f"{ts_utc()}: Closing tar archive {tfname}")
@@ -153,21 +155,19 @@ def add_files(
                 cur.execute("insert into tars values (NULL,?,?,?)", tar_tuple)
                 con.commit()
 
-            # Transfer tar to HPSS
-            if config.hpss is not None:
-                hpss: str = config.hpss
-            else:
-                raise TypeError("Invalid config.hpss={}".format(config.hpss))
-
             # NOTE: These lines could be added under an "if debug" condition
             # logger.info(f"{ts_utc()}: CONTENTS of CACHE upon call to hpss_put:")
             # process = subprocess.run(["ls", "-l", "zstash"], capture_output=True, text=True)
             # print(process.stdout)
 
             logger.info(
-                f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {tfname} [keep, non_blocking] = [{keep}, {non_blocking}]"
+                f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {tfname} [keep, non_blocking] = [{command_info.keep}, {non_blocking}]"
             )
-            hpss_put(hpss, os.path.join(cache, tfname), cache, keep, non_blocking)
+            hpss_put(
+                command_info,
+                os.path.join(command_info.cache_dir, tfname),
+                non_blocking,
+            )
             logger.info(
                 f"{ts_utc()}: SURFACE (add_files): Called hpss_put to dispatch archive file {tfname}"
             )

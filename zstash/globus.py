@@ -6,22 +6,26 @@ import os.path
 import re
 import socket
 import sys
+from typing import Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 
 from fair_research_login.client import NativeClient
 from globus_sdk import TransferAPIError, TransferClient, TransferData
-from globus_sdk.services.transfer.response.iterable import IterableTransferResponse
-from six.moves.urllib.parse import urlparse
 
 from .settings import logger
-from .utils import ts_utc
+from .utils import GlobusInfo, ts_utc
 
-hpss_endpoint_map = {
+# Constants ###################################################################
+
+ZSTASH_CLIENT_ID: str = "6c1629cf-446c-49e7-af95-323c6412397f"
+
+HPSS_ENDPOINT_MAP: Dict[str, str] = {
     "ALCF": "de463ec4-6d04-11e5-ba46-22000b92c6ec",
     "NERSC": "9cd89cfd-6d04-11e5-ba46-22000b92c6ec",
 }
 
 # This is used if the `globus_endpoint_uuid` is not set in `~/.zstash.ini`
-regex_endpoint_map = {
+REGEX_ENDPOINT_MAP: Dict[str, str] = {
     r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
     r"blueslogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
     r"chrlogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
@@ -31,16 +35,79 @@ regex_endpoint_map = {
     r"perlmutter.*\.nersc\.gov": "6bdc7956-fc0f-4ad2-989c-7aa5ee643a79",
 }
 
-remote_endpoint = None
-local_endpoint = None
-transfer_client: TransferClient = None
-transfer_data: TransferData = None
-task_id = None
-archive_directory_listing: IterableTransferResponse = None
+# Last updated 2025-04-08
+ENDPOINT_TO_NAME_MAP: Dict[str, str] = {
+    "08925f04-569f-11e7-bef8-22000b9a448b": "Invalid, presumably Theta",
+    "15288284-7006-4041-ba1a-6b52501e49f1": "LCRC Improv DTN",
+    "68fbd2fa-83d7-11e9-8e63-029d279f7e24": "pic#compty-dtn",
+    "6bdc7956-fc0f-4ad2-989c-7aa5ee643a79": "NERSC Perlmutter",
+    "6c54cade-bde5-45c1-bdea-f4bd71dba2cc": "Globus Tutorial Collection 1",  # The Unit test endpoint
+    "9cd89cfd-6d04-11e5-ba46-22000b92c6ec": "NERSC HPSS",
+    "de463ec4-6d04-11e5-ba46-22000b92c6ec": "Invalid, presumably ALCF HPSS",
+}
+
+# Helper functions ############################################################
 
 
-def check_endpoint_version_5(ep_id):
-    output = transfer_client.get_endpoint(ep_id)
+def ep_to_name(endpoint_id: str) -> str:
+    if endpoint_id in ENDPOINT_TO_NAME_MAP:
+        return ENDPOINT_TO_NAME_MAP[endpoint_id]
+    else:
+        return endpoint_id  # Just use the endpoint_id itself
+
+
+def log_current_endpoints(globus_info: GlobusInfo):
+    local: str
+    remote: str
+    if globus_info.local_endpoint:
+        local = ep_to_name(globus_info.local_endpoint)
+    else:
+        local = "undefined"
+    logger.debug(f"local endpoint={local}")
+    if globus_info.remote_endpoint:
+        remote = ep_to_name(globus_info.remote_endpoint)
+    else:
+        remote = "undefined"
+    logger.debug(f"remote endpoint={remote}")
+
+
+def get_all_endpoint_scopes(endpoints: List[str]) -> str:
+    inner = " ".join(
+        [f"*https://auth.globus.org/scopes/{ep}/data_access" for ep in endpoints]
+    )
+    return f"urn:globus:auth:scope:transfer.api.globus.org:all[{inner}]"
+
+
+def set_clients(globus_info: GlobusInfo):
+    native_client = NativeClient(
+        client_id=ZSTASH_CLIENT_ID,
+        app_name="Zstash",
+        default_scopes="openid urn:globus:auth:scope:transfer.api.globus.org:all",
+    )
+    log_current_endpoints(globus_info)
+    logger.debug(
+        "set_clients. Calling login, which may print 'Please Paste your Auth Code Below:'"
+    )
+    if globus_info.local_endpoint and globus_info.remote_endpoint:
+        all_scopes: str = get_all_endpoint_scopes(
+            [globus_info.local_endpoint, globus_info.remote_endpoint]
+        )
+        native_client.login(
+            requested_scopes=all_scopes, no_local_server=True, refresh_tokens=True
+        )
+    else:
+        native_client.login(no_local_server=True, refresh_tokens=True)
+    transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
+    globus_info.transfer_client = TransferClient(authorizer=transfer_authorizer)
+
+
+# Used exclusively by check_consents
+def check_endpoint_version_5(globus_info: GlobusInfo, ep_id: str) -> bool:
+    if not globus_info.transfer_client:
+        raise ValueError("transfer_client is undefined")
+    log_current_endpoints(globus_info)
+    logger.debug(f"check_endpoint_version_5. endpoint={ep_to_name(ep_id)}")
+    output = globus_info.transfer_client.get_endpoint(ep_id)
     version = output.get("gcs_version", "0.0")
     if output["gcs_version"] is None:
         return False
@@ -49,50 +116,33 @@ def check_endpoint_version_5(ep_id):
     return False
 
 
-def submit_transfer_with_checks(transfer_data):
-    try:
-        task = transfer_client.submit_transfer(transfer_data)
-    except TransferAPIError as err:
-        if err.info.consent_required:
-            scopes = "urn:globus:auth:scope:transfer.api.globus.org:all["
-            for ep_id in [remote_endpoint, local_endpoint]:
-                if check_endpoint_version_5(ep_id):
-                    scopes += f" *https://auth.globus.org/scopes/{ep_id}/data_access"
-            scopes += " ]"
-            native_client = NativeClient(
-                client_id="6c1629cf-446c-49e7-af95-323c6412397f", app_name="Zstash"
-            )
-            native_client.login(requested_scopes=scopes)
-            # Quit here and tell user to re-try
-            print(
-                "Consents added, please re-run the previous command to start transfer"
-            )
-            sys.exit(0)
-        else:
-            raise err
-    return task
+# Used exclusively by submit_transfer_with_checks, exclusively when there is a TransferAPIError
+# This function is really to diagnose an error: are the consents ok?
+# That is, we don't *need* to check consents or endpoint versions if everything worked out fine.
+def check_consents(globus_info: GlobusInfo):
+    scopes = "urn:globus:auth:scope:transfer.api.globus.org:all["
+    for ep_id in [globus_info.remote_endpoint, globus_info.local_endpoint]:
+        if ep_id and check_endpoint_version_5(globus_info, ep_id):
+            scopes += f" *https://auth.globus.org/scopes/{ep_id}/data_access"
+    scopes += " ]"
+    native_client = NativeClient(client_id=ZSTASH_CLIENT_ID, app_name="Zstash")
+    log_current_endpoints(globus_info)
+    logger.debug(
+        "check_consents. Calling login, which may print 'Please Paste your Auth Code Below:'"
+    )
+    native_client.login(requested_scopes=scopes)
 
 
-def globus_activate(hpss: str):
-    """
-    Read the local globus endpoint UUID from ~/.zstash.ini.
-    If the ini file does not exist, create an ini file with empty values,
-    and try to find the local endpoint UUID based on the FQDN
-    """
-    global transfer_client
-    global local_endpoint
-    global remote_endpoint
-
-    url = urlparse(hpss)
-    if url.scheme != "globus":
-        return
-    remote_endpoint = url.netloc
-
+# Used exclusively in globus_activate
+def set_local_endpoint(globus_info: GlobusInfo):
     ini_path = os.path.expanduser("~/.zstash.ini")
     ini = configparser.ConfigParser()
     if ini.read(ini_path):
         if "local" in ini.sections():
-            local_endpoint = ini["local"].get("globus_endpoint_uuid")
+            globus_info.local_endpoint = ini["local"].get("globus_endpoint_uuid")
+            logger.debug(
+                f"globus endpoint in ~/.zstash.ini: {ep_to_name(globus_info.local_endpoint)}"
+            )
     else:
         ini["local"] = {"globus_endpoint_uuid": ""}
         try:
@@ -101,219 +151,128 @@ def globus_activate(hpss: str):
         except Exception as e:
             logger.error(e)
             sys.exit(1)
-    if not local_endpoint:
+    if not globus_info.local_endpoint:
         fqdn = socket.getfqdn()
         if re.fullmatch(r"n.*\.local", fqdn) and os.getenv("HOSTNAME", "NA").startswith(
             "compy"
         ):
             fqdn = "compy.pnl.gov"
-        for pattern in regex_endpoint_map.keys():
+        for pattern in REGEX_ENDPOINT_MAP.keys():
             if re.fullmatch(pattern, fqdn):
-                local_endpoint = regex_endpoint_map.get(pattern)
+                globus_info.local_endpoint = REGEX_ENDPOINT_MAP.get(pattern)
                 break
     # FQDN is not set on Perlmutter at NERSC
-    if not local_endpoint:
+    if not globus_info.local_endpoint:
         nersc_hostname = os.environ.get("NERSC_HOST")
         if nersc_hostname and (
             nersc_hostname == "perlmutter" or nersc_hostname == "unknown"
         ):
-            local_endpoint = regex_endpoint_map.get(r"perlmutter.*\.nersc\.gov")
-    if not local_endpoint:
-        logger.error(
-            "{} does not have the local Globus endpoint set nor could one be found in regex_endpoint_map.".format(
-                ini_path
+            globus_info.local_endpoint = REGEX_ENDPOINT_MAP.get(
+                r"perlmutter.*\.nersc\.gov"
             )
+    if not globus_info.local_endpoint:
+        logger.error(
+            f"{ini_path} does not have the local Globus endpoint set nor could one be found in REGEX_ENDPOINT_MAP."
         )
         sys.exit(1)
 
-    if remote_endpoint.upper() in hpss_endpoint_map.keys():
-        remote_endpoint = hpss_endpoint_map.get(remote_endpoint.upper())
 
-    native_client = NativeClient(
-        client_id="6c1629cf-446c-49e7-af95-323c6412397f",
-        app_name="Zstash",
-        default_scopes="openid urn:globus:auth:scope:transfer.api.globus.org:all",
-    )
-    native_client.login(no_local_server=True, refresh_tokens=True)
-    transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
-    transfer_client = TransferClient(authorizer=transfer_authorizer)
-
-    for ep_id in [local_endpoint, remote_endpoint]:
-        r = transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
-        if r.get("code") == "AutoActivationFailed":
-            logger.error(
-                "The {} endpoint is not activated or the current activation expires soon. Please go to https://app.globus.org/file-manager/collections/{} and (re)activate the endpoint.".format(
-                    ep_id, ep_id
-                )
-            )
-            sys.exit(1)
-
-
-def file_exists(name: str) -> bool:
-    global archive_directory_listing
-
-    for entry in archive_directory_listing:
+# Used exclusively in globus_transfer
+def file_exists(globus_info: GlobusInfo, name: str) -> bool:
+    if not globus_info.archive_directory_listing:
+        raise ValueError("archive_directory_listing is undefined")
+    for entry in globus_info.archive_directory_listing:
         if entry.get("name") == name:
             return True
     return False
 
 
-global_variable_tarfiles_pushed = 0
-
-
-# C901 'globus_transfer' is too complex (20)
-def globus_transfer(  # noqa: C901
-    remote_ep: str, remote_path: str, name: str, transfer_type: str, non_blocking: bool
-):
-    global transfer_client
-    global local_endpoint
-    global remote_endpoint
-    global transfer_data
-    global task_id
-    global archive_directory_listing
-    global global_variable_tarfiles_pushed
-
-    logger.info(f"{ts_utc()}: Entered globus_transfer() for name = {name}")
-    logger.debug(f"{ts_utc()}: non_blocking = {non_blocking}")
-    if not transfer_client:
-        globus_activate("globus://" + remote_ep)
-    if not transfer_client:
-        sys.exit(1)
-
+# Used exclusively in globus_transfer
+def compute_transfer_paths(
+    globus_info: GlobusInfo, remote_path: str, name: str, transfer_type: str
+) -> Tuple[str, str, str, str]:
+    if not (globus_info.local_endpoint and globus_info.remote_endpoint):
+        raise ValueError(
+            f"Undefined value: local_endpoint={globus_info.local_endpoint} & remote_endpoint={globus_info.remote_endpoint}"
+        )
     if transfer_type == "get":
-        if not archive_directory_listing:
-            archive_directory_listing = transfer_client.operation_ls(
-                remote_endpoint, remote_path
-            )
-        if not file_exists(name):
-            logger.error(
-                "Remote file globus://{}{}/{} does not exist".format(
-                    remote_ep, remote_path, name
-                )
-            )
-            sys.exit(1)
-
-    if transfer_type == "get":
-        src_ep = remote_endpoint
+        src_ep = globus_info.remote_endpoint
         src_path = os.path.join(remote_path, name)
-        dst_ep = local_endpoint
+        dst_ep = globus_info.local_endpoint
         dst_path = os.path.join(os.getcwd(), name)
-    else:
-        src_ep = local_endpoint
+    elif transfer_type == "put":
+        src_ep = globus_info.local_endpoint
         src_path = os.path.join(os.getcwd(), name)
-        dst_ep = remote_endpoint
+        dst_ep = globus_info.remote_endpoint
         dst_path = os.path.join(remote_path, name)
+    else:
+        raise ValueError(f"Invalid transfer_type: {transfer_type}")
+    return src_ep, src_path, dst_ep, dst_path
 
-    subdir = os.path.basename(os.path.normpath(remote_path))
-    subdir_label = re.sub("[^A-Za-z0-9_ -]", "", subdir)
-    filename = name.split(".")[0]
-    label = subdir_label + " " + filename
 
-    if not transfer_data:
-        transfer_data = TransferData(
-            transfer_client,
-            src_ep,
-            dst_ep,
-            label=label,
-            verify_checksum=True,
-            preserve_timestamp=True,
-            fail_on_quota_errors=True,
-        )
-    transfer_data.add_item(src_path, dst_path)
-    transfer_data["label"] = label
-    try:
-        if task_id:
-            task = transfer_client.get_task(task_id)
-            prev_task_status = task["status"]
-            # one  of {ACTIVE, SUCCEEDED, FAILED, CANCELED, PENDING, INACTIVE}
-            # NOTE: How we behave here depends upon whether we want to support mutliple active transfers.
-            # Presently, we do not, except inadvertantly (if status == PENDING)
-            if prev_task_status == "ACTIVE":
-                logger.info(
-                    f"{ts_utc()}: Previous task_id {task_id} Still Active. Returning ACTIVE."
-                )
-                return "ACTIVE"
-            elif prev_task_status == "SUCCEEDED":
-                logger.info(
-                    f"{ts_utc()}: Previous task_id {task_id} status = SUCCEEDED."
-                )
-                src_ep = task["source_endpoint_id"]
-                dst_ep = task["destination_endpoint_id"]
-                label = task["label"]
-                ts = ts_utc()
-                logger.info(
-                    "{}:Globus transfer {}, from {} to {}: {} succeeded".format(
-                        ts, task_id, src_ep, dst_ep, label
-                    )
-                )
-            else:
-                logger.error(
-                    f"{ts_utc()}: Previous task_id {task_id} status = {prev_task_status}."
-                )
+# Used exclusively in globus_transfer
+def build_transfer_label(remote_path: str, name: str) -> str:
+    subdir: str = os.path.basename(os.path.normpath(remote_path))
+    subdir_label: str = re.sub("[^A-Za-z0-9_ -]", "", subdir)
+    filename: str = name.split(".")[0]
+    label: str = subdir_label + " " + filename
+    return label
 
-        # DEBUG: review accumulated items in TransferData
-        logger.info(f"{ts_utc()}: TransferData: accumulated items:")
-        attribs = transfer_data.__dict__
-        for item in attribs["data"]["DATA"]:
-            if item["DATA_TYPE"] == "transfer_item":
-                global_variable_tarfiles_pushed += 1
-                print(
-                    f"   (routine)  PUSHING (#{global_variable_tarfiles_pushed}) STORED source item: {item['source_path']}",
-                    flush=True,
-                )
 
-        # SUBMIT new transfer here
-        logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
-        task = submit_transfer_with_checks(transfer_data)
-        task_id = task.get("task_id")
-        # NOTE: This log message is misleading. If we have accumulated multiple tar files for transfer,
-        # the "lable" given here refers only to the LAST tarfile in the TransferData list.
+# Used exclusively in globus_transfer
+def handle_previous_task(globus_info: GlobusInfo) -> Optional[str]:
+    if not globus_info.transfer_client:
+        raise ValueError("transfer_client is undefined")
+    task = globus_info.transfer_client.get_task(globus_info.task_id)
+    prev_task_status = task["status"]
+    # one  of {ACTIVE, SUCCEEDED, FAILED, CANCELED, PENDING, INACTIVE}
+    # NOTE: How we behave here depends upon whether we want to support mutliple active transfers.
+    # Presently, we do not, except inadvertantly (if status == PENDING)
+    if prev_task_status == "ACTIVE":
         logger.info(
-            f"{ts_utc()}: SURFACE Submit Transfer returned new task_id = {task_id} for label {transfer_data['label']}"
+            f"{ts_utc()}: Previous task_id {globus_info.task_id} Still Active. Returning ACTIVE."
         )
-
-        # Nullify the submitted transfer data structure so that a new one will be created on next call.
-        transfer_data = None
-    except TransferAPIError as e:
-        if e.code == "NoCredException":
-            logger.error(
-                "{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(
-                    e.message
-                )
-            )
-        else:
-            logger.error(e)
-        sys.exit(1)
-    except Exception as e:
-        logger.error("Exception: {}".format(e))
-        sys.exit(1)
-
-    # test for blocking on new task_id
-    task_status = "UNKNOWN"
-    if not non_blocking:
-        task_status = globus_block_wait(
-            task_id=task_id, wait_timeout=7200, polling_interval=10, max_retries=5
+        return "ACTIVE"
+    elif prev_task_status == "SUCCEEDED":
+        logger.info(
+            f"{ts_utc()}: Previous task_id {globus_info.task_id} status = SUCCEEDED."
+        )
+        src_ep = task["source_endpoint_id"]
+        dst_ep = task["destination_endpoint_id"]
+        label = task["label"]
+        ts = ts_utc()
+        logger.info(
+            f"{ts}:Globus transfer {globus_info.task_id}, from {src_ep} to {dst_ep}: {label} succeeded"
         )
     else:
-        logger.info(f"{ts_utc()}: NO BLOCKING (task_wait) for task_id {task_id}")
-
-    if transfer_type == "put":
-        return task_status
-
-    if transfer_type == "get" and task_id:
-        globus_wait(task_id)
-
-    return task_status
+        logger.error(
+            f"{ts_utc()}: Previous task_id {globus_info.task_id} status = {prev_task_status}."
+        )
+    return None
 
 
+# Used exclusively in globus_transfer
+def log_accumulated_transfer_items(globus_info: GlobusInfo):
+    # DEBUG: review accumulated items in TransferData
+    logger.info(f"{ts_utc()}: TransferData: accumulated items:")
+    attribs = globus_info.transfer_data.__dict__
+    for item in attribs["data"]["DATA"]:
+        if item["DATA_TYPE"] == "transfer_item":
+            globus_info.tarfiles_pushed += 1
+            print(
+                f"   (routine)  PUSHING (#{globus_info.tarfiles_pushed}) STORED source item: {item['source_path']}",
+                flush=True,
+            )
+
+
+# Used exclusively in globus_transfer
 def globus_block_wait(
-    task_id: str, wait_timeout: int, polling_interval: int, max_retries: int
+    globus_info: GlobusInfo, wait_timeout: int, polling_interval: int, max_retries: int
 ):
-    global transfer_client
 
     # poll every "polling_interval" seconds to speed up small transfers.  Report every 2 hours, stop waiting aftert 5*2 = 10 hours
     logger.info(
-        f"{ts_utc()}: BLOCKING START: invoking task_wait for task_id = {task_id}"
+        f"{ts_utc()}: BLOCKING START: invoking task_wait for task_id = {globus_info.task_id}"
     )
     task_status = "UNKNOWN"
     retry_count = 0
@@ -323,14 +282,18 @@ def globus_block_wait(
             logger.info(
                 f"{ts_utc()}: on task_wait try {retry_count+1} out of {max_retries}"
             )
-            transfer_client.task_wait(
-                task_id, timeout=wait_timeout, polling_interval=10
+            if not globus_info.transfer_client:
+                raise ValueError("transfer_client is undefined")
+            globus_info.transfer_client.task_wait(
+                globus_info.task_id, timeout=wait_timeout, polling_interval=10
             )
             logger.info(f"{ts_utc()}: done with wait")
         except Exception as e:
             logger.error(f"Unexpected Exception: {e}")
         else:
-            curr_task = transfer_client.get_task(task_id)
+            if not globus_info.transfer_client:
+                raise ValueError("transfer_client is undefined")
+            curr_task = globus_info.transfer_client.get_task(globus_info.task_id)
             task_status = curr_task["status"]
             if task_status == "SUCCEEDED":
                 break
@@ -347,15 +310,39 @@ def globus_block_wait(
         task_status = "EXHAUSTED_TIMEOUT_RETRIES"
 
     logger.info(
-        f"{ts_utc()}: BLOCKING ENDS: task_id {task_id} returned from task_wait with status {task_status}"
+        f"{ts_utc()}: BLOCKING ENDS: task_id {globus_info.task_id} returned from task_wait with status {task_status}"
     )
 
     return task_status
 
 
-def globus_wait(task_id: str):
-    global transfer_client
+# Used exclusively in globus_transfer, globus_finalize
+def submit_transfer_with_checks(globus_info: GlobusInfo):
+    if not globus_info.transfer_client:
+        raise ValueError("transfer_client is undefined")
+    try:
+        task = globus_info.transfer_client.submit_transfer(globus_info.transfer_data)
+    except TransferAPIError as err:
+        if err.info.consent_required:
+            check_consents(globus_info)
+            # Quit here and tell user to re-try
+            print(
+                "Consents added, please re-run the previous command to start transfer"
+            )
+            sys.exit(0)
+        else:
+            if err.info.authorization_parameters:
+                print("Error is in authorization parameters")
+            raise err
+    return task
 
+
+# Used exclusively in globus_transfer, globus_finalize
+def globus_wait(globus_info: GlobusInfo, alternative_task_id=None):
+    if alternative_task_id:
+        task_id = alternative_task_id
+    else:
+        task_id = globus_info.task_id
     try:
         """
         A Globus transfer job (task) can be in one of the three states:
@@ -364,80 +351,219 @@ def globus_wait(task_id: str):
         with 20 second timeout limit. If the task is ACTIVE after time runs
         out 'task_wait' returns False, and True otherwise.
         """
-        while not transfer_client.task_wait(task_id, timeout=300, polling_interval=20):
+        if not globus_info.transfer_client:
+            raise ValueError("transfer_client is undefined")
+        while not globus_info.transfer_client.task_wait(
+            task_id, timeout=300, polling_interval=20
+        ):
             pass
         """
         The Globus transfer job (task) has been finished (SUCCEEDED or FAILED).
         Check if the transfer SUCCEEDED or FAILED.
         """
-        task = transfer_client.get_task(task_id)
+        if not globus_info.transfer_client:
+            raise ValueError("transfer_client is undefined")
+        task = globus_info.transfer_client.get_task(task_id)
         if task["status"] == "SUCCEEDED":
             src_ep = task["source_endpoint_id"]
             dst_ep = task["destination_endpoint_id"]
             label = task["label"]
             logger.info(
-                "Globus transfer {}, from {} to {}: {} succeeded".format(
-                    task_id, src_ep, dst_ep, label
-                )
+                f"Globus transfer {task_id}, from {src_ep} to {dst_ep}: {label} succeeded"
             )
         else:
             logger.error("Transfer FAILED")
     except TransferAPIError as e:
         if e.code == "NoCredException":
             logger.error(
-                "{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(
-                    e.message
-                )
+                f"{e.message}. Please go to https://app.globus.org/endpoints and activate the endpoint."
             )
         else:
             logger.error(e)
         sys.exit(1)
     except Exception as e:
-        logger.error("Exception: {}".format(e))
+        logger.error(f"Exception: {e}")
         sys.exit(1)
 
 
-def globus_finalize(non_blocking: bool = False):
-    global transfer_client
-    global transfer_data
-    global task_id
-    global global_variable_tarfiles_pushed
+# Primary functions ###########################################################
 
+
+def globus_activate(globus_info: GlobusInfo, alt_hpss: str = ""):
+    """
+    Read the local globus endpoint UUID from ~/.zstash.ini.
+    If the ini file does not exist, create an ini file with empty values,
+    and try to find the local endpoint UUID based on the FQDN
+    """
+    if alt_hpss != "":
+        globus_info.hpss_path = alt_hpss
+        globus_info.url = urlparse(alt_hpss)
+        if globus_info.url.scheme != "globus":
+            raise ValueError(f"Invalid url.scheme={globus_info.url.scheme}")
+        globus_info.remote_endpoint = globus_info.url.netloc
+    else:
+        globus_info.remote_endpoint = globus_info.url.netloc
+    set_local_endpoint(globus_info)
+    if globus_info.remote_endpoint.upper() in HPSS_ENDPOINT_MAP.keys():
+        globus_info.remote_endpoint = HPSS_ENDPOINT_MAP.get(
+            globus_info.remote_endpoint.upper()
+        )
+    log_current_endpoints(globus_info)
+    set_clients(globus_info)
+    log_current_endpoints(globus_info)
+    for ep_id in [globus_info.local_endpoint, globus_info.remote_endpoint]:
+        if ep_id:
+            ep_name = ep_to_name(ep_id)
+        else:
+            ep_name = "undefined"
+        logger.debug(f"globus_activate. endpoint={ep_name}")
+        if not globus_info.transfer_client:
+            raise ValueError("Was unable to instantiate transfer_client")
+        r = globus_info.transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
+        if r.get("code") == "AutoActivationFailed":
+            logger.error(
+                f"The {ep_id} endpoint is not activated or the current activation expires soon. Please go to https://app.globus.org/file-manager/collections/{ep_id} and (re)activate the endpoint."
+            )
+            sys.exit(1)
+
+
+def globus_transfer(
+    globus_info: GlobusInfo,
+    remote_ep: str,
+    remote_path: str,
+    name: str,
+    transfer_type: str,
+    non_blocking: bool,
+):
+
+    logger.info(f"{ts_utc()}: Entered globus_transfer() for name = {name}")
+    logger.debug(f"{ts_utc()}: non_blocking = {non_blocking}")
+    if not globus_info.transfer_client:
+        globus_activate(globus_info, "globus://" + remote_ep)
+    # Try again:
+    if not globus_info.transfer_client:
+        logger.info(f"{ts_utc()}: Could not instantiate transfer client.")
+        sys.exit(1)
+
+    if transfer_type == "get":
+        if not globus_info.archive_directory_listing:
+            globus_info.archive_directory_listing = (
+                globus_info.transfer_client.operation_ls(
+                    globus_info.remote_endpoint, remote_path
+                )
+            )
+        if not file_exists(globus_info, name):
+            logger.error(
+                f"Remote file globus://{remote_ep}{remote_path}/{name} does not exist"
+            )
+            sys.exit(1)
+    src_ep: str
+    src_path: str
+    dst_ep: str
+    dst_path: str
+    src_ep, src_path, dst_ep, dst_path = compute_transfer_paths(
+        globus_info, remote_path, name, transfer_type
+    )
+    label: str = build_transfer_label(remote_path, name)
+    if not globus_info.transfer_data:
+        globus_info.transfer_data = TransferData(
+            globus_info.transfer_client,
+            src_ep,
+            dst_ep,
+            label=label,
+            verify_checksum=True,
+            preserve_timestamp=True,
+            fail_on_quota_errors=True,
+        )
+    globus_info.transfer_data.add_item(src_path, dst_path)
+    globus_info.transfer_data["label"] = label
+    try:
+        if globus_info.task_id:
+            relevant_prev_task_status: Optional[str] = handle_previous_task(globus_info)
+            if relevant_prev_task_status:
+                return relevant_prev_task_status
+        log_accumulated_transfer_items(globus_info)
+        # SUBMIT new transfer here
+        logger.info(
+            f"{ts_utc()}: DIVING: Submit Transfer for {globus_info.transfer_data['label']}"
+        )
+        task = submit_transfer_with_checks(globus_info)
+        globus_info.task_id = task.get("task_id")
+        # NOTE: This log message is misleading. If we have accumulated multiple tar files for transfer,
+        # the "label" given here refers only to the LAST tarfile in the TransferData list.
+        logger.info(
+            f"{ts_utc()}: SURFACE Submit Transfer returned new task_id = {globus_info.task_id} for label {globus_info.transfer_data['label']}"
+        )
+        # Nullify the submitted transfer data structure so that a new one will be created on next call.
+        globus_info.transfer_data = None
+    except TransferAPIError as e:
+        if e.code == "NoCredException":
+            logger.error(
+                f"{e.message}. Please go to https://app.globus.org/endpoints and activate the endpoint."
+            )
+        else:
+            logger.error(e)
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Exception: {e}")
+        sys.exit(1)
+
+    # test for blocking on new task_id
+    task_status = "UNKNOWN"
+    if not non_blocking:
+        task_status = globus_block_wait(
+            globus_info, wait_timeout=7200, polling_interval=10, max_retries=5
+        )
+    else:
+        logger.info(
+            f"{ts_utc()}: NO BLOCKING (task_wait) for task_id {globus_info.task_id}"
+        )
+
+    if transfer_type == "put":
+        return task_status
+
+    if transfer_type == "get" and globus_info.task_id:
+        globus_wait(globus_info)
+
+    return task_status
+
+
+def globus_finalize(globus_info: GlobusInfo, non_blocking: bool = False):
     last_task_id = None
 
-    if transfer_data:
+    if globus_info.transfer_data:
         # DEBUG: review accumulated items in TransferData
         logger.info(f"{ts_utc()}: FINAL TransferData: accumulated items:")
-        attribs = transfer_data.__dict__
+        attribs = globus_info.transfer_data.__dict__
         for item in attribs["data"]["DATA"]:
             if item["DATA_TYPE"] == "transfer_item":
-                global_variable_tarfiles_pushed += 1
+                globus_info.tarfiles_pushed += 1
                 print(
-                    f"    (finalize) PUSHING ({global_variable_tarfiles_pushed}) source item: {item['source_path']}",
+                    f"    (finalize) PUSHING ({globus_info.tarfiles_pushed}) source item: {item['source_path']}",
                     flush=True,
                 )
 
         # SUBMIT new transfer here
-        logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
+        logger.info(
+            f"{ts_utc()}: DIVING: Submit Transfer for {globus_info.transfer_data['label']}"
+        )
         try:
-            last_task = submit_transfer_with_checks(transfer_data)
+            last_task = submit_transfer_with_checks(globus_info)
             last_task_id = last_task.get("task_id")
         except TransferAPIError as e:
             if e.code == "NoCredException":
                 logger.error(
-                    "{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(
-                        e.message
-                    )
+                    f"{e.message}. Please go to https://app.globus.org/endpoints and activate the endpoint."
                 )
             else:
                 logger.error(e)
             sys.exit(1)
         except Exception as e:
-            logger.error("Exception: {}".format(e))
+            logger.error(f"Exception: {e}")
             sys.exit(1)
 
     if not non_blocking:
-        if task_id:
-            globus_wait(task_id)
+        if globus_info.task_id:
+            globus_wait(globus_info)
         if last_task_id:
-            globus_wait(last_task_id)
+            globus_wait(globus_info, last_task_id)
