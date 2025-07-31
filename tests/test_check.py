@@ -184,15 +184,18 @@ class TestCheck(TestZstash):
             "{}zstash extract --hpss={}".format(zstash_path, self.hpss_path)
         )
         # Run `zstash check`
-        output, err = run_cmd(
-            "{}zstash check --hpss={}".format(zstash_path, self.hpss_path)
-        )
-        self.assertEqualOrStop(
-            output + err,
-            'For help, please see https://e3sm-project.github.io/zstash. Ask questions at https://github.com/E3SM-Project/zstash/discussions/categories/q-a.\nINFO: zstash/000000.tar exists. Checking expected size matches actual size.\nINFO: Opening tar archive {}/000000.tar\nINFO: Checking file1.txt\nINFO: Checking file2.txt\nINFO: No failures detected when checking the files. If you have a log file, run "grep -i Exception <log-file>" to double check.\n'.format(
-                self.cache
-            ),
-        )
+        zstash_cmd: str = f"{zstash_path}zstash check --hpss={self.hpss_path}"
+        output, err = run_cmd(zstash_cmd)
+        expected_present = [
+            "For help, please see https://e3sm-project.github.io/zstash. Ask questions at https://github.com/E3SM-Project/zstash/discussions/categories/q-a.",
+            "INFO: zstash/000000.tar exists. Checking expected size matches actual size.",
+            f"INFO: Opening tar archive {self.cache}/000000.tar",
+            "INFO: Checking file1.txt",
+            "INFO: Checking file2.txt",
+            'INFO: No failures detected when checking the files. If you have a log file, run "grep -i Exception <log-file>" to double check.',
+        ]
+        expected_absent = []
+        self.check_strings(zstash_cmd, output + err, expected_present, expected_absent)
         # Check that tar and db files were not deleted
         files = os.listdir("{}/".format(self.cache))
         if not compare(files, ["000000.tar", "index.db"]):
