@@ -60,6 +60,7 @@ run_test_cases()
     # 5. `zstash create` with `--for-developers-force-database-corruption="simulate_row_existing"`. We simply add a duplicate tar, but `zstash check` with `--error-on-duplicate-tar` errors out because it finds two entries for the same tar.
     # 6. `zstash create` with `--for-developers-force-database-corruption="simulate_no_correct_size"` to construct a very bad database: two entries for the same tar, both with incorrect sizes. `zstash check` confirms that no entries match the actual file size.
     # 7. `zstash create` with `--for-developers-force-database-corruption="simulate_row_existing_bad_size"`. We add a duplicate tar, but with the wrong size. `zstash check` confirms that the other entry matches the actual file size, so it succeeds.
+    # 8. `zstash create` with `--for-developers-force-database-corruption="simulate_bad_size_for_most_recent"` to construct two entries for the same tar, the most recent of which has an incorrect size. `zstash check` fails because the most recent size does not match, but it does log that one of the entries matches the actual file size.
 
     # Standard cases ##########################################################
 
@@ -201,7 +202,7 @@ run_test_cases()
     fi
     cd ${src_prefix}_check
     zstash check --hpss=${DST_DIR}/${case_name} --error-on-duplicate-tar 2>&1 | tee check.log
-    grep "ERROR: Database corruption detected! Found 2 database entries for 000000.tar with sizes" check.log
+    grep "ERROR: Database corruption detected! Found 2 database entries for 000000.tar, with sizes" check.log
     if [ $? != 0 ]; then
         ((fail_count++))
         review_str+="${case_name}_check/check.log,"
@@ -225,17 +226,23 @@ run_test_cases()
     fi
     cd ${src_prefix}_check
     zstash check --hpss=${DST_DIR}/${case_name} 2>&1 | tee check.log
-    grep "INFO: 000000.tar: No database entries match the actual file size:" check.log
+    grep "WARNING: Database corruption detected! Found 2 database entries for 000000.tar, with sizes" check.log
     if [ $? != 0 ]; then
         ((fail_count++))
         review_str+="${case_name}_check/check.log,"
     else
         ((success_count++))
     fi
+    grep "INFO: 000000.tar: No database entry matches the actual file size:" check.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+    else
+        ((success_count++))
+    fi
 
 
-    # Case 7: Duplicates detected! Allow them. Pass check because at least one of the sizes match.
-    case_name="check_finds_a_matching_size"
+    # Case 7: Duplicates detected! Allow them. Pass check because the most recent size matches.
+    case_name="check_finds_most_recent_size_matches"
     src_prefix=${SRC_DIR}/${case_name}
     setup ${case_name} ${src_prefix}
     cd ${src_prefix}_create
@@ -261,10 +268,45 @@ run_test_cases()
     fi
     cd ${src_prefix}_check
     zstash check --hpss=${DST_DIR}/${case_name} 2>&1 | tee check.log
-    grep "INFO: 000000.tar: Found a database entry with the same size as the actual file size:" check.log
+    grep "WARNING: Database corruption detected! Found 2 database entries for 000000.tar, with sizes" check.log
     if [ $? != 0 ]; then
         ((fail_count++))
         review_str+="${case_name}_check/check.log,"
+    else
+        ((success_count++))
+    fi
+    grep "INFO: 000000.tar: The most recent database entry has the same size as the actual file size:" check.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+    else
+        ((success_count++))
+    fi
+
+    # Case 8: Duplicates detected! Allow them. Error out on check because the most recent size doesn't match.
+    case_name="check_finds_most_recent_size_does_not_match"
+    src_prefix=${SRC_DIR}/${case_name}
+    setup ${case_name} ${src_prefix}
+    cd ${src_prefix}_create
+    zstash create --hpss=${DST_DIR}/${case_name} --for-developers-force-database-corruption="simulate_bad_size_for_most_recent" zstash_demo 2>&1 | tee create.log
+    grep "INFO: TESTING/DEBUGGING ONLY: Simulating bad size for most recent entry for 000000.tar." create.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_create/create.log,"
+    else
+        ((success_count++))
+    fi
+    cd ${src_prefix}_check
+    zstash check --hpss=${DST_DIR}/${case_name} 2>&1 | tee check.log
+    grep "WARNING: Database corruption detected! Found 2 database entries for 000000.tar, with sizes" check.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
+        review_str+="${case_name}_check/check.log,"
+    else
+        ((success_count++))
+    fi
+    grep "INFO: 000000.tar: A database entry matches the actual file size," check.log
+    if [ $? != 0 ]; then
+        ((fail_count++))
     else
         ((success_count++))
     fi
@@ -278,6 +320,6 @@ run_test_cases()
 
 run_test_cases
 
-# Success count: 20
+# Success count: 25
 # Fail count: 0
 # Review:

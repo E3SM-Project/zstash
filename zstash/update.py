@@ -108,12 +108,12 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
     optional.add_argument(
         "--error-on-duplicate-tar",
         action="store_true",
-        help="Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash's behavior will depend on whether or not the --overwrite-duplicate-tar flag is set.",
+        help="FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash's behavior will depend on whether or not the --overwrite-duplicate-tar flag is set.",
     )
     optional.add_argument(
         "--overwrite-duplicate-tars",
         action="store_true",
-        help="If a duplicate tar is encountered, overwrite the existing tar file with the new one (i.e., it will assume the latest tar is the correct one). If this flag is not set, zstash will permit multiple entries for the same tar in its database.",
+        help="FOR ADVANCED USERS ONLY: If a duplicate tar is encountered, overwrite the existing tar file with the new one (i.e., it will assume the latest tar is the correct one). If this flag is not set, zstash will permit multiple entries for the same tar in its database.",
     )
     optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"

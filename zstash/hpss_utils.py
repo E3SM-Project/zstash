@@ -234,6 +234,21 @@ def add_files(
                         "INSERT INTO tars VALUES (NULL,?,?,?)",
                         (tfname, tarsize + 2000, tar_md5),
                     )
+                elif force_database_corruption == "simulate_bad_size_for_most_recent":
+                    # Tested by database_corruption.bash Case 8
+                    # For developers only! For debugging purposes only!
+                    # Add this tar twice, second time with bad size.
+                    logger.info(
+                        f"TESTING/DEBUGGING ONLY: Simulating bad size for most recent entry for {tfname}."
+                    )
+                    cur.execute(
+                        "INSERT INTO tars VALUES (NULL,?,?,?)",
+                        (tfname, tarsize, tar_md5),
+                    )
+                    cur.execute(
+                        "INSERT INTO tars VALUES (NULL,?,?,?)",
+                        (tfname, tarsize + 2000, tar_md5),
+                    )
                 else:
                     # Tested by database_corruption.bash Cases 1,2
                     # Typical case

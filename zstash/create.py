@@ -169,17 +169,17 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     optional.add_argument(
         "--error-on-duplicate-tar",
         action="store_true",
-        help="Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash's behavior will depend on whether or not the --overwrite-duplicate-tar flag is set.",
+        help="FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash's behavior will depend on whether or not the --overwrite-duplicate-tar flag is set.",
     )
     optional.add_argument(
         "--overwrite-duplicate-tars",
         action="store_true",
-        help="If a duplicate tar is encountered, overwrite the existing tar file with the new one (i.e., it will assume the latest tar is the correct one). If this flag is not set, zstash will permit multiple entries for the same tar in its database.",
+        help="FOR ADVANCED USERS ONLY: If a duplicate tar is encountered, overwrite the existing tar file with the new one (i.e., it will assume the latest tar is the correct one). If this flag is not set, zstash will permit multiple entries for the same tar in its database.",
     )
     optional.add_argument(
         "--for-developers-force-database-corruption",
         type=str,
-        help="For developers only! Forces database corruption by inserting a duplicate tar entry into the tars table. This is useful for testing. 3 options: simulate_row_existing -- add the tar before the main logic. simulate_row_existing_bad_size -- add the tar before the main logic, but with the wrong size. simulate_no_correct_size -- add the tar twice, both times with incorrect size. If this option is not set, no corruption will be forced.",
+        help="FOR DEVELOPERS ONLY! Forces database corruption by inserting a duplicate tar entry into the tars table. This is useful for testing. 3 options: simulate_row_existing -- add the tar before the main logic. simulate_row_existing_bad_size -- add the tar before the main logic, but with the wrong size. simulate_no_correct_size -- add the tar twice, both times with incorrect size. If this option is not set, no corruption will be forced. simulate_bad_size_for_most_recent -- add the tar twice, first with good size, then with bad size.",
         default="",
     )
     # Now that we're inside a subcommand, ignore the first two argvs
