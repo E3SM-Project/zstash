@@ -1,12 +1,18 @@
 import configparser
+import json
 import os
 import re
 import shutil
 from typing import List, Optional, Tuple
 from urllib.parse import ParseResult, urlparse
 
-from fair_research_login.client import NativeClient
-from globus_sdk import TransferAPIError, TransferClient, TransferData
+from globus_sdk import (
+    NativeAppAuthClient,
+    RefreshTokenAuthorizer,
+    TransferAPIError,
+    TransferClient,
+    TransferData,
+)
 from globus_sdk.response import GlobusHTTPResponse
 
 """
@@ -43,7 +49,7 @@ python simple_globus.py
 
 # Settings ####################################################################
 REQUEST_SCOPES_EARLY: bool = True
-REMOTE_DIR_PREFIX: str = "zstash_simple_globus_try2"
+REMOTE_DIR_PREFIX: str = "zstash_simple_globus_try6"
 
 LOCAL_ENDPOINT: str = "LCRC Improv DTN"
 REMOTE_ENDPOINT: str = "NERSC Perlmutter"
@@ -51,6 +57,7 @@ REMOTE_ENDPOINT: str = "NERSC Perlmutter"
 # Constants ###################################################################
 GLOBUS_CFG: str = os.path.expanduser("~/.globus-native-apps.cfg")
 INI_PATH: str = os.path.expanduser("~/.zstash.ini")
+TOKEN_FILE = os.path.expanduser("~/.zstash_globus_tokens.json")
 ZSTASH_CLIENT_ID: str = "6c1629cf-446c-49e7-af95-323c6412397f"
 NAME_TO_ENDPOINT_MAP = {
     "NERSC HPSS": "9cd89cfd-6d04-11e5-ba46-22000b92c6ec",
@@ -69,6 +76,7 @@ def main():
         skipped_second_auth = simple_transfer("toy_run")
     except RuntimeError:
         print("Now that we have the authentications, let's re-run.")
+        skipped_second_auth = simple_transfer("toy_run")
     print(f"For toy_run, skipped_second_auth={skipped_second_auth}")
     if skipped_second_auth:
         print("We didn't need to authenticate a second time on the toy run!")
@@ -80,10 +88,11 @@ def main():
 
 
 def reset_state_files():
-    if os.path.exists(INI_PATH):
-        os.remove(INI_PATH)
-    if os.path.exists(GLOBUS_CFG):
-        os.remove(GLOBUS_CFG)
+    files_to_remove = [INI_PATH, GLOBUS_CFG, TOKEN_FILE]
+    for file_path in files_to_remove:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"Removed {file_path}")
 
 
 def simple_transfer(run_dir: str) -> bool:
@@ -98,50 +107,52 @@ def simple_transfer(run_dir: str) -> bool:
     print(f"url.scheme={url.scheme}, url.netloc={url.netloc}")
     local_endpoint: str = get_local_endpoint_id()
     both_endpoints: List[str] = [local_endpoint, remote_endpoint]
-    native_client = NativeClient(
-        client_id=ZSTASH_CLIENT_ID,
-        app_name="Zstash",
-        default_scopes="openid urn:globus:auth:scope:transfer.api.globus.org:all",
-    )
-    # May print 'Please Paste your Auth Code Below:'
-    # This is the 1st authentication prompt!
-    print("Might ask for 1st authentication prompt:")
-    if REQUEST_SCOPES_EARLY:
-        all_scopes: str = get_all_endpoint_scopes(both_endpoints)
-        native_client.login(
-            requested_scopes=all_scopes, no_local_server=True, refresh_tokens=True
-        )
-    else:
-        native_client.login(no_local_server=True, refresh_tokens=True)
-    print("Authenticated for the 1st time!")
-    transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
-    transfer_client: TransferClient = TransferClient(authorizer=transfer_authorizer)
+
+    # Get the transfer client with proper authentication
+    transfer_client, needed_fresh_auth = get_transfer_client_with_auth(both_endpoints)
+
     for ep_id in both_endpoints:
         r = transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
         assert r.get("code") != "AutoActivationFailed"
+
     os.chdir(config_path)
     print(f"Now in {os.getcwd()}")
     transfer_data: TransferData = construct_TransferData(
         url, txt_file, transfer_client, local_endpoint, remote_endpoint
     )
+
     task: GlobusHTTPResponse
-    skipped_second_auth: bool = False
+    skipped_second_auth: bool = not needed_fresh_auth
+
     try:
         task = transfer_client.submit_transfer(transfer_data)
-        print("Bypassed 2nd authentication.")
+        if not needed_fresh_auth:
+            print("Bypassed authentication entirely - used stored tokens!")
+        else:
+            print("Used fresh authentication - tokens now stored for next time")
         skipped_second_auth = True
     except TransferAPIError as err:
         if err.info.consent_required:
+            # This should be much less likely now with proper scope handling
+            print("Consent required - this suggests scope issues")
+            skipped_second_auth = False
+
             scopes = "urn:globus:auth:scope:transfer.api.globus.org:all["
             for ep_id in both_endpoints:
                 scopes += f" *https://auth.globus.org/scopes/{ep_id}/data_access"
             scopes += " ]"
-            native_client = NativeClient(client_id=ZSTASH_CLIENT_ID, app_name="Zstash")
-            # May print 'Please Paste your Auth Code Below:'
-            # This is the 2nd authentication prompt!
-            print("Might ask for 2nd authentication prompt:")
-            native_client.login(requested_scopes=scopes)
-            print("Authenticated for the 2nd time!")
+
+            print("Getting additional consents...")
+            client = NativeAppAuthClient(ZSTASH_CLIENT_ID)
+            client.oauth2_start_flow(requested_scopes=scopes, refresh_tokens=True)
+            authorize_url = client.oauth2_get_authorize_url()
+            print("Please go to this URL and login: {0}".format(authorize_url))
+            auth_code = input(
+                "Please enter the code you get after login here: "
+            ).strip()
+            token_response = client.oauth2_exchange_code_for_tokens(auth_code)
+            save_tokens(token_response)
+
             print(
                 "Consents added, please re-run the previous command to start transfer"
             )
@@ -150,6 +161,7 @@ def simple_transfer(run_dir: str) -> bool:
             if err.info.authorization_parameters:
                 print("Error is in authorization parameters")
             raise err
+
     task_id = task.get("task_id")
     wait_timeout = 300  # 300 sec = 5 min
     print(f"Wait for task to complete, wait_timeout={wait_timeout}")
@@ -159,15 +171,33 @@ def simple_transfer(run_dir: str) -> bool:
     return skipped_second_auth
 
 
+def get_dir_and_file_to_archive(run_dir: str) -> Tuple[str, str]:
+    if os.path.exists(run_dir):
+        shutil.rmtree(run_dir)
+    os.mkdir(run_dir)
+    os.chdir(run_dir)
+    print(f"Now in {os.getcwd()}")
+    dir_to_archive: str = "dir_to_archive"
+    txt_file: str = "file0.txt"
+    os.mkdir(dir_to_archive)
+    with open(f"{dir_to_archive}/{txt_file}", "w") as f:
+        f.write("file contents")
+    config_path: str = os.path.abspath(dir_to_archive)
+    assert os.path.isdir(config_path)
+    return config_path, txt_file
+
+
 def check_state_files():
-    if os.path.exists(INI_PATH):
-        print(f"{INI_PATH} exists.")
-    else:
-        print(f"{INI_PATH} does NOT exist.")
-    if os.path.exists(GLOBUS_CFG):
-        print(f"{GLOBUS_CFG} exists.")
-    else:
-        print(f"{GLOBUS_CFG} does NOT exist.")
+    files_to_check = [
+        (INI_PATH, "INI_PATH"),
+        (GLOBUS_CFG, "GLOBUS_CFG"),
+        (TOKEN_FILE, "TOKEN_FILE"),
+    ]
+    for file_path, name in files_to_check:
+        if os.path.exists(file_path):
+            print(f"{name}: {file_path} exists.")
+        else:
+            print(f"{name}: {file_path} does NOT exist.")
 
 
 def get_local_endpoint_id() -> str:
@@ -188,20 +218,62 @@ def get_local_endpoint_id() -> str:
     return local_endpoint
 
 
-def get_dir_and_file_to_archive(run_dir: str) -> Tuple[str, str]:
-    if os.path.exists(run_dir):
-        shutil.rmtree(run_dir)
-    os.mkdir(run_dir)
-    os.chdir(run_dir)
-    print(f"Now in {os.getcwd()}")
-    dir_to_archive: str = "dir_to_archive"
-    txt_file: str = "file0.txt"
-    os.mkdir(dir_to_archive)
-    with open(f"{dir_to_archive}/{txt_file}", "w") as f:
-        f.write("file contents")
-    config_path: str = os.path.abspath(dir_to_archive)
-    assert os.path.isdir(config_path)
-    return config_path, txt_file
+def get_transfer_client_with_auth(
+    both_endpoints: List[str],
+) -> Tuple[TransferClient, bool]:
+    """
+    Get a TransferClient, handling authentication properly.
+    Returns (transfer_client, needed_fresh_auth)
+    """
+    tokens = load_tokens()
+
+    # Check if we have stored refresh tokens
+    if "transfer.api.globus.org" in tokens:
+        token_data = tokens["transfer.api.globus.org"]
+        if "refresh_token" in token_data:
+            print("Found stored refresh token - using it")
+            # Create a simple auth client for the RefreshTokenAuthorizer
+            auth_client = NativeAppAuthClient(ZSTASH_CLIENT_ID)
+            transfer_authorizer = RefreshTokenAuthorizer(
+                refresh_token=token_data["refresh_token"], auth_client=auth_client
+            )
+            transfer_client = TransferClient(authorizer=transfer_authorizer)
+            return transfer_client, False  # No fresh auth needed
+
+    # No stored tokens, need to authenticate
+    print("No stored tokens found - starting authentication")
+
+    # Get the required scopes
+    if REQUEST_SCOPES_EARLY:
+        all_scopes = get_all_endpoint_scopes(both_endpoints)
+        print(f"Requesting scopes early: {all_scopes}")
+    else:
+        all_scopes = "urn:globus:auth:scope:transfer.api.globus.org:all"
+
+    # Use the NativeAppAuthClient pattern from the documentation
+    client = NativeAppAuthClient(ZSTASH_CLIENT_ID)
+    client.oauth2_start_flow(
+        requested_scopes=all_scopes,
+        refresh_tokens=True,  # This is the key to persistent auth!
+    )
+
+    authorize_url = client.oauth2_get_authorize_url()
+    print("Please go to this URL and login: {0}".format(authorize_url))
+
+    auth_code = input("Please enter the code you get after login here: ").strip()
+    token_response = client.oauth2_exchange_code_for_tokens(auth_code)
+
+    # Save tokens for next time
+    save_tokens(token_response)
+
+    # Get the transfer token and create authorizer
+    globus_transfer_data = token_response.by_resource_server["transfer.api.globus.org"]
+    transfer_authorizer = RefreshTokenAuthorizer(
+        refresh_token=globus_transfer_data["refresh_token"], auth_client=client
+    )
+
+    transfer_client = TransferClient(authorizer=transfer_authorizer)
+    return transfer_client, True  # Fresh auth was needed
 
 
 def get_all_endpoint_scopes(endpoints: List[str]) -> str:
@@ -209,6 +281,21 @@ def get_all_endpoint_scopes(endpoints: List[str]) -> str:
         [f"*https://auth.globus.org/scopes/{ep}/data_access" for ep in endpoints]
     )
     return f"urn:globus:auth:scope:transfer.api.globus.org:all[{inner}]"
+
+
+def save_tokens(token_response):
+    """Save tokens from a token response."""
+    tokens_to_save = {}
+    for resource_server, token_data in token_response.by_resource_server.items():
+        tokens_to_save[resource_server] = {
+            "access_token": token_data["access_token"],
+            "refresh_token": token_data.get("refresh_token"),
+            "expires_at": token_data.get("expires_at_seconds"),
+        }
+
+    with open(TOKEN_FILE, "w") as f:
+        json.dump(tokens_to_save, f, indent=2)
+    print("Tokens saved successfully")
 
 
 def construct_TransferData(
@@ -237,6 +324,17 @@ def construct_TransferData(
     transfer_data.add_item(src_path, dst_path)
     transfer_data["label"] = label
     return transfer_data
+
+
+def load_tokens():
+    """Load stored tokens if they exist."""
+    if os.path.exists(TOKEN_FILE):
+        try:
+            with open(TOKEN_FILE, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return {}
+    return {}
 
 
 # Run #########################################################################
