@@ -1,7 +1,8 @@
+import configparser
 import os
 import re
 import shutil
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 from urllib.parse import ParseResult, urlparse
 
 from fair_research_login.client import NativeClient
@@ -29,33 +30,15 @@ cd examples
 
 # Run
 
-Case 1: authenticate 2x on toy run, 0x on real run
-python simple_globus.py # REQUEST_SCOPES_EARLY=False
-# TOY RUN:
-# Prompts 1st time for auth code, no login requested
-# Prompts 2nd time for auth code:
-# > Argonne prompt > enter Argonne credentials
-# > NERSC prompt > no login requested
-# "Consents added, please re-run the previous command to start transfer"
-# "Now that we have the authentications, let's re-run."
-# REAL RUN:
-# "Might ask for 1st authentication prompt:"
-# No prompt at all!
-# "Authenticated for the 1st time!"
+# Reset Globus state, as described above
+
+# Case 1: REQUEST_SCOPES_EARLY=False
+python simple_globus.py
 
 # Reset Globus state, as described above
 
-# Case 2: authenticate 1x on toy run, 1x on real run
-python simple_globus.py # REQUEST_SCOPES_EARLY=True
-# TOY RUN:
-# Prompts 1st time for auth code:
-# > Argonne prompt > no login requested
-# > NERSC prompt > no login requested
-# "Bypassed 2nd authentication."
-# "We didn't need to authenticate a second time on the toy run!"
-# REAL RUN:
-# Prompts 1st time for auth code, no login requested
-# "Bypassed 2nd authentication."
+# Case 2: REQUEST_SCOPES_EARLY=True
+python simple_globus.py
 """
 
 # Settings ####################################################################
@@ -66,6 +49,8 @@ LOCAL_ENDPOINT: str = "LCRC Improv DTN"
 REMOTE_ENDPOINT: str = "NERSC Perlmutter"
 
 # Constants ###################################################################
+GLOBUS_CFG: str = os.path.expanduser("~/.globus-native-apps.cfg")
+INI_PATH: str = os.path.expanduser("~/.zstash.ini")
 ZSTASH_CLIENT_ID: str = "6c1629cf-446c-49e7-af95-323c6412397f"
 NAME_TO_ENDPOINT_MAP = {
     "NERSC HPSS": "9cd89cfd-6d04-11e5-ba46-22000b92c6ec",
@@ -78,6 +63,7 @@ NAME_TO_ENDPOINT_MAP = {
 def main():
     base_dir = os.getcwd()
     print(f"Starting in {base_dir}")
+    reset_state_files()
     skipped_second_auth: bool = False
     try:
         skipped_second_auth = simple_transfer("toy_run")
@@ -93,6 +79,13 @@ def main():
     assert skipped_second_auth
 
 
+def reset_state_files():
+    if os.path.exists(INI_PATH):
+        os.remove(INI_PATH)
+    if os.path.exists(GLOBUS_CFG):
+        os.remove(GLOBUS_CFG)
+
+
 def simple_transfer(run_dir: str) -> bool:
     remote_path = f"globus://{NAME_TO_ENDPOINT_MAP[REMOTE_ENDPOINT]}/~/{REMOTE_DIR_PREFIX}_{run_dir}"
     config_path: str
@@ -100,9 +93,10 @@ def simple_transfer(run_dir: str) -> bool:
     config_path, txt_file = get_dir_and_file_to_archive(run_dir)
     url: ParseResult = urlparse(remote_path)
     assert url.scheme == "globus"
+    check_state_files()
     remote_endpoint: str = url.netloc
     print(f"url.scheme={url.scheme}, url.netloc={url.netloc}")
-    local_endpoint: str = NAME_TO_ENDPOINT_MAP[LOCAL_ENDPOINT]
+    local_endpoint: str = get_local_endpoint_id()
     both_endpoints: List[str] = [local_endpoint, remote_endpoint]
     native_client = NativeClient(
         client_id=ZSTASH_CLIENT_ID,
@@ -163,6 +157,35 @@ def simple_transfer(run_dir: str) -> bool:
     curr_task: GlobusHTTPResponse = transfer_client.get_task(task_id)
     assert curr_task["status"] == "SUCCEEDED"
     return skipped_second_auth
+
+
+def check_state_files():
+    if os.path.exists(INI_PATH):
+        print(f"{INI_PATH} exists.")
+    else:
+        print(f"{INI_PATH} does NOT exist.")
+    if os.path.exists(GLOBUS_CFG):
+        print(f"{GLOBUS_CFG} exists.")
+    else:
+        print(f"{GLOBUS_CFG} does NOT exist.")
+
+
+def get_local_endpoint_id() -> str:
+    ini = configparser.ConfigParser()
+    local_endpoint: Optional[str] = None
+    if ini.read(INI_PATH):
+        if "local" in ini.sections():
+            local_endpoint = ini["local"].get("globus_endpoint_uuid")
+            print("Got local_endpoint from ini file")
+    else:
+        ini["local"] = {"globus_endpoint_uuid": ""}
+        with open(INI_PATH, "w") as f:
+            ini.write(f)
+        print("Added local_endpoint to ini file")
+    if not local_endpoint:
+        local_endpoint = NAME_TO_ENDPOINT_MAP[LOCAL_ENDPOINT]
+        print("Got local endpoint from NAME_TO_ENDPOINT_MAP")
+    return local_endpoint
 
 
 def get_dir_and_file_to_archive(run_dir: str) -> Tuple[str, str]:
