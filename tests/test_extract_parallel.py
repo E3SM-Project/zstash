@@ -1,6 +1,8 @@
 import os
+import re
 import shutil
 import unittest
+from typing import List
 
 from tests.base import (
     HPSS_ARCHIVE,
@@ -72,18 +74,7 @@ class TestExtractParallel(TestZstash):
             expected_present.append("Transferring file from HPSS")
         expected_absent = ["ERROR", "Not extracting"]
         self.check_strings(cmd, output + err, expected_present, expected_absent)
-        # Checking that the printing was done in order.
-        tar_order = []
-        console_output = output + err
-        for word in console_output.replace("\n", " ").split(" "):
-            if ".tar" in word:
-                word = word.replace("{}/".format(self.cache), "")
-                tar_order.append(word)
-        if tar_order != sorted(tar_order):
-            error_message = "The tars were printed in this order: {}\nWhen it should have been in this order: {}".format(
-                tar_order, sorted(tar_order)
-            )
-            self.stop(error_message)
+        self.compare_tar_orders(output + err)
 
         # Run again, without verbose option.
         shutil.rmtree(self.test_dir)
@@ -99,17 +90,18 @@ class TestExtractParallel(TestZstash):
         output, err = run_cmd(cmd)
         os.chdir(TOP_LEVEL)
         self.check_strings(cmd, output + err, expected_present, expected_absent)
-        # Checking that the printing was done in order.
-        tar_order = []
-        console_output = output + err
+        self.compare_tar_orders(output + err)
+
+    def compare_tar_orders(self, console_output: str):
+        printed_tar_order: List[int] = []
         for word in console_output.replace("\n", " ").split(" "):
-            if ".tar" in word:
-                word = word.replace("{}/".format(self.cache), "")
-                tar_order.append(word)
-        if tar_order != sorted(tar_order):
-            error_message = "The tars were printed in this order: {}\nWhen it should have been in this order: {}".format(
-                tar_order, sorted(tar_order)
-            )
+            match_object = re.match(r"([0-9a-fA-F]+)\.tar", word)
+            if match_object:
+                hex_value: int = int(match_object.group(1), 16)
+                printed_tar_order.append(hex_value)
+        sorted_tar_order: List[int] = sorted(printed_tar_order)
+        if printed_tar_order != sorted_tar_order:
+            error_message = f"Actual tar order={printed_tar_order}. Expected tar order={sorted_tar_order}"
             self.stop(error_message)
 
     def testExtractParallel(self):

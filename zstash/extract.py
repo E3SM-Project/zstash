@@ -13,7 +13,7 @@ import sys
 import tarfile
 import traceback
 from datetime import datetime
-from typing import DefaultDict, List, Optional, Tuple
+from typing import DefaultDict, List, Optional, Set, Tuple
 
 import _hashlib
 import _io
@@ -100,6 +100,11 @@ def setup_extract() -> Tuple[argparse.Namespace, str]:
     optional.add_argument("--tars", type=str, help="specify which tars to process")
     optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"
+    )
+    optional.add_argument(
+        "--error-on-duplicate-tar",
+        action="store_true",
+        help="FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash will check if the size matches the *most recent* entry.",
     )
     parser.add_argument("files", nargs="*", default=["*"])
     args: argparse.Namespace = parser.parse_args(sys.argv[2:])
@@ -389,26 +394,83 @@ def multiprocess_extract(
     return failures
 
 
-def check_sizes_match(cur, tfname):
-    match: bool
+def check_sizes_match(cur, tfname, error_on_duplicate_tar):
     if cur and tars_table_exists(cur):
         logger.info(f"{tfname} exists. Checking expected size matches actual size.")
-        actual_size = os.path.getsize(tfname)
-        name_only = os.path.split(tfname)[1]
-        cur.execute(f"select size from tars where name is '{name_only}';")
-        expected_size: int = cur.fetchall()[0][0]
-        if expected_size != actual_size:
-            logger.info(
-                f"{name_only}: expected size={expected_size} != {actual_size}=actual_size"
+        actual_size: int = os.path.getsize(tfname)
+        name_only: str = os.path.split(tfname)[1]
+
+        # Get ALL entries for this tar name
+        cur.execute(
+            "SELECT size FROM tars WHERE name = ? ORDER by id DESC", (name_only,)
+        )
+        results = cur.fetchall()
+
+        if not results:
+            # Cannot access size information; assume the sizes match.
+            logger.error(f"No database entries found for {name_only}")
+            return True
+
+        # Check for multiple entries
+        if len(results) > 1:
+            # Extract just the size values
+            sizes: List[int] = [row[0] for row in results]
+            error_str: str = (
+                f"Database corruption detected! Found {len(results)} database entries for {name_only}, with sizes {sizes}"
             )
-            match = False
+
+            if error_on_duplicate_tar:
+                # Tested by database_corruption.bash Case 5
+                logger.error(error_str)
+                raise RuntimeError(error_str)
+            logger.warning(error_str)
+
+            # We ordered the results by id DESC,
+            # so the first entry is the most recent.
+            most_recent_size: int = sizes[0]
+            if actual_size == most_recent_size:
+                # Tested by database_corruption.bash Case 7
+                # If the actual size matches the most recent size,
+                # then we can assume that the tar is valid.
+                logger.info(
+                    f"{name_only}: The most recent database entry has the same size as the actual file size: {actual_size}."
+                )
+                return True
+            unique_sizes: Set[int] = set(sizes)
+            if actual_size in unique_sizes:
+                # Tested by database_corruption.bash Case 8
+                logger.info(
+                    f"{name_only}: A database entry matches the actual file size, {actual_size}, but it is not the most recent entry."
+                )
+            else:
+                # Tested by database_corruption.bash Case 6
+                logger.info(
+                    f"{name_only}: No database entry matches the actual file size: {actual_size}."
+                )
+            return False
+        else:
+            # Tested by database_corruption.bash Cases 1,2,4
+            # Single entry - normal case
+            logger.info(f"{name_only}: Found a single database entry.")
+            expected_size = results[0][0]
+
+        # Now check if actual size matches expected size
+        if expected_size != actual_size:
+            error_msg = (
+                f"{name_only}: Size mismatch! "
+                f"Expected={expected_size} != {actual_size}=actual. "
+                f"Difference={actual_size - expected_size}."
+            )
+            logger.error(error_msg)
+            return False
         else:
             # Sizes match
-            match = True
+            logger.info(f"{name_only}: Size check passed ({actual_size} bytes)")
+            return True
     else:
         # Cannot access size information; assume the sizes match.
-        match = True
-    return match
+        logger.debug("Cannot access tar size information; assuming sizes match")
+        return True
 
 
 # FIXME: C901 'extractFiles' is too complex (33)
@@ -480,7 +542,9 @@ def extractFiles(  # noqa: C901
                 if not os.path.exists(tfname):
                     do_retrieve = True
                 else:
-                    do_retrieve = not check_sizes_match(cur, tfname)
+                    do_retrieve = not check_sizes_match(
+                        cur, tfname, args.error_on_duplicate_tar
+                    )
 
                 try:
                     if test_retry:
@@ -488,7 +552,9 @@ def extractFiles(  # noqa: C901
                         raise RuntimeError
                     if do_retrieve:
                         hpss_get(hpss, tfname, cache)
-                        if not check_sizes_match(cur, tfname):
+                        if not check_sizes_match(
+                            cur, tfname, args.error_on_duplicate_tar
+                        ):
                             raise RuntimeError(
                                 f"{tfname} size does not match expected size."
                             )
