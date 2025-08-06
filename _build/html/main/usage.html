@@ -154,6 +154,8 @@ The default is 256 GB. Zstash will create tar files that are smaller
 than MAXSIZE except when individual input files exceed MAXSIZE (as
 individual files are never split up between different tar files).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--non-blocking</span></code> Zstash will submit a Globus transfer and immediately create a subsequent tarball. That is, Zstash will not wait until the transfer completes to start creating a subsequent tarball. On machines where it takes more time to create a tarball than transfer it, each Globus transfer will have one file. On machines where it takes less time to create a tarball than transfer it, the first transfer will have one file, but the number of tarballs in subsequent transfers will grow finding dynamically the most optimal number of tarballs per transfer. NOTE: zstash is currently always non-blocking.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--error-on-duplicate-tar</span></code> FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash’s behavior will depend on whether or not the –overwrite-duplicate-tar flag is set.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--overwrite-duplicate-tars</span></code> FOR ADVANCED USERS ONLY: If a duplicate tar is encountered, overwrite the existing database record with the new one (i.e., it will assume the latest tar is the correct one). If this flag is not set, zstash will permit multiple entries for the same tar in its database.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-v</span></code> increases output verbosity.</p></li>
 </ul>
 <p>Local tar files as well as the sqlite3 index database (index.db) will be stored
@@ -249,6 +251,7 @@ The default is 1 retry (2 tries total). Note: for a retry to occur automatically
 an incomplete tar file, then the archive you’re checking
 must have been created using <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">&gt;=</span> <span class="pre">v1.1.0</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--tars</span></code> to specify specific tars to check. See below for example usage.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--error-on-duplicate-tar</span></code> FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash will check if the size matches the <em>most recent</em> entry.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-v</span></code> increases output verbosity.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to check (standard wildcards supported).</p>
 <ul>
@@ -335,6 +338,8 @@ $ zstash update --hpss=&lt;path to HPSS&gt; [--cache=&lt;cache&gt;] [--dry-run] 
 they have been extracted from the archive. Normally, they are deleted after
 successful transfer.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--non-blocking</span></code> Zstash will submit a Globus transfer and immediately create a subsequent tarball. That is, Zstash will not wait until the transfer completes to start creating a subsequent tarball. On machines where it takes more time to create a tarball than transfer it, each Globus transfer will have one file. On machines where it takes less time to create a tarball than transfer it, the first transfer will have one file, but the number of tarballs in subsequent transfers will grow finding dynamically the most optimal number of tarballs per transfer. NOTE: zstash is currently always non-blocking.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--error-on-duplicate-tar</span></code> FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash’s behavior will depend on whether or not the –overwrite-duplicate-tar flag is set.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--overwrite-duplicate-tars</span></code> FOR ADVANCED USERS ONLY: If a duplicate tar is encountered, overwrite the existing database record with the new one (i.e., it will assume the latest tar is the correct one). If this flag is not set, zstash will permit multiple entries for the same tar in its database.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-v</span></code> increases output verbosity.</p></li>
 </ul>
 <p>Note: in the event that an update includes revisions to files previously archived, <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">update</span></code>
@@ -409,6 +414,7 @@ The default is 1 retry (2 tries total). Note: for a retry to occur automatically
 an incomplete tar file, then the archive you’re extracting from
 must have been created using <code class="docutils literal notranslate"><span class="pre">zstash</span> <span class="pre">&gt;=</span> <span class="pre">v1.1.0</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--tars</span></code> to specify specific tars to extract. See “Check” above for example usage.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--error-on-duplicate-tar</span></code> FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash will check if the size matches the <em>most recent</em> entry.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">-v</span></code> increases output verbosity.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">[files]</span></code> is a list of files to be extracted (standard wildcards supported).</p>
 <ul>
@@ -672,10 +678,11 @@ v0.3.0
       <dd><a href="../fix_main_20250110/usage.html">fix_main_20250110</a></dd>
       <dd><a href="../issue-290/usage.html">issue-290</a></dd>
       <dd><a href="../issue-338-globus-update/usage.html">issue-338-globus-update</a></dd>
+      <dd><a href="../issue-339-globus/usage.html">issue-339-globus</a></dd>
       <dd><a href="../issue-367-integration-tests/usage.html">issue-367-integration-tests</a></dd>
-      <dd><a href="../issue-377-fix-sql/usage.html">issue-377-fix-sql</a></dd>
       <dd><a href="../non-block-testing/usage.html">non-block-testing</a></dd>
       <dd><a href="../refactor-zstash/usage.html">refactor-zstash</a></dd>
+      <dd><a href="../simple-globus-script/usage.html">simple-globus-script</a></dd>
     </dl>
   </div>
 </div><script>
