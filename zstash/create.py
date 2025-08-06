@@ -174,7 +174,7 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     optional.add_argument(
         "--overwrite-duplicate-tars",
         action="store_true",
-        help="FOR ADVANCED USERS ONLY: If a duplicate tar is encountered, overwrite the existing tar file with the new one (i.e., it will assume the latest tar is the correct one). If this flag is not set, zstash will permit multiple entries for the same tar in its database.",
+        help="FOR ADVANCED USERS ONLY: If a duplicate tar is encountered, overwrite the existing database record with the new one (i.e., it will assume the latest tar is the correct one). If this flag is not set, zstash will permit multiple entries for the same tar in its database.",
     )
     optional.add_argument(
         "--for-developers-force-database-corruption",
