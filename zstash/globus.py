@@ -1,36 +1,23 @@
 from __future__ import absolute_import, print_function
 
-import configparser
-import os
-import os.path
-import re
-import socket
 import sys
-from typing import Dict, List
+from typing import List, Optional
 
-from fair_research_login.client import NativeClient
 from globus_sdk import TransferAPIError, TransferClient, TransferData
+from globus_sdk.response import GlobusHTTPResponse
 from globus_sdk.services.transfer.response.iterable import IterableTransferResponse
 from six.moves.urllib.parse import urlparse
 
+from .globus_utils import (
+    HPSS_ENDPOINT_MAP,
+    check_state_files,
+    get_local_endpoint_id,
+    get_transfer_client_with_auth,
+    set_up_TransferData,
+    submit_transfer_with_checks,
+)
 from .settings import logger
 from .utils import ts_utc
-
-hpss_endpoint_map: Dict[str, str] = {
-    "ALCF": "de463ec4-6d04-11e5-ba46-22000b92c6ec",
-    "NERSC": "9cd89cfd-6d04-11e5-ba46-22000b92c6ec",
-}
-
-# This is used if the `globus_endpoint_uuid` is not set in `~/.zstash.ini`
-regex_endpoint_map: Dict[str, str] = {
-    r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
-    r"blueslogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
-    r"chrlogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
-    r"b\d+\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
-    r"chr.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
-    r"compy.*\.pnl\.gov": "68fbd2fa-83d7-11e9-8e63-029d279f7e24",
-    r"perlmutter.*\.nersc\.gov": "6bdc7956-fc0f-4ad2-989c-7aa5ee643a79",
-}
 
 remote_endpoint = None
 local_endpoint = None
@@ -38,50 +25,6 @@ transfer_client: TransferClient = None
 transfer_data: TransferData = None
 task_id = None
 archive_directory_listing: IterableTransferResponse = None
-
-
-def get_all_endpoint_scopes(endpoints: List[str]) -> str:
-    inner = " ".join(
-        [f"*https://auth.globus.org/scopes/{ep}/data_access" for ep in endpoints]
-    )
-    return f"urn:globus:auth:scope:transfer.api.globus.org:all[{inner}]"
-
-
-# Used exclusively by submit_transfer_with_checks, exclusively when there is a TransferAPIError
-# This function is really to diagnose an error: are the endpoints ok?
-# That is, we don't *need* to check endpoint versions if everything worked out fine.
-def check_endpoint_version_5(ep_id):
-    output = transfer_client.get_endpoint(ep_id)
-    version = output.get("gcs_version", "0.0")
-    if output["gcs_version"] is None:
-        return False
-    elif int(version.split(".")[0]) >= 5:
-        return True
-    return False
-
-
-def submit_transfer_with_checks(transfer_data):
-    try:
-        task = transfer_client.submit_transfer(transfer_data)
-    except TransferAPIError as err:
-        if err.info.consent_required:
-            scopes = "urn:globus:auth:scope:transfer.api.globus.org:all["
-            for ep_id in [remote_endpoint, local_endpoint]:
-                if ep_id and check_endpoint_version_5(ep_id):
-                    scopes += f" *https://auth.globus.org/scopes/{ep_id}/data_access"
-            scopes += " ]"
-            native_client = NativeClient(
-                client_id="6c1629cf-446c-49e7-af95-323c6412397f", app_name="Zstash"
-            )
-            native_client.login(requested_scopes=scopes)
-            # Quit here and tell user to re-try
-            print(
-                "Consents added, please re-run the previous command to start transfer"
-            )
-            sys.exit(0)
-        else:
-            raise err
-    return task
 
 
 def globus_activate(hpss: str):
@@ -97,81 +40,18 @@ def globus_activate(hpss: str):
     url = urlparse(hpss)
     if url.scheme != "globus":
         return
-    globus_cfg: str = os.path.expanduser("~/.globus-native-apps.cfg")
-    logger.info(f"Checking if {globus_cfg} exists")
-    if os.path.exists(globus_cfg):
-        logger.info(
-            f"{globus_cfg} exists. If this file does not have the proper settings, it may cause a TransferAPIError (e.g., 'Token is not active', 'No credentials supplied')"
-        )
-    else:
-        logger.info(
-            f"{globus_cfg} does not exist. zstash will need to prompt for authentications twice, and then you will need to re-run."
-        )
+    check_state_files()
     remote_endpoint = url.netloc
-
-    ini_path = os.path.expanduser("~/.zstash.ini")
-    ini = configparser.ConfigParser()
-    if ini.read(ini_path):
-        if "local" in ini.sections():
-            local_endpoint = ini["local"].get("globus_endpoint_uuid")
-    else:
-        ini["local"] = {"globus_endpoint_uuid": ""}
-        try:
-            with open(ini_path, "w") as f:
-                ini.write(f)
-        except Exception as e:
-            logger.error(e)
-            sys.exit(1)
-    if not local_endpoint:
-        fqdn = socket.getfqdn()
-        if re.fullmatch(r"n.*\.local", fqdn) and os.getenv("HOSTNAME", "NA").startswith(
-            "compy"
-        ):
-            fqdn = "compy.pnl.gov"
-        for pattern in regex_endpoint_map.keys():
-            if re.fullmatch(pattern, fqdn):
-                local_endpoint = regex_endpoint_map.get(pattern)
-                break
-    # FQDN is not set on Perlmutter at NERSC
-    if not local_endpoint:
-        nersc_hostname = os.environ.get("NERSC_HOST")
-        if nersc_hostname and (
-            nersc_hostname == "perlmutter" or nersc_hostname == "unknown"
-        ):
-            local_endpoint = regex_endpoint_map.get(r"perlmutter.*\.nersc\.gov")
-    if not local_endpoint:
-        logger.error(
-            "{} does not have the local Globus endpoint set nor could one be found in regex_endpoint_map.".format(
-                ini_path
-            )
-        )
-        sys.exit(1)
-
-    if remote_endpoint.upper() in hpss_endpoint_map.keys():
-        remote_endpoint = hpss_endpoint_map.get(remote_endpoint.upper())
-
-    native_client = NativeClient(
-        client_id="6c1629cf-446c-49e7-af95-323c6412397f",
-        app_name="Zstash",
-        default_scopes="openid urn:globus:auth:scope:transfer.api.globus.org:all",
-    )
-    if local_endpoint and remote_endpoint:
-        all_scopes: str = get_all_endpoint_scopes([local_endpoint, remote_endpoint])
-        native_client.login(
-            requested_scopes=all_scopes, no_local_server=True, refresh_tokens=True
-        )
-    else:
-        native_client.login(no_local_server=True, refresh_tokens=True)
-    transfer_authorizer = native_client.get_authorizers().get("transfer.api.globus.org")
-    transfer_client = TransferClient(authorizer=transfer_authorizer)
-
-    for ep_id in [local_endpoint, remote_endpoint]:
+    local_endpoint = get_local_endpoint_id(local_endpoint)
+    if remote_endpoint.upper() in HPSS_ENDPOINT_MAP.keys():
+        remote_endpoint = HPSS_ENDPOINT_MAP.get(remote_endpoint.upper())
+    both_endpoints: List[Optional[str]] = [local_endpoint, remote_endpoint]
+    transfer_client = get_transfer_client_with_auth(both_endpoints)
+    for ep_id in both_endpoints:
         r = transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
         if r.get("code") == "AutoActivationFailed":
             logger.error(
-                "The {} endpoint is not activated or the current activation expires soon. Please go to https://app.globus.org/file-manager/collections/{} and (re)activate the endpoint.".format(
-                    ep_id, ep_id
-                )
+                f"The {ep_id} endpoint is not activated or the current activation expires soon. Please go to https://app.globus.org/file-manager/collections/{ep_id} and (re)activate the endpoint."
             )
             sys.exit(1)
 
@@ -220,34 +100,17 @@ def globus_transfer(  # noqa: C901
             )
             sys.exit(1)
 
-    if transfer_type == "get":
-        src_ep = remote_endpoint
-        src_path = os.path.join(remote_path, name)
-        dst_ep = local_endpoint
-        dst_path = os.path.join(os.getcwd(), name)
-    else:
-        src_ep = local_endpoint
-        src_path = os.path.join(os.getcwd(), name)
-        dst_ep = remote_endpoint
-        dst_path = os.path.join(remote_path, name)
+    transfer_data = set_up_TransferData(
+        transfer_type,
+        local_endpoint,  # Global
+        remote_endpoint,  # Global
+        remote_path,
+        name,
+        transfer_client,  # Global
+        transfer_data,  # Global
+    )
 
-    subdir = os.path.basename(os.path.normpath(remote_path))
-    subdir_label = re.sub("[^A-Za-z0-9_ -]", "", subdir)
-    filename = name.split(".")[0]
-    label = subdir_label + " " + filename
-
-    if not transfer_data:
-        transfer_data = TransferData(
-            transfer_client,
-            src_ep,
-            dst_ep,
-            label=label,
-            verify_checksum=True,
-            preserve_timestamp=True,
-            fail_on_quota_errors=True,
-        )
-    transfer_data.add_item(src_path, dst_path)
-    transfer_data["label"] = label
+    task: GlobusHTTPResponse
     try:
         if task_id:
             task = transfer_client.get_task(task_id)
@@ -291,7 +154,7 @@ def globus_transfer(  # noqa: C901
 
         # SUBMIT new transfer here
         logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
-        task = submit_transfer_with_checks(transfer_data)
+        task = submit_transfer_with_checks(transfer_client, transfer_data)
         task_id = task.get("task_id")
         # NOTE: This log message is misleading. If we have accumulated multiple tar files for transfer,
         # the "lable" given here refers only to the LAST tarfile in the TransferData list.
@@ -447,7 +310,7 @@ def globus_finalize(non_blocking: bool = False):
         # SUBMIT new transfer here
         logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
         try:
-            last_task = submit_transfer_with_checks(transfer_data)
+            last_task = submit_transfer_with_checks(transfer_client, transfer_data)
             last_task_id = last_task.get("task_id")
         except TransferAPIError as e:
             if e.code == "NoCredException":
