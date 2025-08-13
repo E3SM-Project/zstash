@@ -45,7 +45,7 @@ INI_PATH: str = os.path.expanduser("~/.zstash.ini")
 TOKEN_FILE = os.path.expanduser("~/.zstash_globus_tokens.json")
 
 # Independent functions #######################################################
-# The functions here don't rely on the global variables defined in globus.py.
+# The functions here don't rely on the classes defined in globus.py.
 
 
 # Primarily used by globus_activate ###########################################

@@ -2,11 +2,11 @@ from __future__ import absolute_import, print_function
 
 import os.path
 import subprocess
-from typing import List
+from typing import List, Optional
 
 from six.moves.urllib.parse import urlparse
 
-from .globus import globus_transfer
+from .globus import GlobusTransferCollection, globus_transfer
 from .settings import get_db_filename, logger
 from .utils import run_command, ts_utc
 
@@ -14,7 +14,8 @@ prev_transfers: List[str] = list()
 curr_transfers: List[str] = list()
 
 
-def hpss_transfer(
+# C901 'hpss_transfer' is too complex (19)
+def hpss_transfer(  # noqa: C901
     hpss: str,
     file_path: str,
     transfer_type: str,
@@ -22,6 +23,7 @@ def hpss_transfer(
     keep: bool = False,
     non_blocking: bool = False,
     is_index: bool = False,
+    gtc: Optional[GlobusTransferCollection] = None,
 ):
     global prev_transfers
     global curr_transfers
@@ -104,16 +106,21 @@ def hpss_transfer(
             # For `get`, this directory is where the file we get from HPSS will go.
             os.chdir(path)
 
+        globus_status: Optional[str] = "UNKNOWN"
         if scheme == "globus":
-            globus_status = "UNKNOWN"
+            if not gtc:
+                raise RuntimeError(
+                    "Scheme is 'globus' but no GlobusTransferCollection provided"
+                )
             # Transfer file using the Globus Transfer Service
             logger.info(f"{ts_utc()}: DIVING: hpss calls globus_transfer(name={name})")
-            globus_status = globus_transfer(
-                endpoint, url_path, name, transfer_type, non_blocking
-            )
-            logger.info(
-                f"{ts_utc()}: SURFACE hpss globus_transfer(name={name}) returns {globus_status}"
-            )
+            globus_transfer(gtc, endpoint, url_path, name, transfer_type, non_blocking)
+            mrt = gtc.get_most_recent_transfer()
+            if mrt:
+                globus_status = mrt.task_status
+                logger.info(
+                    f"{ts_utc()}: SURFACE hpss globus_transfer(name={name}), task_id={mrt.task_id}, globus_status={globus_status}"
+                )
             # NOTE: Here, the status could be "EXHAUSTED_TIMEOUT_RETRIES", meaning a very long transfer
             # or perhaps transfer is hanging. We should decide whether to ignore it, or cancel it, but
             # we'd need the task_id to issue a cancellation.  Perhaps we should have globus_transfer
@@ -152,17 +159,19 @@ def hpss_put(
     keep: bool = True,
     non_blocking: bool = False,
     is_index=False,
+    gtc: Optional[GlobusTransferCollection] = None,
 ):
     """
     Put a file to the HPSS archive.
     """
-    hpss_transfer(hpss, file_path, "put", cache, keep, non_blocking, is_index)
+    hpss_transfer(hpss, file_path, "put", cache, keep, non_blocking, is_index, gtc=gtc)
 
 
 def hpss_get(hpss: str, file_path: str, cache: str):
     """
     Get a file from the HPSS archive.
     """
+    # gtc will get set as part of globus_transfer
     hpss_transfer(hpss, file_path, "get", cache, False)
 
 

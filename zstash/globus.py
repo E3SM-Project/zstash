@@ -19,80 +19,88 @@ from .globus_utils import (
 from .settings import logger
 from .utils import ts_utc
 
-remote_endpoint = None
-local_endpoint = None
-transfer_client: TransferClient = None
-transfer_data: TransferData = None
-task_id = None
-archive_directory_listing: IterableTransferResponse = None
+
+class GlobusTransfer(object):
+    def __init__(self):
+        self.transfer_data: Optional[TransferData] = None
+        self.task_id: Optional[str] = None
+        # https://docs.globus.org/api/transfer/task/#task_fields
+        # ACTIVE, SUCCEEDED, FAILED, INACTIVE
+        self.task_status: Optional[str] = None
 
 
-def globus_activate(hpss: str):
-    """
-    Read the local globus endpoint UUID from ~/.zstash.ini.
-    If the ini file does not exist, create an ini file with empty values,
-    and try to find the local endpoint UUID based on the FQDN
-    """
-    global transfer_client
-    global local_endpoint
-    global remote_endpoint
+class GlobusTransferCollection(object):
+    def __init__(self):
+        # Attributes common to all the transfers
+        self.remote_endpoint: Optional[str] = None
+        self.local_endpoint: Optional[str] = None
+        self.transfer_client: Optional[TransferClient] = None
+        self.archive_directory_listing: Optional[IterableTransferResponse] = None
 
+        self.transfers: List[GlobusTransfer] = (
+            []
+        )  # TODO: Replace with collections.deque?
+        self.cumulative_tarfiles_pushed: int = 0
+
+    def get_most_recent_transfer(self) -> Optional[GlobusTransfer]:
+        return self.transfers[-1] if self.transfers else None
+
+
+def globus_activate(
+    hpss: str, gtc: Optional[GlobusTransferCollection] = None
+) -> Optional[GlobusTransferCollection]:
     url = urlparse(hpss)
     if url.scheme != "globus":
-        return
+        return None
+    if gtc is None:
+        gtc = GlobusTransferCollection()
     check_state_files()
-    remote_endpoint = url.netloc
-    local_endpoint = get_local_endpoint_id(local_endpoint)
-    if remote_endpoint.upper() in HPSS_ENDPOINT_MAP.keys():
-        remote_endpoint = HPSS_ENDPOINT_MAP.get(remote_endpoint.upper())
-    both_endpoints: List[Optional[str]] = [local_endpoint, remote_endpoint]
-    transfer_client = get_transfer_client_with_auth(both_endpoints)
+    gtc.remote_endpoint = url.netloc
+    gtc.local_endpoint = get_local_endpoint_id(gtc.local_endpoint)
+    upper_remote_ep = gtc.remote_endpoint.upper()
+    if upper_remote_ep in HPSS_ENDPOINT_MAP.keys():
+        gtc.remote_endpoint = HPSS_ENDPOINT_MAP.get(upper_remote_ep)
+    both_endpoints: List[Optional[str]] = [gtc.local_endpoint, gtc.remote_endpoint]
+    gtc.transfer_client = get_transfer_client_with_auth(both_endpoints)
     for ep_id in both_endpoints:
-        r = transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
+        r = gtc.transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
         if r.get("code") == "AutoActivationFailed":
             logger.error(
                 f"The {ep_id} endpoint is not activated or the current activation expires soon. Please go to https://app.globus.org/file-manager/collections/{ep_id} and (re)activate the endpoint."
             )
             sys.exit(1)
+    return gtc
 
 
-def file_exists(name: str) -> bool:
-    global archive_directory_listing
-
+def file_exists(archive_directory_listing, name: str) -> bool:
     for entry in archive_directory_listing:
         if entry.get("name") == name:
             return True
     return False
 
 
-global_variable_tarfiles_pushed = 0
-
-
 # C901 'globus_transfer' is too complex (20)
 def globus_transfer(  # noqa: C901
-    remote_ep: str, remote_path: str, name: str, transfer_type: str, non_blocking: bool
+    gtc: Optional[GlobusTransferCollection],
+    remote_ep: str,
+    remote_path: str,
+    name: str,
+    transfer_type: str,
+    non_blocking: bool,
 ):
-    global transfer_client
-    global local_endpoint
-    global remote_endpoint
-    global transfer_data
-    global task_id
-    global archive_directory_listing
-    global global_variable_tarfiles_pushed
-
     logger.info(f"{ts_utc()}: Entered globus_transfer() for name = {name}")
     logger.debug(f"{ts_utc()}: non_blocking = {non_blocking}")
-    if not transfer_client:
-        globus_activate("globus://" + remote_ep)
-    if not transfer_client:
+    if (not gtc) or (not gtc.transfer_client):
+        gtc = globus_activate("globus://" + remote_ep)
+    if (not gtc) or (not gtc.transfer_client):
         sys.exit(1)
 
     if transfer_type == "get":
-        if not archive_directory_listing:
-            archive_directory_listing = transfer_client.operation_ls(
-                remote_endpoint, remote_path
+        if not gtc.archive_directory_listing:
+            gtc.archive_directory_listing = gtc.transfer_client.operation_ls(
+                gtc.remote_endpoint, remote_path
             )
-        if not file_exists(name):
+        if not file_exists(gtc.archive_directory_listing, name):
             logger.error(
                 "Remote file globus://{}{}/{} does not exist".format(
                     remote_ep, remote_path, name
@@ -100,45 +108,44 @@ def globus_transfer(  # noqa: C901
             )
             sys.exit(1)
 
-    transfer_data = set_up_TransferData(
+    mrt: Optional[GlobusTransfer] = gtc.get_most_recent_transfer()
+    transfer_data: TransferData = set_up_TransferData(
         transfer_type,
-        local_endpoint,  # Global
-        remote_endpoint,  # Global
+        gtc.local_endpoint,
+        gtc.remote_endpoint,
         remote_path,
         name,
-        transfer_client,  # Global
-        transfer_data,  # Global
+        gtc.transfer_client,
+        mrt.transfer_data if mrt else None,
     )
 
     task: GlobusHTTPResponse
     try:
-        if task_id:
-            task = transfer_client.get_task(task_id)
-            prev_task_status = task["status"]
+        if mrt and mrt.task_id:
+            task = gtc.transfer_client.get_task(mrt.task_id)
+            mrt.task_status = task["status"]
             # one  of {ACTIVE, SUCCEEDED, FAILED, CANCELED, PENDING, INACTIVE}
             # NOTE: How we behave here depends upon whether we want to support mutliple active transfers.
             # Presently, we do not, except inadvertantly (if status == PENDING)
-            if prev_task_status == "ACTIVE":
+            if mrt.task_status == "ACTIVE":
                 logger.info(
-                    f"{ts_utc()}: Previous task_id {task_id} Still Active. Returning ACTIVE."
+                    f"{ts_utc()}: Previous task_id {mrt.task_id} Still Active. Returning ACTIVE."
                 )
                 return "ACTIVE"
-            elif prev_task_status == "SUCCEEDED":
+            elif mrt.task_status == "SUCCEEDED":
                 logger.info(
-                    f"{ts_utc()}: Previous task_id {task_id} status = SUCCEEDED."
+                    f"{ts_utc()}: Previous task_id {mrt.task_id} status = SUCCEEDED."
                 )
                 src_ep = task["source_endpoint_id"]
                 dst_ep = task["destination_endpoint_id"]
                 label = task["label"]
                 ts = ts_utc()
                 logger.info(
-                    "{}:Globus transfer {}, from {} to {}: {} succeeded".format(
-                        ts, task_id, src_ep, dst_ep, label
-                    )
+                    f"{ts}:Globus transfer {mrt.task_id}, from {src_ep} to {dst_ep}: {label} succeeded"
                 )
             else:
                 logger.error(
-                    f"{ts_utc()}: Previous task_id {task_id} status = {prev_task_status}."
+                    f"{ts_utc()}: Previous task_id {mrt.task_id} status = {mrt.task_status}."
                 )
 
         # DEBUG: review accumulated items in TransferData
@@ -146,24 +153,26 @@ def globus_transfer(  # noqa: C901
         attribs = transfer_data.__dict__
         for item in attribs["data"]["DATA"]:
             if item["DATA_TYPE"] == "transfer_item":
-                global_variable_tarfiles_pushed += 1
+                gtc.cumulative_tarfiles_pushed += 1
                 print(
-                    f"   (routine)  PUSHING (#{global_variable_tarfiles_pushed}) STORED source item: {item['source_path']}",
+                    f"   (routine)  PUSHING (#{gtc.cumulative_tarfiles_pushed}) STORED source item: {item['source_path']}",
                     flush=True,
                 )
 
         # SUBMIT new transfer here
         logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
-        task = submit_transfer_with_checks(transfer_client, transfer_data)
+        task = submit_transfer_with_checks(gtc.transfer_client, transfer_data)
         task_id = task.get("task_id")
         # NOTE: This log message is misleading. If we have accumulated multiple tar files for transfer,
         # the "lable" given here refers only to the LAST tarfile in the TransferData list.
         logger.info(
             f"{ts_utc()}: SURFACE Submit Transfer returned new task_id = {task_id} for label {transfer_data['label']}"
         )
-
-        # Nullify the submitted transfer data structure so that a new one will be created on next call.
-        transfer_data = None
+        new_transfer = GlobusTransfer()
+        new_transfer.transfer_data = transfer_data
+        new_transfer.task_id = task_id
+        new_transfer.task_status = "UNKNOWN"
+        gtc.transfers.append(new_transfer)
     except TransferAPIError as e:
         if e.code == "NoCredException":
             logger.error(
@@ -178,28 +187,34 @@ def globus_transfer(  # noqa: C901
         logger.error("Exception: {}".format(e))
         sys.exit(1)
 
+    new_mrt: Optional[GlobusTransfer] = gtc.get_most_recent_transfer()
+
     # test for blocking on new task_id
-    task_status = "UNKNOWN"
-    if not non_blocking:
-        task_status = globus_block_wait(
-            task_id=task_id, wait_timeout=7200, polling_interval=10, max_retries=5
-        )
-    else:
-        logger.info(f"{ts_utc()}: NO BLOCKING (task_wait) for task_id {task_id}")
+    if new_mrt and new_mrt.task_id:
+        if not non_blocking:
+            new_mrt.task_status = globus_block_wait(
+                transfer_client=gtc.transfer_client,
+                task_id=new_mrt.task_id,
+                wait_timeout=7200,
+                polling_interval=10,
+                max_retries=5,
+            )
+        else:
+            logger.info(
+                f"{ts_utc()}: NO BLOCKING (task_wait) for task_id {new_mrt.task_id}"
+            )
 
-    if transfer_type == "put":
-        return task_status
-
-    if transfer_type == "get" and task_id:
-        globus_wait(task_id)
-
-    return task_status
+        if transfer_type == "get":
+            globus_wait(gtc.transfer_client, new_mrt.task_id)
 
 
 def globus_block_wait(
-    task_id: str, wait_timeout: int, polling_interval: int, max_retries: int
+    transfer_client: TransferClient,
+    task_id: str,
+    wait_timeout: int,
+    polling_interval: int,
+    max_retries: int,
 ):
-    global transfer_client
 
     # poll every "polling_interval" seconds to speed up small transfers.  Report every 2 hours, stop waiting aftert 5*2 = 10 hours
     logger.info(
@@ -243,9 +258,7 @@ def globus_block_wait(
     return task_status
 
 
-def globus_wait(task_id: str):
-    global transfer_client
-
+def globus_wait(transfer_client: TransferClient, task_id: str):
     try:
         """
         A Globus transfer job (task) can be in one of the three states:
@@ -287,30 +300,37 @@ def globus_wait(task_id: str):
         sys.exit(1)
 
 
-def globus_finalize(non_blocking: bool = False):
-    global transfer_client
-    global transfer_data
-    global task_id
-    global global_variable_tarfiles_pushed
-
+def globus_finalize(
+    gtc: Optional[GlobusTransferCollection], non_blocking: bool = False
+):
     last_task_id = None
 
-    if transfer_data:
+    if gtc is None:
+        logger.warning("No GlobusTransferCollection object provided for finalization")
+        return
+
+    transfer = gtc.get_most_recent_transfer()
+
+    if transfer and transfer.transfer_data:
         # DEBUG: review accumulated items in TransferData
         logger.info(f"{ts_utc()}: FINAL TransferData: accumulated items:")
-        attribs = transfer_data.__dict__
+        attribs = transfer.transfer_data.__dict__
         for item in attribs["data"]["DATA"]:
             if item["DATA_TYPE"] == "transfer_item":
-                global_variable_tarfiles_pushed += 1
+                gtc.cumulative_tarfiles_pushed += 1
                 print(
-                    f"    (finalize) PUSHING ({global_variable_tarfiles_pushed}) source item: {item['source_path']}",
+                    f"    (finalize) PUSHING ({gtc.cumulative_tarfiles_pushed}) source item: {item['source_path']}",
                     flush=True,
                 )
 
         # SUBMIT new transfer here
-        logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
+        logger.info(
+            f"{ts_utc()}: DIVING: Submit Transfer for {transfer.transfer_data['label']}"
+        )
         try:
-            last_task = submit_transfer_with_checks(transfer_client, transfer_data)
+            last_task = submit_transfer_with_checks(
+                gtc.transfer_client, transfer.transfer_data
+            )
             last_task_id = last_task.get("task_id")
         except TransferAPIError as e:
             if e.code == "NoCredException":
@@ -327,7 +347,7 @@ def globus_finalize(non_blocking: bool = False):
             sys.exit(1)
 
     if not non_blocking:
-        if task_id:
-            globus_wait(task_id)
+        if transfer and transfer.task_id:
+            globus_wait(gtc.transfer_client, transfer.task_id)
         if last_task_id:
-            globus_wait(last_task_id)
+            globus_wait(gtc.transfer_client, last_task_id)
