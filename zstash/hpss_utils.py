@@ -12,9 +12,9 @@ from typing import List, Optional, Tuple
 import _hashlib
 import _io
 
-from .globus import GlobusTransferCollection
 from .hpss import hpss_put
 from .settings import BLOCK_SIZE, TupleFilesRowNoId, TupleTarsRowNoId, config, logger
+from .transfer_tracking import GlobusTransferCollection, HPSSTransferCollection
 from .utils import create_tars_table, tars_table_exists, ts_utc
 
 
@@ -69,6 +69,7 @@ def add_files(
     overwrite_duplicate_tars: bool = False,
     force_database_corruption: str = "",
     gtc: Optional[GlobusTransferCollection] = None,
+    htc: Optional[HPSSTransferCollection] = None,
 ) -> List[str]:
 
     # Now, perform the actual archiving
@@ -164,7 +165,13 @@ def add_files(
                 f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {tfname} [keep, non_blocking] = [{keep}, {non_blocking}]"
             )
             hpss_put(
-                hpss, os.path.join(cache, tfname), cache, keep, non_blocking, gtc=gtc
+                hpss,
+                os.path.join(cache, tfname),
+                cache,
+                keep,
+                non_blocking,
+                gtc=gtc,
+                htc=htc,
             )
             logger.info(
                 f"{ts_utc()}: SURFACE (add_files): Called hpss_put to dispatch archive file {tfname}"

@@ -10,10 +10,11 @@ from typing import Any, List, Optional, Tuple
 
 from six.moves.urllib.parse import urlparse
 
-from .globus import GlobusTransferCollection, globus_activate, globus_finalize
+from .globus import globus_activate, globus_finalize
 from .hpss import hpss_put
 from .hpss_utils import add_files
 from .settings import DEFAULT_CACHE, config, get_db_filename, logger
+from .transfer_tracking import GlobusTransferCollection, HPSSTransferCollection
 from .utils import (
     create_tars_table,
     get_files_to_archive,
@@ -89,16 +90,23 @@ def create():
 
     # Create and set up the database
     logger.debug(f"{ts_utc()}: Calling create_database()")
-    failures: List[str] = create_database(cache, args, gtc=gtc)
+    htc: HPSSTransferCollection = HPSSTransferCollection()
+    failures: List[str] = create_database(cache, args, gtc=gtc, htc=htc)
 
     # Transfer to HPSS. Always keep a local copy.
     logger.debug(f"{ts_utc()}: calling hpss_put() for {get_db_filename(cache)}")
     hpss_put(
-        hpss, get_db_filename(cache), cache, keep=args.keep, is_index=True, gtc=gtc
+        hpss,
+        get_db_filename(cache),
+        cache,
+        keep=args.keep,
+        is_index=True,
+        gtc=gtc,
+        # htc=htc,
     )
 
     logger.debug(f"{ts_utc()}: calling globus_finalize()")
-    globus_finalize(gtc, non_blocking=args.non_blocking)
+    globus_finalize(gtc, htc, non_blocking=args.non_blocking)
 
     if len(failures) > 0:
         # List the failures
@@ -208,7 +216,10 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
 
 
 def create_database(
-    cache: str, args: argparse.Namespace, gtc: Optional[GlobusTransferCollection]
+    cache: str,
+    args: argparse.Namespace,
+    gtc: Optional[GlobusTransferCollection],
+    htc: Optional[HPSSTransferCollection],
 ) -> List[str]:
     # Create new database
     logger.debug(f"{ts_utc()}:Creating index database")
@@ -284,6 +295,7 @@ create table files (
             overwrite_duplicate_tars=args.overwrite_duplicate_tars,
             force_database_corruption=args.for_developers_force_database_corruption,
             gtc=gtc,
+            htc=htc,
         )
     except FileNotFoundError as e:
         if args.follow_symlinks:

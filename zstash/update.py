@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 from typing import List, Optional, Tuple
 
-from .globus import GlobusTransferCollection, globus_activate, globus_finalize
+from .globus import globus_activate, globus_finalize
 from .hpss import hpss_get, hpss_put
 from .hpss_utils import add_files
 from .settings import (
@@ -21,6 +21,7 @@ from .settings import (
     get_db_filename,
     logger,
 )
+from .transfer_tracking import GlobusTransferCollection, HPSSTransferCollection
 from .utils import get_files_to_archive, update_config
 
 
@@ -29,10 +30,11 @@ def update():
     args: argparse.Namespace
     cache: str
     args, cache = setup_update()
+    htc = HPSSTransferCollection()
 
     result: Optional[List[str]]
     gtc: Optional[GlobusTransferCollection]
-    result, gtc = update_database(args, cache)
+    result, gtc = update_database(args, cache, htc)
 
     if result is None:
         # There was either nothing to update or `--dry-run` was set.
@@ -46,10 +48,16 @@ def update():
     else:
         raise TypeError("Invalid config.hpss={}".format(config.hpss))
     hpss_put(
-        hpss, get_db_filename(cache), cache, keep=args.keep, is_index=True, gtc=gtc
+        hpss,
+        get_db_filename(cache),
+        cache,
+        keep=args.keep,
+        is_index=True,
+        gtc=gtc,
+        # htc=htc,
     )
 
-    globus_finalize(gtc, non_blocking=args.non_blocking)
+    globus_finalize(gtc, htc, non_blocking=args.non_blocking)
 
     # List failures
     if len(failures) > 0:
@@ -151,7 +159,7 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
 
 # C901 'update_database' is too complex (20)
 def update_database(  # noqa: C901
-    args: argparse.Namespace, cache: str
+    args: argparse.Namespace, cache: str, htc: HPSSTransferCollection
 ) -> Tuple[Optional[List[str]], Optional[GlobusTransferCollection]]:
     # Open database
     logger.debug("Opening index database")
@@ -282,6 +290,7 @@ def update_database(  # noqa: C901
             error_on_duplicate_tar=args.error_on_duplicate_tar,
             overwrite_duplicate_tars=args.overwrite_duplicate_tars,
             gtc=gtc,
+            htc=htc,
         )
     except FileNotFoundError as e:
         if args.follow_symlinks:

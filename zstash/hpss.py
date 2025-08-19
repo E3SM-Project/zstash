@@ -6,12 +6,14 @@ from typing import List, Optional
 
 from six.moves.urllib.parse import urlparse
 
-from .globus import GlobusTransferCollection, globus_transfer
+from .globus import globus_transfer
 from .settings import get_db_filename, logger
+from .transfer_tracking import (
+    GlobusTransferCollection,
+    HPSSTransferCollection,
+    delete_transferred_files,
+)
 from .utils import run_command, ts_utc
-
-prev_transfers: List[str] = list()
-curr_transfers: List[str] = list()
 
 
 # C901 'hpss_transfer' is too complex (19)
@@ -24,15 +26,15 @@ def hpss_transfer(  # noqa: C901
     non_blocking: bool = False,
     is_index: bool = False,
     gtc: Optional[GlobusTransferCollection] = None,
+    htc: Optional[HPSSTransferCollection] = None,
 ):
-    global prev_transfers
-    global curr_transfers
-
+    if not htc:
+        htc = HPSSTransferCollection()
     logger.info(
-        f"{ts_utc()}: in hpss_transfer, prev_transfers is starting as {prev_transfers}"
+        f"{ts_utc()}: in hpss_transfer, prev_transfers is starting as {htc.prev_transfers}"
     )
     # logger.debug(
-    #     f"{ts_utc()}: in hpss_transfer, curr_transfers is starting as {curr_transfers}"
+    #     f"{ts_utc()}: in hpss_transfer, curr_transfers is starting as {htc.curr_transfers}"
     # )
 
     if hpss == "none":
@@ -87,9 +89,9 @@ def hpss_transfer(  # noqa: C901
         endpoint = url.netloc
         url_path = url.path
 
-        curr_transfers.append(file_path)
+        htc.curr_transfers.append(file_path)
         # logger.debug(
-        #     f"{ts_utc()}: curr_transfers has been appended to, is now {curr_transfers}"
+        #     f"{ts_utc()}: curr_transfers has been appended to, is now {htc.curr_transfers}"
         # )
         path, name = os.path.split(file_path)
 
@@ -140,16 +142,7 @@ def hpss_transfer(  # noqa: C901
                 if (scheme != "globus") or (globus_status == "SUCCEEDED"):
                     # Note: This is intended to fulfill the default removal of successfully-transfered
                     # tar files when keep=False, irrespective of non-blocking status
-                    logger.debug(
-                        f"{ts_utc()}: deleting transfered files {prev_transfers}"
-                    )
-                    for src_path in prev_transfers:
-                        os.remove(src_path)
-                    prev_transfers = curr_transfers
-                    curr_transfers = list()
-                    logger.info(
-                        f"{ts_utc()}: prev_transfers has been set to {prev_transfers}"
-                    )
+                    delete_transferred_files(htc)
 
 
 def hpss_put(
@@ -160,11 +153,14 @@ def hpss_put(
     non_blocking: bool = False,
     is_index=False,
     gtc: Optional[GlobusTransferCollection] = None,
+    htc: Optional[HPSSTransferCollection] = None,
 ):
     """
     Put a file to the HPSS archive.
     """
-    hpss_transfer(hpss, file_path, "put", cache, keep, non_blocking, is_index, gtc=gtc)
+    hpss_transfer(
+        hpss, file_path, "put", cache, keep, non_blocking, is_index, gtc=gtc, htc=htc
+    )
 
 
 def hpss_get(hpss: str, file_path: str, cache: str):
