@@ -232,20 +232,14 @@ def globus_finalize(
             except Exception as e:
                 logger.error("Exception: {}".format(e))
                 sys.exit(1)
-
         if not non_blocking:
             if transfer and transfer.task_id:
                 globus_wait(gtc.transfer_client, transfer.task_id)
-        if last_task_id:
-            globus_wait(gtc.transfer_client, last_task_id)
+            if last_task_id:
+                globus_wait(gtc.transfer_client, last_task_id)
 
-        # TODO: figure out how to end!
-        # new_mrt: Optional[GlobusTransfer] = gtc.get_most_recent_transfer()
-        # if new_mrt and new_mrt.task_id:
-        #     new_mrt.task_status = globus_block_wait(
-        #         transfer_client=gtc.transfer_client,
-        #         task_id=new_mrt.task_id,
-        #         wait_timeout=7200,
-        #         max_retries=5,
-        #     )
-        delete_transferred_files(htc)
+        if htc.curr_transfers and transfer and transfer.task_id:
+            globus_wait(gtc.transfer_client, transfer.task_id)
+            delete_transferred_files(htc)
+        if htc.prev_transfers:
+            delete_transferred_files(htc)
