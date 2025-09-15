@@ -6,7 +6,7 @@ dependencies:
   # Base
   # =================
   - pip=22.2.2
-  - python=3.9.13
+  - python=3.11
   - six=1.16.0
   - globus-sdk=3.15.0
   # Developer Tools
