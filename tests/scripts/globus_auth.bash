@@ -61,8 +61,9 @@ run_test_cases()
 
     PERLMUTTER_ENDPOINT=6bdc7956-fc0f-4ad2-989c-7aa5ee643a79
 
+    TRY_NUM=8
     SRC_DIR=/lcrc/group/e3sm/ac.forsyth2/zstash_testing/test_globus_auth # Chrysalis
-    DST_DIR=globus://${PERLMUTTER_ENDPOINT}/global/homes/f/forsyth/zstash/tests/test_globus_auth_try5
+    DST_DIR=globus://${PERLMUTTER_ENDPOINT}/global/homes/f/forsyth/zstash/tests/test_globus_auth_try${TRY_NUM}
 
     GLOBUS_CFG=/home/ac.forsyth2/.globus-native-apps.cfg
     INI_PATH=/home/ac.forsyth2/.zstash.ini
@@ -120,6 +121,17 @@ run_test_cases()
     check_log_does_not_have "Please go to this URL and login:" ${case_name}.log # There should be no login prompts for run2!
     # From save_tokens
     check_log_does_not_have "INFO: Tokens saved successfully" ${case_name}.log # Differs from run1
+
+    # This part replaces the original test_globus.py `testLs` function.
+    zstash ls --hpss=${DST_DIR}/run1 2>&1 | tee run1_ls.log
+    check_log_has "file_empty.txt" run1_ls.log
+    check_log_has "dir/file0.txt" run1_ls.log
+    check_log_has "empty_dir" run1_ls.log
+    zstash ls --hpss=${DST_DIR}/run2 2>&1 | tee run2_ls.log
+    check_log_has "file_empty.txt" run2_ls.log
+    check_log_has "dir/file0.txt" run2_ls.log
+    check_log_has "empty_dir" run2_ls.log
+    # Could also test -l and -v options, but the above code covers the important part.
 }
 
 run_test_cases
