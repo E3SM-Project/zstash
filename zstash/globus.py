@@ -211,7 +211,7 @@ def globus_block_wait(
         try:
             # Wait for the task to complete
             logger.info(
-                f"{ts_utc()}: on task_wait try {retry_count+1} out of {max_retries}"
+                f"{ts_utc()}: on task_wait try {retry_count + 1} out of {max_retries}"
             )
             transfer_client.task_wait(
                 task_id, timeout=wait_timeout, polling_interval=10

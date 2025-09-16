@@ -19,10 +19,10 @@ jobs:
       - name: Checkout Code Repository
         uses: actions/checkout@v3
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.13
         uses: actions/setup-python@v4
         with:
-          python-version: 3.9
+          python-version: 3.13
 
       # Run all pre-commit hooks on all the files.
       # Getting only staged files can be tricky in case a new PR is opened
@@ -30,7 +30,7 @@ jobs:
       # This is the equivalent of running "pre-commit run --all-files" locally.
       # If you commit with the `--no-verify` flag, this check may fail.
       - name: Install and Run Pre-commit
-        uses: pre-commit/action@v3.0.0
+        uses: pre-commit/action@v3.0.1
 
   build:
     runs-on: ubuntu-latest
