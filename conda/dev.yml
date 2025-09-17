@@ -1,12 +1,13 @@
 name: zstash_dev
 channels:
   - conda-forge
-  - defaults
+  - nodefaults  # This replaces 'defaults' to avoid Anaconda commercial repos
 dependencies:
   # Base
   # =================
   - pip=22.2.2
-  - python=3.9.13
+  - python >=3.11,<3.14
+  - sqlite
   - six=1.16.0
   - globus-sdk=3.15.0
   # Developer Tools
