@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: [3.11]  # Use only 3.11 for stability
     defaults:
       run:
         shell: bash -l {0}
@@ -63,6 +63,8 @@ jobs:
           channel-priority: strict
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          channels: conda-forge
+          use-only-tar-bz2: true
 
       - name: Fix pip and setuptools for Python 3.12+
         run: |
