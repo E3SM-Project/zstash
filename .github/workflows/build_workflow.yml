@@ -22,7 +22,7 @@ jobs:
       - name: Set up Python 3.13
         uses: actions/setup-python@v4
         with:
-          python-version: 3.13
+          python-version: "3.13"
 
       # Run all pre-commit hooks on all the files.
       # Getting only staged files can be tricky in case a new PR is opened
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.11, 3.12, 3.13]
+        python-version: ["3.11", "3.12", "3.13"]
     defaults:
       run:
         shell: bash -l {0}
@@ -47,7 +47,7 @@ jobs:
       - name: Cache Conda
         uses: actions/cache@v3
         env:
-          CACHE_NUMBER: 0
+          CACHE_NUMBER: 1  # Increment this to invalidate cache
         with:
           path: ~/conda_pkgs_dir
           key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{
@@ -60,16 +60,23 @@ jobs:
           miniforge-variant: Miniforge3
           miniforge-version: latest
           environment-file: conda/dev.yml
-          channel-priority: strict
+          channel-priority: flexible  # Changed from strict to flexible
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
           channels: conda-forge
           use-only-tar-bz2: true
 
-      - name: Fix pip and setuptools for Python 3.12+
+      - name: Verify Environment and Fix Dependencies
         run: |
-          python -m ensurepip --upgrade
-          python -m pip install --upgrade --force-reinstall pip setuptools wheel
+          conda info
+          conda list
+          # Ensure we have the right Python version
+          python --version
+          # Fix pip issues for Python 3.12+
+          if [[ "${{ matrix.python-version }}" == "3.12" ]] || [[ "${{ matrix.python-version }}" == "3.13" ]]; then
+            python -m ensurepip --upgrade || true
+            python -m pip install --upgrade --force-reinstall pip setuptools wheel
+          fi
 
       - name: Install `zstash` Package
         run: |
@@ -87,7 +94,7 @@ jobs:
     defaults:
       run:
         shell: bash -l {0}
-    timeout-minutes: 5
+    timeout-minutes: 10  # Increased timeout for docs
     steps:
       - uses: actions/checkout@v3
         with:
@@ -97,11 +104,11 @@ jobs:
       - name: Cache Conda
         uses: actions/cache@v3
         env:
-          CACHE_NUMBER: 0
+          CACHE_NUMBER: 1  # Match the build job cache number
         with:
           path: ~/conda_pkgs_dir
           key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{
-            hashFiles('conda/dev.yml') }}
+            hashFiles('conda/dev.yml') }}-docs
 
       - name: Build Conda Environment
         uses: conda-incubator/setup-miniconda@v3
@@ -110,8 +117,9 @@ jobs:
           miniforge-variant: Miniforge3
           miniforge-version: latest
           environment-file: conda/dev.yml
-          channel-priority: strict
+          channel-priority: flexible  # Changed from strict to flexible
           auto-update-conda: true
+          python-version: "3.11"  # Use stable Python version for docs
 
       # sphinx-multiversion allows for version docs.
       - name: Build Sphinx Docs
