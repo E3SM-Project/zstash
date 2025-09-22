@@ -1,7 +1,6 @@
 name: zstash_dev
 channels:
   - conda-forge
-  - nodefaults  # This replaces 'defaults' to avoid Anaconda commercial repos
 dependencies:
   # Base
   # =================
