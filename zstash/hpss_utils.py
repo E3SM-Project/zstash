@@ -4,6 +4,7 @@ import hashlib
 import os
 import os.path
 import sqlite3
+import sys
 import tarfile
 import traceback
 from datetime import datetime
@@ -281,8 +282,19 @@ def add_file(
     # Change the size of any hardlinks from 0 to the size of the actual file
     if tarinfo.islnk():
         tarinfo.size = os.path.getsize(file_name)
-    # Add the file to the tar
-    tar.addfile(tarinfo)
+
+    # Add the file to the tar - ONLY change this line for Python 3.13+
+    if (
+        sys.version_info >= (3, 13)
+        and (tarinfo.isfile() or tarinfo.islnk())
+        and tarinfo.size > 0
+    ):
+        # Python 3.13+ requires fileobj for non-empty regular files
+        with open(file_name, "rb") as fileobj:
+            tar.addfile(tarinfo, fileobj)
+    else:
+        # Original code - unchanged
+        tar.addfile(tarinfo)
 
     md5: Optional[str] = None
     # Only add files or hardlinks.
@@ -290,34 +302,47 @@ def add_file(
     if tarinfo.isfile() or tarinfo.islnk():
         f: _io.TextIOWrapper = open(file_name, "rb")
         hash_md5: _hashlib.HASH = hashlib.md5()
-        if tar.fileobj is not None:
-            fileobj: _io.BufferedWriter = tar.fileobj
+
+        # For Python 3.13+, addfile() already wrote the content, so we only calculate MD5
+        if sys.version_info >= (3, 13) and tarinfo.size > 0:
+            # Just calculate MD5, don't write to tar (already done by addfile)
+            while True:
+                data: bytes = f.read(BLOCK_SIZE)
+                if len(data) > 0:
+                    hash_md5.update(data)
+                if len(data) < BLOCK_SIZE:
+                    break
+            md5 = hash_md5.hexdigest()
         else:
-            raise TypeError("Invalid tar.fileobj={}".format(tar.fileobj))
-        while True:
-            s: str = f.read(BLOCK_SIZE)
-            if len(s) > 0:
-                # If the block read in is non-empty, write it to fileobj and update the hash
-                fileobj.write(s)
-                hash_md5.update(s)
-            if len(s) < BLOCK_SIZE:
-                # If the block read in is smaller than BLOCK_SIZE,
-                # then we have reached the end of the file.
-                # blocks = how many blocks of tarfile.BLOCKSIZE fit in tarinfo.size
-                # remainder = how much more content is required to reach tarinfo.size
-                blocks: int
-                remainder: int
-                blocks, remainder = divmod(tarinfo.size, tarfile.BLOCKSIZE)
-                if remainder > 0:
-                    null_bytes: bytes = tarfile.NUL
-                    # Write null_bytes to get the last block to tarfile.BLOCKSIZE
-                    fileobj.write(null_bytes * (tarfile.BLOCKSIZE - remainder))
-                    blocks += 1
-                # Increase the offset by the amount already saved to the tar
-                tar.offset += blocks * tarfile.BLOCKSIZE
-                break
+            # Original logic for Python < 3.13 or empty files
+            if tar.fileobj is not None:
+                tar_fileobj: _io.BufferedWriter = tar.fileobj
+            else:
+                raise TypeError("Invalid tar.fileobj={}".format(tar.fileobj))
+            while True:
+                s: bytes = f.read(BLOCK_SIZE)
+                if len(s) > 0:
+                    # If the block read in is non-empty, write it to fileobj and update the hash
+                    tar_fileobj.write(s)
+                    hash_md5.update(s)
+                if len(s) < BLOCK_SIZE:
+                    # If the block read in is smaller than BLOCK_SIZE,
+                    # then we have reached the end of the file.
+                    # blocks = how many blocks of tarfile.BLOCKSIZE fit in tarinfo.size
+                    # remainder = how much more content is required to reach tarinfo.size
+                    blocks: int
+                    remainder: int
+                    blocks, remainder = divmod(tarinfo.size, tarfile.BLOCKSIZE)
+                    if remainder > 0:
+                        null_bytes: bytes = tarfile.NUL
+                        # Write null_bytes to get the last block to tarfile.BLOCKSIZE
+                        tar_fileobj.write(null_bytes * (tarfile.BLOCKSIZE - remainder))
+                        blocks += 1
+                    # Increase the offset by the amount already saved to the tar
+                    tar.offset += blocks * tarfile.BLOCKSIZE
+                    break
+            md5 = hash_md5.hexdigest()
         f.close()
-        md5 = hash_md5.hexdigest()
     size: int = tarinfo.size
     mtime: datetime = datetime.utcfromtimestamp(tarinfo.mtime)
     return offset, size, mtime, md5
