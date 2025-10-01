@@ -119,7 +119,7 @@ jobs:
           environment-file: conda/dev.yml
           channel-priority: flexible  # Changed from strict to flexible
           auto-update-conda: true
-          python-version: "3.11"  # Use stable Python version for docs
+          python-version: "3.13"  # Use stable Python version for docs
 
       # sphinx-multiversion allows for version docs.
       - name: Build Sphinx Docs
