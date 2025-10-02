@@ -12,19 +12,19 @@ repos:
         exclude: conda/meta.yaml
 
   - repo: https://github.com/psf/black
-    rev: 24.10.0
+    rev: 25.1.0
     hooks:
       - id: black
 
   - repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
+    rev: 6.0.1
     hooks:
       - id: isort
 
   # Need to use flake8 GitHub mirror due to CentOS git issue with GitLab
   # https://github.com/pre-commit/pre-commit/issues/1206
   - repo: https://github.com/pycqa/flake8
-    rev: 7.1.1
+    rev: 7.3.0
     hooks:
       - id: flake8
         args: ["--config=setup.cfg"]
@@ -32,7 +32,7 @@ repos:
         exclude: analysis_data_preprocess
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.11.2
+    rev: v1.18.2
     hooks:
       - id: mypy
         args: ["--config=setup.cfg", "--install-types", "--non-interactive"]

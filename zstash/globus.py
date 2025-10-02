@@ -57,7 +57,6 @@ def globus_activate(hpss: str):
 
 
 def file_exists(name: str) -> bool:
-    global archive_directory_listing
 
     for entry in archive_directory_listing:
         if entry.get("name") == name:
@@ -72,9 +71,6 @@ global_variable_tarfiles_pushed = 0
 def globus_transfer(  # noqa: C901
     remote_ep: str, remote_path: str, name: str, transfer_type: str, non_blocking: bool
 ):
-    global transfer_client
-    global local_endpoint
-    global remote_endpoint
     global transfer_data
     global task_id
     global archive_directory_listing
@@ -199,7 +195,6 @@ def globus_transfer(  # noqa: C901
 def globus_block_wait(
     task_id: str, wait_timeout: int, polling_interval: int, max_retries: int
 ):
-    global transfer_client
 
     # poll every "polling_interval" seconds to speed up small transfers.  Report every 2 hours, stop waiting aftert 5*2 = 10 hours
     logger.info(
@@ -244,7 +239,6 @@ def globus_block_wait(
 
 
 def globus_wait(task_id: str):
-    global transfer_client
 
     try:
         """
@@ -288,9 +282,6 @@ def globus_wait(task_id: str):
 
 
 def globus_finalize(non_blocking: bool = False):
-    global transfer_client
-    global transfer_data
-    global task_id
     global global_variable_tarfiles_pushed
 
     last_task_id = None

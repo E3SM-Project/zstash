@@ -12,11 +12,11 @@ dependencies:
   # Developer Tools
   # =================
   # If versions are updated, also update 'rev' in `.pre-commit.config.yaml`
-  - black >=24.0.0
-  - flake8 >=7.0.0
-  - flake8-isort >=6.0.0
-  - mypy >=1.11.0
-  - pre-commit >=4.0.0
+  - black ==25.1.0
+  - flake8 ==7.3.0
+  - isort ==6.0.1
+  - mypy ==1.18.2
+  - pre-commit ==4.3.0
   - tbump >=6.9.0
   # Documentation
   # =================

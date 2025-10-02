@@ -10,7 +10,6 @@ from datetime import datetime
 from typing import List, Optional, Tuple
 
 import _hashlib
-import _io
 
 from .hpss import hpss_put
 from .settings import BLOCK_SIZE, TupleFilesRowNoId, TupleTarsRowNoId, config, logger
@@ -20,7 +19,7 @@ from .utils import create_tars_table, tars_table_exists, ts_utc
 # Minimum output file object
 class HashIO(object):
     def __init__(self, name: str, mode: str, do_hash: bool):
-        self.f: _io.BufferedWriter = open(name, mode)
+        self.f = open(name, mode)
         self.hash: Optional[_hashlib.HASH]
         if do_hash:
             self.hash = hashlib.md5()
@@ -293,11 +292,11 @@ def add_file(
     # Only add files or hardlinks.
     # (So don't add directories or softlinks.)
     if tarinfo.isfile() or tarinfo.islnk():
-        f: _io.TextIOWrapper = open(file_name, "rb")
+        f = open(file_name, "rb")
         hash_md5: _hashlib.HASH = hashlib.md5()
 
         while True:
-            data: bytes = f.read(BLOCK_SIZE)
+            data = f.read(BLOCK_SIZE)
             if len(data) > 0:
                 hash_md5.update(data)
             if len(data) < BLOCK_SIZE:

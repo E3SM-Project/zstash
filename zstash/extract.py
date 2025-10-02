@@ -591,7 +591,7 @@ def extractFiles(  # noqa: C901
         try:
             # Seek file position
             if tar.fileobj is not None:
-                fileobj: _io.BufferedReader = tar.fileobj
+                fileobj = tar.fileobj
             else:
                 raise TypeError("Invalid tar.fileobj={}".format(tar.fileobj))
             fileobj.seek(files_row.offset)
@@ -665,7 +665,7 @@ def extractFiles(  # noqa: C901
                 # relying here on 'touch'. This is not the prettiest solution.
                 # Maybe a better one can be implemented later.
                 if tarinfo.issym():
-                    tmp1: int = tarinfo.mtime
+                    tmp1 = tarinfo.mtime
                     tmp2: datetime = datetime.fromtimestamp(tmp1)
                     tmp3: str = tmp2.strftime("%Y%m%d%H%M.%S")
                     os.system("touch -h -t %s %s" % (tmp3, tarinfo.name))
