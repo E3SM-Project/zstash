@@ -12,7 +12,7 @@ from typing import List, Optional, Tuple
 import _hashlib
 
 from .hpss import hpss_put
-from .settings import BLOCK_SIZE, TupleFilesRowNoId, TupleTarsRowNoId, config, logger
+from .settings import TupleFilesRowNoId, TupleTarsRowNoId, config, logger
 from .utils import create_tars_table, tars_table_exists, ts_utc
 
 
@@ -269,40 +269,49 @@ def add_files(
     return failures
 
 
+# Create a wrapper that computes hash while data passes through
+class HashingFileWrapper:
+    def __init__(self, fileobj, hasher):
+        self.fileobj = fileobj
+        self.hasher = hasher
+
+    def read(self, size=-1):
+        data = self.fileobj.read(size)
+        if data:
+            self.hasher.update(data)
+        return data
+
+
 # Add file to tar archive while computing its hash
 # Return file offset (in tar archive), size and md5 hash
 def add_file(
     tar: tarfile.TarFile, file_name: str, follow_symlinks: bool
 ) -> Tuple[int, int, datetime, Optional[str]]:
+    offset = tar.offset
+    tarinfo = tar.gettarinfo(file_name)
 
-    offset: int = tar.offset
-    tarinfo: tarfile.TarInfo = tar.gettarinfo(file_name)
-    # Change the size of any hardlinks from 0 to the size of the actual file
     if tarinfo.islnk():
         tarinfo.size = os.path.getsize(file_name)
 
-    # Add the file to the tar
-    if (tarinfo.isfile() or tarinfo.islnk()) and tarinfo.size > 0:
-        with open(file_name, "rb") as fileobj:
-            tar.addfile(tarinfo, fileobj)
+    md5 = None
+
+    # For files/hardlinks
+    if tarinfo.isfile() or tarinfo.islnk():
+        if tarinfo.size > 0:
+            # Non-empty files: stream with hash computation
+            hash_md5 = hashlib.md5()
+            with open(file_name, "rb") as f:
+                wrapper = HashingFileWrapper(f, hash_md5)
+                tar.addfile(tarinfo, wrapper)
+            md5 = hash_md5.hexdigest()
+        else:
+            # Empty files: just add to tar, compute hash of empty data
+            tar.addfile(tarinfo)
+            md5 = hashlib.md5(b"").hexdigest()  # MD5 of empty bytes
     else:
+        # Directories, symlinks, etc.
         tar.addfile(tarinfo)
 
-    md5: Optional[str] = None
-    # Only add files or hardlinks.
-    # (So don't add directories or softlinks.)
-    if tarinfo.isfile() or tarinfo.islnk():
-        f = open(file_name, "rb")
-        hash_md5: _hashlib.HASH = hashlib.md5()
-
-        while True:
-            data = f.read(BLOCK_SIZE)
-            if len(data) > 0:
-                hash_md5.update(data)
-            if len(data) < BLOCK_SIZE:
-                break
-        md5 = hash_md5.hexdigest()
-        f.close()
-    size: int = tarinfo.size
-    mtime: datetime = datetime.utcfromtimestamp(tarinfo.mtime)
+    size = tarinfo.size
+    mtime = datetime.utcfromtimestamp(tarinfo.mtime)
     return offset, size, mtime, md5
