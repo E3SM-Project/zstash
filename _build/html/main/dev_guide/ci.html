@@ -1,21 +1,21 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="../">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Understanding CI &mdash; zstash  documentation</title>
-      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <!--[if lt IE 9]>
-    <script src="../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
   
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-        <script src="../_static/jquery.js"></script>
-        <script src="../_static/underscore.js"></script>
-        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script src="../_static/doctools.js"></script>
-        <script src="../_static/sphinx_highlight.js"></script>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -30,11 +30,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../index.html" class="icon icon-home"> zstash
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            zstash
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -78,9 +82,9 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
-          <li><a href="index.html">Developer Guide</a> &raquo;</li>
-      <li>Understanding CI</li>
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Developer Guide</a></li>
+      <li class="breadcrumb-item active">Understanding CI</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../_sources/dev_guide/ci.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -90,28 +94,28 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="understanding-ci">
-<h1>Understanding CI<a class="headerlink" href="#understanding-ci" title="Permalink to this heading"></a></h1>
+  <section id="understanding-ci">
+<h1>Understanding CI<a class="headerlink" href="#understanding-ci" title="Link to this heading"></a></h1>
 <p>In this guide, we’ll cover:</p>
 <ul class="simple">
 <li><p>Build Workflow</p></li>
 <li><p>Release Workflow</p></li>
 <li><p>GitHub Actions</p></li>
 </ul>
-<div class="section" id="build-workflow">
-<h2>Build Workflow<a class="headerlink" href="#build-workflow" title="Permalink to this heading"></a></h2>
+<section id="build-workflow">
+<h2>Build Workflow<a class="headerlink" href="#build-workflow" title="Link to this heading"></a></h2>
 <p>The build workflow is at <a class="reference external" href="https://github.com/E3SM-Project/zstash/blob/main/.github/workflows/build_workflow.yml">https://github.com/E3SM-Project/zstash/blob/main/.github/workflows/build_workflow.yml</a>. See comments in the file for in-depth explanations of each step.</p>
-</div>
-<div class="section" id="release-workflow">
-<h2>Release Workflow<a class="headerlink" href="#release-workflow" title="Permalink to this heading"></a></h2>
+</section>
+<section id="release-workflow">
+<h2>Release Workflow<a class="headerlink" href="#release-workflow" title="Link to this heading"></a></h2>
 <p>The release workflow is at <a class="reference external" href="https://github.com/E3SM-Project/zstash/blob/main/.github/workflows/release_workflow.yml">https://github.com/E3SM-Project/zstash/blob/main/.github/workflows/release_workflow.yml</a>. See comments in the file for in-depth explanations of each step.</p>
-</div>
-<div class="section" id="github-actions">
-<h2>GitHub Actions<a class="headerlink" href="#github-actions" title="Permalink to this heading"></a></h2>
+</section>
+<section id="github-actions">
+<h2>GitHub Actions<a class="headerlink" href="#github-actions" title="Link to this heading"></a></h2>
 <p>Both of these workflows are run by GitHub Actions. See <a class="reference external" href="https://github.com/E3SM-Project/zstash/actions">https://github.com/E3SM-Project/zstash/actions</a>.</p>
 <p>When a pull request is made, the build workflow is run automatically on the pushed branch. When the pull request is merged, the build workflow is once again run, but this time on the <code class="docutils literal notranslate"><span class="pre">main</span></code> branch.</p>
-</div>
-</div>
+</section>
+</section>
 
 
            </div>
@@ -170,7 +174,7 @@
       <dd><a href="../../non-block-testing/dev_guide/ci.html">non-block-testing</a></dd>
       <dd><a href="../../refactor-zstash/dev_guide/ci.html">refactor-zstash</a></dd>
       <dd><a href="../../simple-globus-script/dev_guide/ci.html">simple-globus-script</a></dd>
-      <dd><a href="../../update-python/dev_guide/ci.html">update-python</a></dd>
+      <dd><a href="../../update-docs-conda/dev_guide/ci.html">update-docs-conda</a></dd>
     </dl>
   </div>
 </div><script>

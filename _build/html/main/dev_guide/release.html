@@ -1,21 +1,21 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="../">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>How to Prepare a Release &mdash; zstash  documentation</title>
-      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <!--[if lt IE 9]>
-    <script src="../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
   
-        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-        <script src="../_static/jquery.js"></script>
-        <script src="../_static/underscore.js"></script>
-        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script src="../_static/doctools.js"></script>
-        <script src="../_static/sphinx_highlight.js"></script>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -30,11 +30,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../index.html" class="icon icon-home"> zstash
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            zstash
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -82,9 +86,9 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
-          <li><a href="index.html">Developer Guide</a> &raquo;</li>
-      <li>How to Prepare a Release</li>
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Developer Guide</a></li>
+      <li class="breadcrumb-item active">How to Prepare a Release</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../_sources/dev_guide/release.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -94,8 +98,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="how-to-prepare-a-release">
-<h1>How to Prepare a Release<a class="headerlink" href="#how-to-prepare-a-release" title="Permalink to this heading"></a></h1>
+  <section id="how-to-prepare-a-release">
+<h1>How to Prepare a Release<a class="headerlink" href="#how-to-prepare-a-release" title="Link to this heading"></a></h1>
 <p>In this guide, we’ll cover:</p>
 <ul class="simple">
 <li><p>Bumping the Version</p></li>
@@ -103,8 +107,8 @@
 <li><p>Releasing The Software On Anaconda</p></li>
 <li><p>Creating a New Version of the Documentation</p></li>
 </ul>
-<div class="section" id="bumping-the-version">
-<h2>Bumping the Version<a class="headerlink" href="#bumping-the-version" title="Permalink to this heading"></a></h2>
+<section id="bumping-the-version">
+<h2>Bumping the Version<a class="headerlink" href="#bumping-the-version" title="Link to this heading"></a></h2>
 <ol class="arabic">
 <li><p>Checkout a branch with the name of the version.</p>
 <blockquote>
@@ -145,9 +149,9 @@ $ git push origin v1.2.0
 <li><p>If you encounter <code class="docutils literal notranslate"><span class="pre">Error:</span> <span class="pre">Command</span> <span class="pre">`git</span> <span class="pre">push</span> <span class="pre">upstream</span> <span class="pre">main`</span> <span class="pre">failed</span></code>, as in <a class="reference external" href="https://github.com/E3SM-Project/zppy/issues/470">zppy issue 470</a>, you can run <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">push</span> <span class="pre">upstream</span> <span class="pre">&lt;branch&gt;</span></code> yourself.</p></li>
 <li><p>Create a pull request to the main repo and merge it. Mark yourself as the assignee, and mark “Update version” as the label.</p></li>
 </ol>
-</div>
-<div class="section" id="releasing-on-github-release-candidates">
-<span id="github-release"></span><h2>Releasing on GitHub: release candidates<a class="headerlink" href="#releasing-on-github-release-candidates" title="Permalink to this heading"></a></h2>
+</section>
+<section id="releasing-on-github-release-candidates">
+<span id="github-release"></span><h2>Releasing on GitHub: release candidates<a class="headerlink" href="#releasing-on-github-release-candidates" title="Link to this heading"></a></h2>
 <ol class="arabic">
 <li><p>Create a tag for the release candidate at <a class="reference external" href="https://github.com/E3SM-Project/zstash/tags">https://github.com/E3SM-Project/zstash/tags</a>. Example, bumping to v1.2.0rc1:</p>
 <blockquote>
@@ -163,9 +167,9 @@ $ git push upstream v1.2.0rc1
 </div></blockquote>
 </li>
 </ol>
-</div>
-<div class="section" id="releasing-on-github-production-releases">
-<h2>Releasing on GitHub: production releases<a class="headerlink" href="#releasing-on-github-production-releases" title="Permalink to this heading"></a></h2>
+</section>
+<section id="releasing-on-github-production-releases">
+<h2>Releasing on GitHub: production releases<a class="headerlink" href="#releasing-on-github-production-releases" title="Link to this heading"></a></h2>
 <ol class="arabic simple">
 <li><p>Draft a new release <a class="reference external" href="https://github.com/E3SM-Project/zstash/releases">here</a>. You can save this and come back to it later, if need be.</p></li>
 <li><p>Set <cite>Tag version</cite> to <code class="docutils literal notranslate"><span class="pre">v&lt;version&gt;</span></code>, <strong>including the “v”</strong>. <cite>&#64;Target</cite> should be <code class="docutils literal notranslate"><span class="pre">main</span></code>.</p></li>
@@ -179,9 +183,9 @@ $ git push upstream v1.2.0rc1
 <li><p>Click <cite>Publish release</cite>.</p></li>
 <li><p>CI/CD release workflow is automatically triggered.</p></li>
 </ol>
-</div>
-<div class="section" id="releasing-on-conda-forge-release-candidates">
-<h2>Releasing on conda-forge: release candidates<a class="headerlink" href="#releasing-on-conda-forge-release-candidates" title="Permalink to this heading"></a></h2>
+</section>
+<section id="releasing-on-conda-forge-release-candidates">
+<h2>Releasing on conda-forge: release candidates<a class="headerlink" href="#releasing-on-conda-forge-release-candidates" title="Link to this heading"></a></h2>
 <ol class="arabic">
 <li><p>If you don’t have a local version of the conda-forge repo, run:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">git</span><span class="nd">@github</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="n">conda</span><span class="o">-</span><span class="n">forge</span><span class="o">/</span><span class="n">zstash</span><span class="o">-</span><span class="n">feedstock</span><span class="o">.</span><span class="n">git</span>
@@ -218,9 +222,9 @@ $ git push &lt;your fork name&gt; v1.2.0rc1
 </ol>
 </li>
 </ol>
-</div>
-<div class="section" id="releasing-on-conda-forge-production-releases">
-<h2>Releasing on conda-forge: production releases<a class="headerlink" href="#releasing-on-conda-forge-production-releases" title="Permalink to this heading"></a></h2>
+</section>
+<section id="releasing-on-conda-forge-production-releases">
+<h2>Releasing on conda-forge: production releases<a class="headerlink" href="#releasing-on-conda-forge-production-releases" title="Link to this heading"></a></h2>
 <ol class="arabic simple">
 <li><p>Be sure to have already completed <a class="reference internal" href="#github-release"><span class="std std-ref">Releasing On GitHub</span></a>. This triggers the CI/CD workflow that handles Anaconda releases.</p></li>
 <li><p>Wait for a bot PR to come up automatically on conda-forge after the GitHub release. This can happen anywhere from 1 hour to 1 day later.</p></li>
@@ -234,25 +238,25 @@ $ git push &lt;your fork name&gt; v1.2.0rc1
 </ul>
 </li>
 </ol>
-</div>
-<div class="section" id="creating-a-new-version-of-the-documentation">
-<h2>Creating a New Version of the Documentation<a class="headerlink" href="#creating-a-new-version-of-the-documentation" title="Permalink to this heading"></a></h2>
+</section>
+<section id="creating-a-new-version-of-the-documentation">
+<h2>Creating a New Version of the Documentation<a class="headerlink" href="#creating-a-new-version-of-the-documentation" title="Link to this heading"></a></h2>
 <ol class="arabic simple">
 <li><p>Be sure to have already completed <a class="reference internal" href="#github-release"><span class="std std-ref">Releasing On GitHub</span></a>. This triggers the CI/CD workflow that handles publishing documentation versions.</p></li>
 <li><p>Wait until the CI/CD build is successful. You can view all workflows at <a class="reference external" href="https://github.com/E3SM-Project/zstash/actions">All Workflows</a>.</p></li>
 <li><p>Changes will be available on the <a class="reference external" href="https://e3sm-project.github.io/zstash/">zstash documentation page</a>.</p></li>
 </ol>
-</div>
-<div class="section" id="extra-resources">
-<h2>Extra Resources<a class="headerlink" href="#extra-resources" title="Permalink to this heading"></a></h2>
+</section>
+<section id="extra-resources">
+<h2>Extra Resources<a class="headerlink" href="#extra-resources" title="Link to this heading"></a></h2>
 <p>Conda-forge:</p>
 <ul class="simple">
 <li><p><a class="reference external" href="https://conda-forge.org/docs/user/introduction.html#why-conda-forge">https://conda-forge.org/docs/user/introduction.html#why-conda-forge</a></p></li>
 <li><p><a class="reference external" href="https://conda-forge.org/docs/maintainer/infrastructure.html#admin-web-services">https://conda-forge.org/docs/maintainer/infrastructure.html#admin-web-services</a></p></li>
 <li><p><a class="reference external" href="https://acme-climate.atlassian.net/wiki/spaces/IPD/pages/3616735236/Releasing+E3SM+Software+on+Anaconda+conda-forge+channel">https://acme-climate.atlassian.net/wiki/spaces/IPD/pages/3616735236/Releasing+E3SM+Software+on+Anaconda+conda-forge+channel</a></p></li>
 </ul>
-</div>
-</div>
+</section>
+</section>
 
 
            </div>
@@ -311,7 +315,7 @@ $ git push &lt;your fork name&gt; v1.2.0rc1
       <dd><a href="../../non-block-testing/dev_guide/release.html">non-block-testing</a></dd>
       <dd><a href="../../refactor-zstash/dev_guide/release.html">refactor-zstash</a></dd>
       <dd><a href="../../simple-globus-script/dev_guide/release.html">simple-globus-script</a></dd>
-      <dd><a href="../../update-python/dev_guide/release.html">update-python</a></dd>
+      <dd><a href="../../update-docs-conda/dev_guide/release.html">update-docs-conda</a></dd>
     </dl>
   </div>
 </div><script>

@@ -1,21 +1,21 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Getting started &mdash; zstash  documentation</title>
-      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <!--[if lt IE 9]>
-    <script src="_static/js/html5shiv.min.js"></script>
-  <![endif]-->
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
   
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script src="_static/sphinx_highlight.js"></script>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -30,11 +30,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="index.html" class="icon icon-home"> zstash
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            zstash
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -82,8 +86,8 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-      <li>Getting started</li>
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Getting started</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/getting_started.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -93,10 +97,10 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="getting-started">
-<span id="id1"></span><h1>Getting started<a class="headerlink" href="#getting-started" title="Permalink to this heading"></a></h1>
-<div class="section" id="activate-e3sm-unified-environment">
-<h2>Activate e3sm_unified environment<a class="headerlink" href="#activate-e3sm-unified-environment" title="Permalink to this heading"></a></h2>
+  <section id="getting-started">
+<span id="id1"></span><h1>Getting started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h1>
+<section id="activate-e3sm-unified-environment">
+<h2>Activate e3sm_unified environment<a class="headerlink" href="#activate-e3sm-unified-environment" title="Link to this heading"></a></h2>
 <p>If you have an account on one of the E3SM supported machines (NERSC, Compy, Acme1,
 LCRC, Cooley, Rhea), you can access <code class="docutils literal notranslate"><span class="pre">zstash</span></code> by activating <code class="docutils literal notranslate"><span class="pre">e3sm_unified</span></code>, which is
 a conda environment that pulls together Python and other E3SM tools such as
@@ -136,14 +140,14 @@ a conda environment that pulls together Python and other E3SM tools such as
 <p>Note that <code class="docutils literal notranslate"><span class="pre">e3sm_unified</span></code>’s development cycle is not in phase with <code class="docutils literal notranslate"><span class="pre">zstash</span></code>,
 therefore the version of <code class="docutils literal notranslate"><span class="pre">zstash</span></code> included may not be the latest.
 To install the latest stable release, refer to the following:</p>
-</div>
-<div class="section" id="installation-in-a-conda-environment">
-<span id="conda-environment"></span><h2>Installation in a Conda Environment<a class="headerlink" href="#installation-in-a-conda-environment" title="Permalink to this heading"></a></h2>
+</section>
+<section id="installation-in-a-conda-environment">
+<span id="conda-environment"></span><h2>Installation in a Conda Environment<a class="headerlink" href="#installation-in-a-conda-environment" title="Link to this heading"></a></h2>
 <p>If the E3SM Unified environment doesn’t serve your needs, you can alternatively
 install the latest version in your own custom conda environment.</p>
 <p>First, activate conda or install it if it’s not available. Details vary amongst machines.</p>
-<div class="section" id="others-local">
-<span id="conda-environment-others"></span><h3>Others/Local<a class="headerlink" href="#others-local" title="Permalink to this heading"></a></h3>
+<section id="others-local">
+<span id="conda-environment-others"></span><h3>Others/Local<a class="headerlink" href="#others-local" title="Link to this heading"></a></h3>
 <p>If the system doesn’t come with conda pre-installed, follow these instructions:</p>
 <ol class="arabic">
 <li><p>Download Mambaforge</p>
@@ -192,12 +196,12 @@ binstar config --set ssl_verify False
 </div></blockquote>
 <p>4. Once conda and mamba are properly working, you can install the <strong>(a) Latest Stable Release</strong> or
 create a <strong>(b) Development Environment</strong>.</p>
-</div>
-</div>
-<div class="section" id="a-latest-stable-release">
-<h2>(a) Latest Stable Release<a class="headerlink" href="#a-latest-stable-release" title="Permalink to this heading"></a></h2>
-<div class="section" id="installation-using-mamba">
-<h3>Installation using mamba<a class="headerlink" href="#installation-using-mamba" title="Permalink to this heading"></a></h3>
+</section>
+</section>
+<section id="a-latest-stable-release">
+<h2>(a) Latest Stable Release<a class="headerlink" href="#a-latest-stable-release" title="Link to this heading"></a></h2>
+<section id="installation-using-mamba">
+<h3>Installation using mamba<a class="headerlink" href="#installation-using-mamba" title="Link to this heading"></a></h3>
 <p>First, make sure that you’re using <code class="docutils literal notranslate"><span class="pre">bash</span></code>.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>bash
 </pre></div>
@@ -223,25 +227,25 @@ in an existing environment.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mamba install zppy
 </pre></div>
 </div>
-</div>
-<div class="section" id="installation-on-nersc">
-<h3>Installation on NERSC<a class="headerlink" href="#installation-on-nersc" title="Permalink to this heading"></a></h3>
+</section>
+<section id="installation-on-nersc">
+<h3>Installation on NERSC<a class="headerlink" href="#installation-on-nersc" title="Link to this heading"></a></h3>
 <p>After installing on NERSC, you may see improved performance
 running <strong>zstash on the data transfer nodes</strong> (dtn{01..15}.nersc.gov). However, modules are
 not directly available there, so you will need to manually activate Anaconda before running
 <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">activate</span> <span class="pre">zstash_env</span></code>.</p>
-</div>
-<div class="section" id="updating">
-<h3>Updating<a class="headerlink" href="#updating" title="Permalink to this heading"></a></h3>
+</section>
+<section id="updating">
+<h3>Updating<a class="headerlink" href="#updating" title="Link to this heading"></a></h3>
 <p>If you <strong>installed into your own conda environment</strong> (e.g., not through the
 unified environment), you can update <code class="docutils literal notranslate"><span class="pre">zstash</span></code> by doing the following:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mamba update zstash
 </pre></div>
 </div>
-</div>
-</div>
-<div class="section" id="b-development-environment">
-<span id="dev-env"></span><h2>(b) Development Environment<a class="headerlink" href="#b-development-environment" title="Permalink to this heading"></a></h2>
+</section>
+</section>
+<section id="b-development-environment">
+<span id="dev-env"></span><h2>(b) Development Environment<a class="headerlink" href="#b-development-environment" title="Link to this heading"></a></h2>
 <p>Unlike the latest stable release (i.e., the user environment), the development
 environment does not include <code class="docutils literal notranslate"><span class="pre">zstash</span></code>.
 Instead, the developer will <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">.</span></code> to build <code class="docutils literal notranslate"><span class="pre">zstash</span></code> with changes
@@ -341,20 +345,22 @@ conda activate zstash_dev
 <div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>git commit -m &quot;commit-message&quot;
 </pre></div>
 </div>
-<div class="figure align-default" id="id2">
+<figure class="align-default" id="id2">
 <img alt="pre-commit Output" src="_images/pre-commit-passing.png" />
-<p class="caption"><span class="caption-text"><code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> Output</span><a class="headerlink" href="#id2" title="Permalink to this image"></a></p>
-</div>
+<figcaption>
+<p><span class="caption-text"><code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> Output</span><a class="headerlink" href="#id2" title="Link to this image"></a></p>
+</figcaption>
+</figure>
 </div></blockquote>
 </li>
 </ol>
-</div>
-<div class="section" id="archiving">
-<h2>Archiving<a class="headerlink" href="#archiving" title="Permalink to this heading"></a></h2>
+</section>
+<section id="archiving">
+<h2>Archiving<a class="headerlink" href="#archiving" title="Link to this heading"></a></h2>
 <p>For archiving E3SM simulations, we recommend following the
 <a class="reference internal" href="best_practices.html#best-practices-for-e3sm"><span class="std std-ref">Best practices for E3SM</span></a>.</p>
-</div>
-</div>
+</section>
+</section>
 
 
            </div>
@@ -413,7 +419,7 @@ conda activate zstash_dev
       <dd><a href="../non-block-testing/getting_started.html">non-block-testing</a></dd>
       <dd><a href="../refactor-zstash/getting_started.html">refactor-zstash</a></dd>
       <dd><a href="../simple-globus-script/getting_started.html">simple-globus-script</a></dd>
-      <dd><a href="../update-python/getting_started.html">update-python</a></dd>
+      <dd><a href="../update-docs-conda/getting_started.html">update-docs-conda</a></dd>
     </dl>
   </div>
 </div><script>

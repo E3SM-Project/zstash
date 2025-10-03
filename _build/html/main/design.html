@@ -1,21 +1,21 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Design considerations &mdash; zstash  documentation</title>
-      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <!--[if lt IE 9]>
-    <script src="_static/js/html5shiv.min.js"></script>
-  <![endif]-->
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
   
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script src="_static/sphinx_highlight.js"></script>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -30,11 +30,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="index.html" class="icon icon-home"> zstash
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            zstash
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -72,8 +76,8 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-      <li>Design considerations</li>
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Design considerations</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/design.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -83,10 +87,10 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="design-considerations">
-<h1>Design considerations<a class="headerlink" href="#design-considerations" title="Permalink to this heading"></a></h1>
-<div class="section" id="why-zstash">
-<h2>Why zstash?<a class="headerlink" href="#why-zstash" title="Permalink to this heading"></a></h2>
+  <section id="design-considerations">
+<h1>Design considerations<a class="headerlink" href="#design-considerations" title="Link to this heading"></a></h1>
+<section id="why-zstash">
+<h2>Why zstash?<a class="headerlink" href="#why-zstash" title="Link to this heading"></a></h2>
 <p>NERSC HPSS and other similar tape storage systems are optimized
 for file sizes of 100 to 500 GB. The retrieval of a large number
 of small files that are spread across dozens or hundreds of tapes
@@ -132,9 +136,9 @@ time compared to separate checksumming and archiving steps.</p></li>
 <li><p><strong>File integrity</strong> is verified by computing checksums on-the-fly while <strong>extracting</strong>
 files.</p></li>
 </ul>
-</div>
-<div class="section" id="why-not-use-htar">
-<h2>Why not use ‘htar’?<a class="headerlink" href="#why-not-use-htar" title="Permalink to this heading"></a></h2>
+</section>
+<section id="why-not-use-htar">
+<h2>Why not use ‘htar’?<a class="headerlink" href="#why-not-use-htar" title="Link to this heading"></a></h2>
 <p>Htar is an HPSS utility with many nice features. From the NERSC <a class="reference external" href="http://docs.nersc.gov/filesystems/archive_access/#htar">htar documentation page</a>:</p>
 <blockquote>
 <div><p><em>HTAR is a command line utility that creates and manipulates HPSS-resident
@@ -161,9 +165,9 @@ Member files within an HTAR aggregate are limited to approximately <strong>68GB<
 <p>Both the member file path length and file size were simply too restrictive
 for archiving output from E3SM simulations. Furthermore, htar lacks the ability
 to compute checksums of member files.</p>
-</div>
-<div class="section" id="why-not-just-use-cput-r">
-<h2>Why not just use ‘cput -R’?<a class="headerlink" href="#why-not-just-use-cput-r" title="Permalink to this heading"></a></h2>
+</section>
+<section id="why-not-just-use-cput-r">
+<h2>Why not just use ‘cput -R’?<a class="headerlink" href="#why-not-just-use-cput-r" title="Link to this heading"></a></h2>
 <p>This is the brute force approach: recursive conditional put. It will recursively
 transfer all your files to tape and only do so if the file isn’t already on tape.</p>
 <p>While this approach <em>may</em> work, it is not recommended when dealing with very
@@ -177,8 +181,8 @@ and positioning the tape. Storing many small files in HPSS without
 bundling them together will result in extremely long retrieval times
 for these files and will slow down the HPSS system for all users.</em></p>
 </div></blockquote>
-</div>
-</div>
+</section>
+</section>
 
 
            </div>
@@ -237,7 +241,7 @@ for these files and will slow down the HPSS system for all users.</em></p>
       <dd><a href="../non-block-testing/design.html">non-block-testing</a></dd>
       <dd><a href="../refactor-zstash/design.html">refactor-zstash</a></dd>
       <dd><a href="../simple-globus-script/design.html">simple-globus-script</a></dd>
-      <dd><a href="../update-python/design.html">update-python</a></dd>
+      <dd><a href="../update-docs-conda/design.html">update-docs-conda</a></dd>
     </dl>
   </div>
 </div><script>
