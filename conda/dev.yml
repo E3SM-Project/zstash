@@ -25,6 +25,4 @@ dependencies:
   - sphinx >=5.2.0
   - sphinx-multiversion >=0.2.4
   - sphinx_rtd_theme >=1.0.0
-  # Need to pin docutils because 0.17 has a bug with unordered lists
-  # https://github.com/readthedocs/sphinx_rtd_theme/issues/1115
-  - docutils >=0.16,<0.17
+  - docutils >=0.17.1

@@ -86,9 +86,8 @@ jobs:
         run: |
           python -m unittest tests/test_*.py
 
-  # If the branch updates documentation, then the docs will need to be updated.
-  publish-docs:
-    if: github.event_name == 'push'
+  # Build documentation on all PRs and pushes; only publish (commit to gh-pages) on pushes.
+  build-docs:
     needs: [pre-commit-hooks, build]
     runs-on: ubuntu-latest
     defaults:
@@ -128,6 +127,7 @@ jobs:
           sphinx-multiversion source _build/html
 
       - name: Copy Docs and Commit
+        if: github.event_name == 'push'
         run: |
           # gh-pages branch must already exist
           git clone https://github.com/E3SM-Project/zstash.git --branch gh-pages --single-branch gh-pages
@@ -155,6 +155,7 @@ jobs:
           git commit -m "Update documentation" -a || true
 
       - name: Push Changes
+        if: github.event_name == 'push'
         uses: ad-m/github-push-action@master
         with:
           branch: gh-pages
