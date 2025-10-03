@@ -10,17 +10,16 @@ from datetime import datetime
 from typing import List, Optional, Tuple
 
 import _hashlib
-import _io
 
 from .hpss import hpss_put
-from .settings import BLOCK_SIZE, TupleFilesRowNoId, TupleTarsRowNoId, config, logger
+from .settings import TupleFilesRowNoId, TupleTarsRowNoId, config, logger
 from .utils import create_tars_table, tars_table_exists, ts_utc
 
 
 # Minimum output file object
 class HashIO(object):
     def __init__(self, name: str, mode: str, do_hash: bool):
-        self.f: _io.BufferedWriter = open(name, mode)
+        self.f = open(name, mode)
         self.hash: Optional[_hashlib.HASH]
         if do_hash:
             self.hash = hashlib.md5()
@@ -270,54 +269,49 @@ def add_files(
     return failures
 
 
+# Create a wrapper that computes hash while data passes through
+class HashingFileWrapper:
+    def __init__(self, fileobj, hasher):
+        self.fileobj = fileobj
+        self.hasher = hasher
+
+    def read(self, size=-1):
+        data = self.fileobj.read(size)
+        if data:
+            self.hasher.update(data)
+        return data
+
+
 # Add file to tar archive while computing its hash
 # Return file offset (in tar archive), size and md5 hash
 def add_file(
     tar: tarfile.TarFile, file_name: str, follow_symlinks: bool
 ) -> Tuple[int, int, datetime, Optional[str]]:
+    offset = tar.offset
+    tarinfo = tar.gettarinfo(file_name)
 
-    offset: int = tar.offset
-    tarinfo: tarfile.TarInfo = tar.gettarinfo(file_name)
-    # Change the size of any hardlinks from 0 to the size of the actual file
     if tarinfo.islnk():
         tarinfo.size = os.path.getsize(file_name)
-    # Add the file to the tar
-    tar.addfile(tarinfo)
 
-    md5: Optional[str] = None
-    # Only add files or hardlinks.
-    # (So don't add directories or softlinks.)
+    md5 = None
+
+    # For files/hardlinks
     if tarinfo.isfile() or tarinfo.islnk():
-        f: _io.TextIOWrapper = open(file_name, "rb")
-        hash_md5: _hashlib.HASH = hashlib.md5()
-        if tar.fileobj is not None:
-            fileobj: _io.BufferedWriter = tar.fileobj
+        if tarinfo.size > 0:
+            # Non-empty files: stream with hash computation
+            hash_md5 = hashlib.md5()
+            with open(file_name, "rb") as f:
+                wrapper = HashingFileWrapper(f, hash_md5)
+                tar.addfile(tarinfo, wrapper)
+            md5 = hash_md5.hexdigest()
         else:
-            raise TypeError("Invalid tar.fileobj={}".format(tar.fileobj))
-        while True:
-            s: str = f.read(BLOCK_SIZE)
-            if len(s) > 0:
-                # If the block read in is non-empty, write it to fileobj and update the hash
-                fileobj.write(s)
-                hash_md5.update(s)
-            if len(s) < BLOCK_SIZE:
-                # If the block read in is smaller than BLOCK_SIZE,
-                # then we have reached the end of the file.
-                # blocks = how many blocks of tarfile.BLOCKSIZE fit in tarinfo.size
-                # remainder = how much more content is required to reach tarinfo.size
-                blocks: int
-                remainder: int
-                blocks, remainder = divmod(tarinfo.size, tarfile.BLOCKSIZE)
-                if remainder > 0:
-                    null_bytes: bytes = tarfile.NUL
-                    # Write null_bytes to get the last block to tarfile.BLOCKSIZE
-                    fileobj.write(null_bytes * (tarfile.BLOCKSIZE - remainder))
-                    blocks += 1
-                # Increase the offset by the amount already saved to the tar
-                tar.offset += blocks * tarfile.BLOCKSIZE
-                break
-        f.close()
-        md5 = hash_md5.hexdigest()
-    size: int = tarinfo.size
-    mtime: datetime = datetime.utcfromtimestamp(tarinfo.mtime)
+            # Empty files: just add to tar, compute hash of empty data
+            tar.addfile(tarinfo)
+            md5 = hashlib.md5(b"").hexdigest()  # MD5 of empty bytes
+    else:
+        # Directories, symlinks, etc.
+        tar.addfile(tarinfo)
+
+    size = tarinfo.size
+    mtime = datetime.utcfromtimestamp(tarinfo.mtime)
     return offset, size, mtime, md5

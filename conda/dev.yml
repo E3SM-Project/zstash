@@ -1,31 +1,30 @@
 name: zstash_dev
 channels:
   - conda-forge
-  - defaults
 dependencies:
   # Base
   # =================
-  - pip=22.2.2
-  - python=3.9.13
-  - six=1.16.0
-  - globus-sdk=3.15.0
+  - pip
+  - python >=3.11,<3.14
+  - sqlite
+  - six >=1.16.0
+  - globus-sdk >=3.15.0
   # Developer Tools
   # =================
   # If versions are updated, also update 'rev' in `.pre-commit.config.yaml`
-  - black=24.10.0
-  - flake8=7.1.1
-  - flake8-isort=6.1.1
-  - mypy=1.11.2
-  - pre-commit=4.0.1
-  - tbump=6.9.0
+  - black ==25.1.0
+  - flake8 ==7.3.0
+  - isort ==6.0.1
+  - mypy ==1.18.2
+  - pre-commit ==4.3.0
+  - tbump >=6.9.0
   # Documentation
   # =================
   # If versions are updated, also update in `.github/workflows/workflow.yml`
-  - jinja2<3.1
-  - sphinx=5.2.3
-  - sphinx-multiversion=0.2.4
-  - sphinx_rtd_theme=1.0.0
+  - jinja2 <3.1
+  - sphinx >=5.2.0
+  - sphinx-multiversion >=0.2.4
+  - sphinx_rtd_theme >=1.0.0
   # Need to pin docutils because 0.17 has a bug with unordered lists
   # https://github.com/readthedocs/sphinx_rtd_theme/issues/1115
-  - docutils=0.16
-prefix: /opt/miniconda3/envs/zstash_dev
+  - docutils >=0.16,<0.17
