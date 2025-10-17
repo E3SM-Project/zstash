@@ -100,7 +100,11 @@ time ./symlinks.sh # NOTE: you will have to change out paths for your username
 # real	0m1.346s
 # No errors
 
-# TODO: Handle blocking_test_scripts
+cd blocking_test_scripts
+# Review README_TEST_BLOCKING
+# This uses "12 piControl ocean monthly files, 49 GB",
+# so processing may take a long time.
+# TODO (later PR): Confirm this test works
 ```
 
 ## Testing with GitHub Actions

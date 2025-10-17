@@ -1,11 +1,9 @@
 #!/bin/bash
 
 if [[ $# -lt 1 ]]; then
-    echo "Usage:  text_zstash_blocking.sh (BLOCKING|NON_BLOCKING) [NEW_CREDS]"
+    echo "Usage:  text_zstash_blocking.sh (BLOCKING|NON_BLOCKING)"
     echo "  One of \"BLOCKING\" or \"NON_BLOCKING\" must be supplied as the"
     echo "  first parameter."
-    echo "  Add \"NEW_CREDS\" if Globus credentials have expired."
-    echo "  This will cause Globus to prompt for new credentials."
     exit 0
 fi
 
@@ -18,14 +16,6 @@ elif [[ $1 == "NON_BLOCKING" ]]; then
 else
     echo "ERROR: Must supply \"BLOCKING\" or \"NON_BLOCKING\" as 1st argument."
     exit 0
-fi
-
-# remove old auth data, if exists, so that globus will prompt us
-# for new auth credentials in case they have expired:
-if [[ $# -gt 1 ]]; then
-    if [[ $2 == "NEW_CREDS" ]]: then
-        rm -f ~/.globus-native-apps.cfg
-    fi
 fi
 
 

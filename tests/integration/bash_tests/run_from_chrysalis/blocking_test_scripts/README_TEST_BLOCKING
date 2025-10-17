@@ -67,15 +67,7 @@ II. Running the Test Script
 
 The test script "test_zstash_blocking.sh" accepts two positional parameters:
 
-    test_zstash_blocking.sh (BLOCKING|NON_BLOCKING) [NEW_CREDS]
-
-On an initial run, or whenever Globus complains of authentication failures,
-add "NEW_CREDS" as the second parameter.  This will act to delete your
-cached Globus credentials and trigger prompts for you to paste login URLs
-to your browser (generally one per endpoint) which requires that you conduct
-a login sequence, and then paste a returned key-value at the bash command
-prompt.  After both keys are accepted, you can re-run the test script
-without "NEW_CREDS", until the credentials expire (usually 24 hours.)
+    test_zstash_blocking.sh (BLOCKING|NON_BLOCKING)
 
 If "BLOCKING" is selected, zstash will run in default mode, waiting for
 each tar file to complete transfer before generating another tar file.
@@ -93,7 +85,7 @@ so that your command prompt returns and you can monitor progress with
     snapshot.sh
 
 which will provide a view of both the tarfile cache and the destination
-directory for delivred tar files. It is also suggested that you name your
+directory for delivered tar files. It is also suggested that you name your
 logfile to reflect the date, and whether BLOCKING or not was specified.
 
 
