@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# From Claude:
+check_log_has()
+{
+    local log_file="${@: -1}"  # Last argument is the log file
+    local patterns=("${@:1:$#-1}")  # All but last argument are patterns
+
+    for pattern in "${patterns[@]}"; do
+        if ! grep -q "${pattern}" "${log_file}"; then
+            echo "Expected grep '${pattern}' not found in ${log_file}. Test failed."
+            exit 1
+        fi
+    done
+}
+
 setup()
 {
   echo "##########################################################################################################"
@@ -34,16 +48,17 @@ setup()
   echo 'file2 stuff' > ../${non_archived_dir}/file2.txt
   # NOTE: `ln -s` appears to require absolute paths for the source files
   ln -s ${test_dir}/${local_archive_name}/non_archived/file1.txt zstash_demo/file3.txt
+  check_log_has "file1 stuff" zstash_demo/file3.txt
   ln -s ${test_dir}/${non_archived_dir}/file2.txt zstash_demo/file4.txt
-  cat zstash_demo/file3.txt
-  cat zstash_demo/file4.txt
+  check_log_has "file2 stuff" zstash_demo/file4.txt
 }
 
 zstash_create()
 {
   archive_name=$1
   follow_symlinks=$2
-  echo "Starting zstash create"
+  echo "Starting zstash create from:"
+  pwd
   if [[ "${follow_symlinks}" == "true" ]]; then
       zstash create --hpss=${archive_name} zstash_demo --follow-symlinks
   else
@@ -54,67 +69,227 @@ zstash_create()
 zstash_extract()
 {
   archive_name=$1
+  rm -rf zstash_extraction
   mkdir zstash_extraction
   cd zstash_extraction
   if [[ "${archive_name}" == "none" ]]; then
     echo "Copying zstash"
     cp -r ../zstash_demo/zstash/ zstash
   fi
-  echo "Starting zstash extract"
+  echo "Starting zstash extract from:"
+  pwd
   zstash extract --hpss=${archive_name}
-  cat file3.txt
-  cat file4.txt
   echo "> ls"
-  ls
+  ls 2>&1 | tee out_ls.txt
   echo "> ls -l"
-  ls -l
+  ls -l  2>&1 | tee out_ls_l.txt
   echo "> zstash ls"
-  zstash ls --hpss=${archive_name}
+  zstash ls --hpss=${archive_name} 2>&1 | tee out_zstash_ls.txt
   echo "> zstash ls -l"
-  zstash ls -l --hpss=${archive_name}
+  zstash ls -l --hpss=${archive_name} 2>&1 | tee out_zstash_ls_l.txt
   cd ..
 }
 
 test_cases()
 {
-  use_hpss=$1
-  follow_symlinks=$2
+  test_num=$1
+  use_hpss=$2
+  follow_symlinks=$3
   if [[ "${use_hpss}" == "true" ]]; then
       archive_name=/home/f/forsyth/zstash_test_follow_symlinks
   else
       archive_name=none
   fi
 
-  case_name="Don't delete original file"
+  echo "##########################################################################################################"
+  echo "Test ${test_num}: use_hpss=${use_hpss}, follow_symlinks=${follow_symlinks}"
+  case_name="Case ${test_num}.1: Don't delete original file"
   setup ${use_hpss} ${follow_symlinks} "${case_name}" ${archive_name}
-  zstash_create ${archive_name} ${follow_symlinks}
-  zstash_extract ${archive_name}
+  zstash_create ${archive_name} ${follow_symlinks} 2>&1 | tee case_${test_num}.1_create.txt
+  check_log_has \
+    "Archiving file3.txt" \
+    "Archiving file4.txt" \
+    "Archiving file_empty.txt" \
+    "Archiving dir/file0.txt" \
+    "Archiving empty_dir" \
+    "Completed archive file 000000.tar" \
+    case_${test_num}.1_create.txt
+  zstash_extract ${archive_name} 2>&1 | tee case_${test_num}.1_extract.txt
+  check_log_has \
+    "Extracting file3.txt" \
+    "Extracting file4.txt" \
+    "Extracting file_empty.txt" \
+    "Extracting dir/file0.txt" \
+    "Extracting empty_dir" \
+    "No failures detected when extracting the files." \
+    case_${test_num}.1_extract.txt
+  check_log_has "file1 stuff" zstash_extraction/file3.txt
+  check_log_has "file2 stuff" zstash_extraction/file4.txt
+  check_log_has \
+    "dir" \
+    "empty_dir" \
+    "file3.txt" \
+    "file4.txt" \
+    "file_empty.txt" \
+    "zstash" \
+    zstash_extraction/out_ls.txt
+  check_log_has \
+    "dir" \
+    "empty_dir" \
+    "file3.txt" \
+    "file4.txt" \
+    "file_empty.txt" \
+    "zstash" \
+    zstash_extraction/out_ls_l.txt
+  check_log_has \
+    "file3.txt" \
+    "file4.txt" \
+    "file_empty.txt" \
+    "dir/file0.txt" \
+    "empty_dir" \
+    zstash_extraction/out_zstash_ls.txt
+  check_log_has \
+    "file3.txt" \
+    "file4.txt" \
+    "file_empty.txt" \
+    "dir/file0.txt" \
+    "empty_dir" \
+    "000000.tar" \
+    zstash_extraction/out_zstash_ls_l.txt
 
-  case_name="Delete before create"
+  case_name="Case ${test_num}.2: Delete before create"
   setup ${use_hpss} ${follow_symlinks} "${case_name}" ${archive_name}
-  rm non_archived/file1.txt
-  rm ../run_n247_non_archived/file2.txt
-  zstash_create ${archive_name} ${follow_symlinks}
-  zstash_extract ${archive_name}
+  rm non_archived/file1.txt # Remove the file that file3 links to
+  zstash_create ${archive_name} ${follow_symlinks} 2>&1 | tee case_${test_num}.2_create.txt
+  if [ "${follow_symlinks}" = "true" ]; then
+    check_log_has \
+      "Archiving file3.txt" \
+      "FileNotFoundError" \
+      "ERROR: Archiving file3.txt" \
+      "Exception: Archive creation failed due to broken symlink." \
+      case_${test_num}.2_create.txt
+  else
+    check_log_has \
+      "Archiving file3.txt" \
+      "Archiving file4.txt" \
+      "Archiving file_empty.txt" \
+      "Archiving dir/file0.txt" \
+      "Archiving empty_dir" \
+      "Completed archive file 000000.tar" \
+      case_${test_num}.2_create.txt
+    zstash_extract ${archive_name} 2>&1 | tee case_${test_num}.2_extract.txt
+    check_log_has \
+      "Extracting file3.txt" \
+      "Extracting file4.txt" \
+      "Extracting file_empty.txt" \
+      "Extracting dir/file0.txt" \
+      "Extracting empty_dir" \
+      "No failures detected when extracting the files." \
+      case_${test_num}.2_extract.txt
+    if [ -f "zstash_extraction/file3.txt" ]; then
+        echo "zstash_extraction/file3.txt exists, but it should not because the file it links to was deleted."
+        exit 2
+    fi
+    check_log_has "file2 stuff" zstash_extraction/file4.txt
+    check_log_has \
+      "dir" \
+      "empty_dir" \
+      "file3.txt" \
+      "file4.txt" \
+      "file_empty.txt" \
+      "zstash" \
+      zstash_extraction/out_ls.txt
+    check_log_has \
+      "dir" \
+      "empty_dir" \
+      "file3.txt" \
+      "file4.txt" \
+      "file_empty.txt" \
+      "zstash" \
+      zstash_extraction/out_ls_l.txt
+    check_log_has \
+      "file3.txt" \
+      "file4.txt" \
+      "file_empty.txt" \
+      "dir/file0.txt" \
+      "empty_dir" \
+      zstash_extraction/out_zstash_ls.txt
+    check_log_has \
+      "file3.txt" \
+      "file4.txt" \
+      "file_empty.txt" \
+      "dir/file0.txt" \
+      "empty_dir" \
+      "000000.tar" \
+      zstash_extraction/out_zstash_ls_l.txt
+  fi
 
-  case_name="Delete after create"
+  case_name="Case ${test_num}.3: Delete after create"
   setup ${use_hpss} ${follow_symlinks} "${case_name}" ${archive_name}
-  zstash_create ${archive_name} ${follow_symlinks}
+  zstash_create ${archive_name} ${follow_symlinks} 2>&1 | tee case_${test_num}.3_create.txt
+  check_log_has \
+    "Archiving file3.txt" \
+    "Archiving file4.txt" \
+    "Archiving file_empty.txt" \
+    "Archiving dir/file0.txt" \
+    "Archiving empty_dir" \
+    "Completed archive file 000000.tar" \
+    case_${test_num}.3_create.txt
   rm non_archived/file1.txt
-  rm ../run_n247_non_archived/file2.txt
-  zstash_extract ${archive_name}
+  zstash_extract ${archive_name} 2>&1 | tee case_${test_num}.3_extract.txt
+  check_log_has \
+    "Extracting file3.txt" \
+    "Extracting file4.txt" \
+    "Extracting file_empty.txt" \
+    "Extracting dir/file0.txt" \
+    "Extracting empty_dir" \
+    "No failures detected when extracting the files." \
+    case_${test_num}.3_extract.txt
+  if [ "${follow_symlinks}" = "true" ]; then
+    check_log_has "file1 stuff" zstash_extraction/file3.txt
+  else
+    if [ -f "zstash_extraction/file3.txt" ]; then
+        echo "zstash_extraction/file3.txt exists, but it should not because the file it links to was deleted."
+        exit 3
+    fi
+  fi
+  check_log_has "file2 stuff" zstash_extraction/file4.txt
+  check_log_has \
+    "dir" \
+    "empty_dir" \
+    "file3.txt" \
+    "file4.txt" \
+    "file_empty.txt" \
+    "zstash" \
+    zstash_extraction/out_ls.txt
+  check_log_has \
+    "dir" \
+    "empty_dir" \
+    "file3.txt" \
+    "file4.txt" \
+    "file_empty.txt" \
+    "zstash" \
+    zstash_extraction/out_ls_l.txt
+  check_log_has \
+    "file3.txt" \
+    "file4.txt" \
+    "file_empty.txt" \
+    "dir/file0.txt" \
+    "empty_dir" \
+    zstash_extraction/out_zstash_ls.txt
+  check_log_has \
+    "file3.txt" \
+    "file4.txt" \
+    "file_empty.txt" \
+    "dir/file0.txt" \
+    "empty_dir" \
+    "000000.tar" \
+    zstash_extraction/out_zstash_ls_l.txt
 
 }
 
-conda_env=zstash_dev_n247
-# Set up Conda
-source /global/homes/f/forsyth/miniconda3/etc/profile.d/conda.sh
-conda activate ${conda_env}
-# Install branch
-cd /global/homes/f/forsyth/zstash
-pip install .
 # Begin tests
-test_cases true true # HPSS, follow symlinks
-test_cases false true # No HPSS, follow symlinks
-test_cases true false # HPSS, don't follow symlinks
-test_cases false false # No HPSS, don't follow symlinks
+test_cases 1 true true # HPSS, follow symlinks
+test_cases 2 false true # No HPSS, follow symlinks
+test_cases 3 true false # HPSS, don't follow symlinks
+test_cases 4 false false # No HPSS, don't follow symlinks
