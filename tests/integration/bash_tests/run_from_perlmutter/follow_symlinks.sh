@@ -29,7 +29,7 @@ setup()
   echo "case_name=${case_name}"
   local_archive_name=test_follow_symlinks
   non_archived_dir=${local_archive_name}_non_archived
-  test_dir=/global/homes/f/forsyth/zstash/tests
+  test_dir=/global/homes/f/forsyth/ez/zstash/tests/utils/
   cd ${test_dir}
   rm -rf ${local_archive_name}
   rm -rf ${non_archived_dir}

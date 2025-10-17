@@ -1,7 +1,5 @@
 """
-Run the test suite with `python -m unittest tests/test_*.py`
-
-To run an individual test, run something like `python -m unittest tests.test_extract.TestExtract.testExtractRetries`
+To run an individual test, run something like `python -m unittest tests.integration.python_tests.group_by_command.test_extract.TestExtract.testExtractRetries`
 
 If running on Cori, it is preferable to run from $CSCRATCH rather than
 /global/homes. Running from the latter may result in a

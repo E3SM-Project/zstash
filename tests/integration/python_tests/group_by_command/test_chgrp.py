@@ -1,6 +1,11 @@
 import unittest
 
-from tests.base import HPSS_ARCHIVE, ZSTASH_PATH, TestZstash, run_cmd
+from tests.integration.python_tests.group_by_command.base import (
+    HPSS_ARCHIVE,
+    ZSTASH_PATH,
+    TestZstash,
+    run_cmd,
+)
 
 
 class TestChgrp(TestZstash):

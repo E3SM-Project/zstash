@@ -1,7 +1,11 @@
 import os
 import unittest
 
-from tests2.base import TOP_LEVEL, TestZstash, run_cmd
+from tests.integration.python_tests.group_by_workflow.base import (
+    TOP_LEVEL,
+    TestZstash,
+    run_cmd,
+)
 
 
 class TestCacheFs(TestZstash):

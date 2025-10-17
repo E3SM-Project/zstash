@@ -1,14 +1,3 @@
-"""
-Run the test suite with `python -m unittest tests2/test_*.py`
-
-tests2/ is a successor testing directory to tests/
-All new tests should be written in tests2/
-tests/ groups testing by zstash command (e.g., `create`, `extract`)
-tests2/ groups testing by more logical workflows that test multiple zstash commands.
-
-The goal of tests2/ is to be able to follow the commands as if you were just reading a bash script.
-"""
-
 import os
 import shutil
 import stat

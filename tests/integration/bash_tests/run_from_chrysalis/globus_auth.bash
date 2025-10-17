@@ -56,7 +56,7 @@ run_test_cases()
     # conda activate <env-name>
     # pre-commit run --all-files
     # python -m pip install .
-    # cd tests/scripts
+    # cd tests/integration/workflows/run_from_chrysalis
     # ./globus_auth.bash
 
     PERLMUTTER_ENDPOINT=6bdc7956-fc0f-4ad2-989c-7aa5ee643a79

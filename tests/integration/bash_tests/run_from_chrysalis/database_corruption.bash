@@ -42,7 +42,7 @@ run_test_cases()
     # conda activate zstash-377-20250728
     # pre-commit run --all-files
     # python -m pip install .
-    # cd tests/scripts
+    # cd tests/integration/workflows/run_from_chrysalis
     # ./database_corruption.bash
 
     SRC_DIR=/lcrc/group/e3sm/ac.forsyth2/zstash_testing/test_database_corruption # Chrysalis
