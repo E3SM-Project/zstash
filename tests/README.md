@@ -17,8 +17,8 @@ tests/
 
 ## Testing example for Perlmutter
 
-Example:
 ```bash
+rm -rf build
 conda clean --all --y
 conda env create -f conda/dev.yml -n zstash_dev_20251017_test1
 conda activate zstash_dev_20251017_test1
@@ -45,3 +45,35 @@ time ./test_ls_globus.bash
 ```
 
 ## Testing example for Chrysalis
+
+```bash
+rm -rf build
+conda clean --all --y
+conda env create -f conda/dev.yml -n zstash_dev_20251017_test1
+conda activate zstash_dev_20251017_test1
+pre-commit run --all-files
+python -m pip install .
+pytest tests/unit/test_*.py
+# 1 passed in 0.84s
+python -m unittest tests/integration/python_tests/group_by_command/test_*.py
+# Ran 69 tests in 110.139s
+# OK (skipped=32)
+# NOTE: Some tests are skipped because Chrysalis doesn't have direct `hsi`/HPSS access
+python -m unittest tests/integration/python_tests/group_by_workflow/test_*.py
+# Ran 4 tests in 6.889s
+# OK
+cd tests/integration/bash_tests/run_from_chrysalis/
+# TODO: Add Chrysalis-specific tests
+```
+
+## Testing with GitHub Actions
+
+GitHub Actions runs the tests according to `.github/workflows/build_workflow.yml`:
+```
+      # Run machine-independent tests
+      - name: Run Tests
+        run: |
+          pytest tests/unit/test_*.py
+          python -m unittest tests/integration/python_tests/group_by_command/test_*.py
+          python -m unittest tests/integration/python_tests/group_by_workflow/test_*.py
+```
