@@ -33,12 +33,15 @@ python -m unittest tests/integration/python_tests/group_by_workflow/test_*.py
 # Ran 4 tests in 2.666s
 # OK
 cd tests/integration/bash_tests/run_from_perlmutter/
-time ./follow_symlinks.sh
+time ./follow_symlinks.sh # NOTE: you will have to change out paths for your username
 # real	0m31.851s
 # No errors
 time ./test_update_non_empty_hpss.bash
 # real	0m10.062s
 # No errors
+
+# Log into globus.org
+# Log into endpoints (NERSC Perlmutter, Globus Tutorial Collection 1) at globus.org: File Manager > Add the endpoints in the "Collection" fields
 time ./test_ls_globus.bash
 # real	0m26.930s
 # No errors
@@ -63,7 +66,41 @@ python -m unittest tests/integration/python_tests/group_by_workflow/test_*.py
 # Ran 4 tests in 6.889s
 # OK
 cd tests/integration/bash_tests/run_from_chrysalis/
-# TODO: Add Chrysalis-specific tests
+
+# Log into globus.org
+# 1. Log into endpoints (LCRC Improv DTN, NERSC Perlmutter) at globus.org: File Manager > Add the endpoints in the "Collection" fields
+# 2. To start fresh, with no consents: https://auth.globus.org/v2/web/consents > Manage Your Consents > Globus Endpoint Performance Monitoring > rescind all"
+# Then, increment `try_num` below to avoid using an old directory.
+# Alternatively, start fresh by deleting the directory on Perlmutter:
+# `rm -rf /global/homes/f/forsyth/zstash/tests/test_globus_auth_try{try_num}`
+time ./globus_auth.bash try_num # NOTE: you will have to change out paths for your username
+# Paste the URL into your browser
+# Log into Argonne
+# Log into NERSC
+# Provide a label
+# Copy the auth code to the command line
+#
+# real	2m45.954s
+# No errors
+
+# If not done above, do the following:
+# Log into globus.org
+# Log into endpoints (LCRC Improv DTN, NERSC Perlmutter) at globus.org: File Manager > Add the endpoints in the "Collection" fields
+
+# In all cases, do:
+# Then, increment `try_num` below to avoid using an old directory.
+# Alternatively, start fresh by deleting the directory on Perlmutter:
+# `rm -rf /global/homes/f/forsyth/zstash/tests/test_database_corruption_try{try_num}`
+time ./database_corruption.bash try_num # NOTE: you will have to change out paths for your username
+# Success count: 25
+# Fail count: 0
+# real	6m43.994s
+
+time ./symlinks.sh # NOTE: you will have to change out paths for your username
+# real	0m1.346s
+# No errors
+
+# TODO: Handle blocking_test_scripts
 ```
 
 ## Testing with GitHub Actions

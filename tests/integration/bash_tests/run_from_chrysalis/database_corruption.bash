@@ -19,34 +19,13 @@ setup()
 
 run_test_cases()
 {
-    # Before running the first time:
-    # globus.org
-    # Authenticate into LCRC Improv DTN, NERSC Perlmutter
-    # Run toy problem:
-    #
-    # source /lcrc/soft/climate/e3sm-unified/load_latest_e3sm_unified_chrysalis.sh
-    # cd /lcrc/group/e3sm/ac.forsyth2/zstash_testing/test_20250729
-    # mkdir zstash_demo; echo 'file0 stuff' > zstash_demo/file0.txt
-    # Chrysalis: 15288284-7006-4041-ba1a-6b52501e49f1
-    # Perlmutter: 6bdc7956-fc0f-4ad2-989c-7aa5ee643a79
-    # zstash create --hpss=globus://6bdc7956-fc0f-4ad2-989c-7aa5ee643a79/global/homes/f/forsyth/zstash/tests/manual_run zstash_demo
-    # Will prompt for LCRC AND NERSC authentication, and then paste generated auth code one time.
 
-    # Before each run:
-    # Perlmutter:
-    # cd /global/homes/f/forsyth/zstash/tests/
-    # rm -rf test_database_corruption
-    #
-    # Chrysalis:
-    # cd ~/ez/zstash/
-    # conda activate zstash-377-20250728
-    # pre-commit run --all-files
-    # python -m pip install .
-    # cd tests/integration/workflows/run_from_chrysalis
-    # ./database_corruption.bash
+    local try_num=$1
 
     SRC_DIR=/lcrc/group/e3sm/ac.forsyth2/zstash_testing/test_database_corruption # Chrysalis
-    DST_DIR=globus://6bdc7956-fc0f-4ad2-989c-7aa5ee643a79/global/homes/f/forsyth/zstash/tests/test_database_corruption # Perlmutter
+    DST_DIR=globus://6bdc7956-fc0f-4ad2-989c-7aa5ee643a79/global/homes/f/forsyth/zstash/tests/test_database_corruption_try${try_num} # Perlmutter
+    # To start fresh with try_num=1, delete the above directory on Perlmutter before running. Example:
+    # rm -rf /global/homes/f/forsyth/zstash/tests/test_database_corruption_try1
 
     success_count=0
     fail_count=0
@@ -318,7 +297,7 @@ run_test_cases()
     echo "Review: ${review_str}"
 }
 
-run_test_cases
+run_test_cases "$1"
 
 # Success count: 25
 # Fail count: 0

@@ -20,7 +20,7 @@ check_log_has()
 {
     local expected_grep="${1}"
     local log_file="${2}"
-    grep "${expected_grep}" ${log_file}
+    grep -q "${expected_grep}" ${log_file}
     if [ $? != 0 ]; then
         echo "Expected grep '${expected_grep}' not found in ${log_file}. Test failed."
         exit 2
@@ -40,30 +40,14 @@ check_log_does_not_have()
 
 run_test_cases()
 {
-    # This script requires user input and thus cannot be run automatically as part of a test suite.
-
-    # To start fresh with Globus:
-    # 1. Log into endpoints (LCRC Improv DTN, NERSC Perlmutter) at globus.org: File Manager > Add the endpoints in the "Collection" fields
-    # 2. To start fresh, with no consents: https://auth.globus.org/v2/web/consents > Manage Your Consents > Globus Endpoint Performance Monitoring > rescind all"
-
-    # Before each run:
-    # Perlmutter:
-    # cd /global/homes/f/forsyth/zstash/tests/
-    # rm -rf test_globus_auth_try1 # Or just change $DST_DIR to a new directory
-    #
-    # Chrysalis:
-    # cd ~/ez/zstash/
-    # conda activate <env-name>
-    # pre-commit run --all-files
-    # python -m pip install .
-    # cd tests/integration/workflows/run_from_chrysalis
-    # ./globus_auth.bash
+    local try_num=$1
 
     PERLMUTTER_ENDPOINT=6bdc7956-fc0f-4ad2-989c-7aa5ee643a79
 
-    TRY_NUM=8
     SRC_DIR=/lcrc/group/e3sm/ac.forsyth2/zstash_testing/test_globus_auth # Chrysalis
-    DST_DIR=globus://${PERLMUTTER_ENDPOINT}/global/homes/f/forsyth/zstash/tests/test_globus_auth_try${TRY_NUM}
+    DST_DIR=globus://${PERLMUTTER_ENDPOINT}/global/homes/f/forsyth/zstash/tests/test_globus_auth_try${try_num} # Perlmutter
+    # To start fresh with try_num=1, delete the above directory on Perlmutter before running. Example:
+    # rm -rf /global/homes/f/forsyth/zstash/tests/test_globus_auth_try1
 
     GLOBUS_CFG=/home/ac.forsyth2/.globus-native-apps.cfg
     INI_PATH=/home/ac.forsyth2/.zstash.ini
@@ -134,4 +118,4 @@ run_test_cases()
     # Could also test -l and -v options, but the above code covers the important part.
 }
 
-run_test_cases
+run_test_cases "$1"

@@ -7,7 +7,7 @@ check_log_has()
 {
     local expected_grep="${1}"
     local log_file="${2}"
-    grep "${expected_grep}" ${log_file}
+    grep -q "${expected_grep}" ${log_file}
     if [ $? != 0 ]; then
         echo "Expected grep '${expected_grep}' not found in ${log_file}. Test failed."
         exit 1
