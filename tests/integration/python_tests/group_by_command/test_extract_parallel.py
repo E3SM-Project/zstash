@@ -4,7 +4,7 @@ import shutil
 import unittest
 from typing import List
 
-from tests.base import (
+from tests.integration.python_tests.group_by_command.base import (
     HPSS_ARCHIVE,
     TOP_LEVEL,
     ZSTASH_PATH,
@@ -12,7 +12,9 @@ from tests.base import (
     print_starred,
     run_cmd,
 )
-from tests.test_extract import helperExtractTars
+from tests.integration.python_tests.group_by_command.test_extract import (
+    helperExtractTars,
+)
 
 # https://bugs.python.org/issue43743
 # error: Module has no attribute "_USE_CP_SENDFILE"

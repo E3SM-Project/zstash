@@ -4,6 +4,20 @@ hpss_globus_endpoint="6c54cade-bde5-45c1-bdea-f4bd71dba2cc"
 hpss_path="globus://${hpss_globus_endpoint}/~/zstash_test/"
 cache=zstash # Set via `self.cache = "zstash"`
 
+# From Claude:
+check_log_has()
+{
+    local log_file="${@: -1}"  # Last argument is the log file
+    local patterns=("${@:1:$#-1}")  # All but last argument are patterns
+
+    for pattern in "${patterns[@]}"; do
+        if ! grep -q "${pattern}" "${log_file}"; then
+            echo "Expected grep '${pattern}' not found in ${log_file}. Test failed."
+            exit 1
+        fi
+    done
+}
+
 # base.setupDirs ##############################################################
 test_dir=zstash_test
 
@@ -29,18 +43,36 @@ ln -s ${test_dir}/file0.txt ${test_dir}/file0_hard.txt
 
 # base.create #################################################################
 echo "Adding files to HPSS"
-zstash create --hpss=${hpss_path} ${test_dir}
-# Archives 000000.tar
+case_name="create"
+zstash create --hpss=${hpss_path} ${test_dir} 2>&1 | tee ${case_name}.log
+check_log_has "INFO: Adding 000000.tar" ${case_name}.log
 echo "Cache:"
-ls -l ${test_dir}/${cache} # just index.db
-echo "HPSS:"
-hsi ls -l ${hpss_path} # 000000.tar, index.db
+ls -l ${test_dir}/${cache} 2>&1 | tee ${case_name}_cache.log
+check_log_has "index.db" ${case_name}_cache.log
+# NOTE:
+# It appears that we can't access the HPSS path directly with `hsi`.
+# That's presumably because we're using the Globus tutorial endpoint
+# rather than the NERSC HPSS endpoint.
 
 # back in test_globus.helperLsGlobus ##########################################
 cd ${test_dir}
-zstash ls --hpss=${hpss_path}
+case_name="ls"
+zstash ls --hpss=${hpss_path} 2>&1 | tee ${case_name}.log
+check_log_has \
+    "file0.txt" \
+    "file0_hard.txt" \
+    "file0_soft_bad.txt" \
+    "file_0_soft.txt" \
+    "file_empty.txt" \
+    "dir/file1.txt" \
+    "empty_dir" \
+    ${case_name}.log
 cd ..
 echo "Cache:"
-ls -l ${test_dir}/${cache}
-echo "HPSS:"
-hsi ls -l ${hpss_path}
+ls -l ${test_dir}/${cache} 2>&1 | tee ${case_name}_cache.log
+check_log_has "index.db" ${case_name}_cache.log
+
+rm -rf ${test_dir} # Cleanup
+rm create.log
+rm create_cache.log
+rm ls_cache.log

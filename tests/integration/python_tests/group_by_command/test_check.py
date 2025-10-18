@@ -2,7 +2,7 @@ import os
 import shutil
 import unittest
 
-from tests.base import (
+from tests.integration.python_tests.group_by_command.base import (
     HPSS_ARCHIVE,
     TOP_LEVEL,
     ZSTASH_PATH,
