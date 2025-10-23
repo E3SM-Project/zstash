@@ -160,20 +160,21 @@ run_test_cases()
 
 # Step 1. Update try_num for each new test run to avoid conflicts with previous runs.
 # Alternative: Remove previous test directories manually.
-try_num=16
+try_num=17
 
 # Step 2. Set paths for your environment by uncommenting the appropriate lines.
-# Running from Chrysalis:
-path_to_repo = /home/ac.forsyth2/ez/zstash/
-dst_dir = /home/ac.forsyth2/zstash/tests/test_globus_auth_try${try_num}
-# Running from Perlmutter:
-# path_to_repo = /global/homes/f/forsyth/ez/zstash
-# dst_dir = global/homes/f/forsyth/zstash/tests/test_globus_auth_try${try_num}
-# Running from Compy:
-# path_to_repo = /qfs/people/fors729/ez/zstash
-# dst_dir= /qfs/people/fors729/zstash/tests/test_globus_auth_try${try_num}
+# Ordered by: Chrysalis, Perlmutter, Compy
+# Running from:
+path_to_repo=/home/ac.forsyth2/ez/zstash/
+# path_to_repo=/global/homes/f/forsyth/ez/zstash
+# path_to_repo=/qfs/people/fors729/ez/zstash
+# Archiving to:
+chrysalis_dst_dir=/home/ac.forsyth2/zstash_tests/test_globus_auth_try${try_num}
+perlmutter_dst_dir=/global/homes/f/forsyth/zstash_tests/test_globus_auth_try${try_num}
+hpss_dst_dir=/home/f/forsyth/zstash_tests/test_globus_auth_try${try_num}
+compy_dst_dir=/compyfs/fors729/zstash_tests/test_globus_auth_try${try_num} # Using /qfs/people/fors729/ will result in permission denied
 
-# Step 3. Run the test cases for each endpoint. 
+# Step 3. Run the test cases for each endpoint.
 # Do once: https://app.globus.org/file-manager?two_pane=true > For "Collection", select the endpoint for the machine you're on, and authenticate if needed.
 # For each line below:
 # A. Uncomment the appropriate line
@@ -185,9 +186,12 @@ dst_dir = /home/ac.forsyth2/zstash/tests/test_globus_auth_try${try_num}
 #  - Authenticate to dst_endpoint if needed.
 #  - Provide a label
 #  - Copy the auth code to the command line
-run_test_cases ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${dst_dir}
-run_test_cases ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${dst_dir}
-run_test_cases ${path_to_repo} NERSC_HPSS_ENDPOINT ${dst_dir}
-run_test_cases ${path_to_repo} PIC_COMPY_DTN_ENDPOINT ${dst_dir}
-run_test_cases ${path_to_repo} GLOBUS_TUTORIAL_COLLECTION_1_ENDPOINT ${dst_dir}
-
+#  - If the test hangs: check https://app.globus.org/activity for errors.
+#  - If you have to paste an auth code more than once, that counts as an error.
+# E. Cleanup
+#  - Re-comment the line
+#  - `rm -rf ../../../utils/globus_auth` to remove test directories
+run_test_cases ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir}
+# run_test_cases ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
+# run_test_cases ${path_to_repo} NERSC_HPSS_ENDPOINT ${hpss_dst_dir}
+# run_test_cases ${path_to_repo} PIC_COMPY_DTN_ENDPOINT ${compy_dst_dir}
