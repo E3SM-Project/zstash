@@ -67,7 +67,16 @@ cd tests/integration/bash_tests/run_from_chrysalis/
 # Log into globus.org
 # Log into endpoints (LCRC Improv DTN, NERSC Perlmutter) at globus.org: File Manager > Add the endpoints in the "Collection" fields
 
-# In all cases, do:
+# Reset completely:
+# Revoke consents: https://auth.globus.org/v2/web/consents > Globus Endpoint Performance Monitoring > rescind all
+# Run the following lines to set up the database_corruption test
+# Alternative option: Rerun the `test_single_auth_code ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}` line from `globus_auth.bash`
+rm ~/.zstash_globus_tokens.json
+mkdir zstash_demo; echo 'file0 stuff' > zstash_demo/file0.txt
+# NERSC_PERLMUTTER_ENDPOINT=6bdc7956-fc0f-4ad2-989c-7aa5ee643a79
+zstash create --hpss=globus://6bdc7956-fc0f-4ad2-989c-7aa5ee643a79//global/homes/f/forsyth/zstash/tests/test_database_corruption_setup23 zstash_demo
+# You'll have to paste an auth code here, but NOT during the database_corruption test.
+rm -rf zstash_demo/
 # Then, increment `try_num` below to avoid using an old directory.
 # Alternatively, start fresh by deleting the directory on Perlmutter:
 # `rm -rf /global/homes/f/forsyth/zstash/tests/test_database_corruption_try{try_num}`
