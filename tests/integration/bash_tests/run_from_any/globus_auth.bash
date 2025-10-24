@@ -125,7 +125,7 @@ test_single_auth_code()
     check_log_has "INFO: Token file ${TOKEN_FILE} does NOT exist. This means we won't be able to load tokens from it." ${case_name}.log
     # From get_local_endpoint_id
     check_log_has "INFO: Writing to empty ${INI_PATH}" ${case_name}.log
-    check_log_has "INFO: Setting local_endpoint_id based on FQDN chrlogin2.lcrc.anl.gov:" ${case_name}.log
+    check_log_has "INFO: Setting local_endpoint_id based on" ${case_name}.log
     # From get_transfer_client_with_auth
     check_log_has "INFO: No stored tokens found - starting authentication" ${case_name}.log
     check_log_has "Please go to this URL and login:" ${case_name}.log # Our one expected authentication prompt
@@ -148,7 +148,7 @@ test_single_auth_code()
     check_log_has "INFO: Token file ${TOKEN_FILE} exists. We can try to load tokens from it." ${case_name}.log # Differs from run1
     # From get_local_endpoint_id
     check_log_has "INFO: Setting local_endpoint_id based on ${INI_PATH}" ${case_name}.log # Differs from run1
-    check_log_has "INFO: Setting local_endpoint_id based on FQDN chrlogin2.lcrc.anl.gov:" ${case_name}.log
+    check_log_has "INFO: Setting local_endpoint_id based on" ${case_name}.log
     # From get_transfer_client_with_auth
     check_log_has "INFO: Found stored refresh token - using it" ${case_name}.log # Differs from run1
     check_log_does_not_have "Please go to this URL and login:" ${case_name}.log # There should be no login prompts for run2!
@@ -296,11 +296,45 @@ test_different_endpoint3()
 
 # Command line parameters:
 try_num="$1"
-path_to_repo="$2" # /home/ac.forsyth2/ez/zstash, /global/homes/f/forsyth/ez/zstash, /qfs/people/fors729/ez/zstash
-chrysalis_dst_basedir="$3" # /home/ac.forsyth2/zstash_tests
-perlmutter_dst_basedir="$4" # /global/homes/f/forsyth/zstash_tests
-hpss_dst_basedir="$5" # /home/f/forsyth/zstash_tests
-compy_dst_basedir="$6" # /compyfs/fors729/zstash_tests (/qfs/people/fors729/ => permission denied)
+src_machine="$2" # chrysalis, perlmutter, compy
+path_to_repo="$3" # /home/ac.forsyth2/ez/zstash, /global/homes/f/forsyth/ez/zstash, /qfs/people/fors729/ez/zstash
+chrysalis_dst_basedir="$4" # /home/ac.forsyth2/zstash_tests
+perlmutter_dst_basedir="$5" # /global/homes/f/forsyth/zstash_tests
+hpss_dst_basedir="$6" # /home/f/forsyth/zstash_tests
+compy_dst_basedir="$7" # /compyfs/fors729/zstash_tests (/qfs/people/fors729/ => permission denied)
+
+chrysalis_dst_dir=${chrysalis_dst_basedir}/test_globus_auth_try${try_num}
+perlmutter_dst_dir=${perlmutter_dst_basedir}/test_globus_auth_try${try_num}
+hpss_dst_dir=${hpss_dst_basedir}/test_globus_auth_try${try_num}
+compy_dst_dir=${compy_dst_basedir}/test_globus_auth_try${try_num}
+
+# Determine which endpoints to use for the endpoint-switching tests
+# switch1 should never be the last-tested endpoint (i.e., compy)
+# Neither switch1 nor switch2 should be the src endpoint.
+case ${src_machine} in
+    chrysalis)
+        dst_endpoint_switch1=NERSC_PERLMUTTER_ENDPOINT
+        dst_endpoint_switch2=NERSC_HPSS_ENDPOINT
+        dst_dir_switch1=${perlmutter_dst_dir}
+        dst_dir_switch2=${hpss_dst_dir}
+        ;;
+    perlmutter)
+        dst_endpoint_switch1=LCRC_IMPROV_DTN_ENDPOINT
+        dst_endpoint_switch2=PIC_COMPY_DTN_ENDPOINT
+        dst_dir_switch1=${chrysalis_dst_dir}
+        dst_dir_switch2=${compy_dst_dir}
+        ;;
+    compy)
+        dst_endpoint_switch1=NERSC_PERLMUTTER_ENDPOINT
+        dst_endpoint_switch2=NERSC_HPSS_ENDPOINT
+        dst_dir_switch1=${perlmutter_dst_dir}
+        dst_dir_switch2=${hpss_dst_dir}
+        ;;
+    *)
+        echo "Unknown machine name: ${src_machine}" >&2
+        exit 1
+        ;;
+esac
 
 echo "You may wish to clear your dst directories for a fresh start:"
 echo "Chrysalis: rm -rf ${chrysalis_dst_basedir}/test_globus_auth*"
@@ -314,11 +348,6 @@ echo "Currently, try_num=${try_num}"
 if ! confirm "Is the try_num correct?"; then
     exit 1
 fi
-
-chrysalis_dst_dir=${chrysalis_dst_basedir}/test_globus_auth_try${try_num}
-perlmutter_dst_dir=${perlmutter_dst_basedir}/test_globus_auth_try${try_num}
-hpss_dst_dir=${hpss_dst_basedir}/test_globus_auth_try${try_num}
-compy_dst_dir=${compy_dst_basedir}/test_globus_auth_try${try_num}
 
 echo "Go to https://app.globus.org/file-manager?two_pane=true > For "Collection", choose each of the following endpoints and, if needed, authenticate:"
 echo "LCRC Improv DTN, NERSC Perlmutter, NERSC HPSS, pic#compy-dtn"
@@ -340,11 +369,11 @@ test_single_auth_code ${path_to_repo} PIC_COMPY_DTN_ENDPOINT ${compy_dst_dir}
 echo "Follow-up tests: behavior when switching to different endpoints"
 echo "NOTE: if you commented out tests above, and your last endpoint used was NERSC_PERLMUTTER_ENDPOINT, the following test will not work properly."
 echo "Test 1: What if we switch to a different endpoint? #####################"
-test_different_endpoint1 ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
+test_different_endpoint1 ${path_to_repo} ${dst_endpoint_switch1} ${dst_dir_switch1}
 echo "Test 2: What if we try a) revoking consents and then b) removing the token file? ###"
-test_different_endpoint2 ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
+test_different_endpoint2 ${path_to_repo} ${dst_endpoint_switch1} ${dst_dir_switch1}
 echo "Test 3: What if we switch to a different endpoint again, but first remove the token file? ###"
-test_different_endpoint3 ${path_to_repo} NERSC_HPSS_ENDPOINT ${hpss_dst_dir}
+test_different_endpoint3 ${path_to_repo} ${dst_endpoint_switch2} ${dst_dir_switch2}
 echo "Check https://auth.globus.org/v2/web/consents > Globus Endpoint Performance Monitoring: you should have *two* consents there now."
 if ! confirm "Does https://auth.globus.org/v2/web/consents > Globus Endpoint Performance Monitoring show *two* consents?"; then
     exit 1
