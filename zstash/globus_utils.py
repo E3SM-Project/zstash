@@ -17,6 +17,7 @@ from globus_sdk import (
     TransferData,
 )
 from globus_sdk.response import GlobusHTTPResponse
+from globus_sdk.services.auth.errors import AuthAPIError
 
 from .settings import logger
 
@@ -134,11 +135,19 @@ def get_transfer_client_with_auth(
             logger.info("Found stored refresh token - using it")
             # Create a simple auth client for the RefreshTokenAuthorizer
             auth_client = NativeAppAuthClient(ZSTASH_CLIENT_ID)
-            transfer_authorizer = RefreshTokenAuthorizer(
-                refresh_token=token_data["refresh_token"], auth_client=auth_client
-            )
-            transfer_client = TransferClient(authorizer=transfer_authorizer)
-            return transfer_client
+            try:
+                transfer_authorizer = RefreshTokenAuthorizer(
+                    refresh_token=token_data["refresh_token"], auth_client=auth_client
+                )
+                transfer_client = TransferClient(authorizer=transfer_authorizer)
+                return transfer_client
+            except AuthAPIError as e:
+                logger.error("Stored refresh token is invalid.")
+                logger.error(
+                    f"One possible cause: {TOKEN_FILE} may be configured for a different Globus endpoint. For example, you may have previously set a different destination endpoint for `--hpss=globus://`."
+                )
+                logger.error(f"Try deleting {TOKEN_FILE} and re-running.")
+                raise e
 
     # No stored tokens, need to authenticate
     logger.info("No stored tokens found - starting authentication")
@@ -262,12 +271,22 @@ def submit_transfer_with_checks(transfer_client, transfer_data) -> GlobusHTTPRes
             logger.error(
                 "With proper scope handling, this block should not be reached."
             )
+
             logger.error(
-                "Please report this bug at https://github.com/E3SM-Project/zstash/issues, with details of what you were trying to do."
+                f"One possible cause: {TOKEN_FILE} may be configured for a different Globus endpoint. For example, you may have previously set a different destination endpoint for `--hpss=globus://`."
             )
-            raise RuntimeError(
-                "Insufficient Globus consents - please report this bug"
-            ) from err
+            logger.error(f"Try deleting {TOKEN_FILE} and re-running.")
+
+            logger.error(
+                "Another possible cause: insufficient Globus consents. It's possible the consent on https://auth.globus.org/v2/web/consents is for a different destination endpoint."
+            )
+            logger.error(
+                "If you don't need any other Globus consents at the moment, try revoking consents before re-running: https://auth.globus.org/v2/web/consents > Manage Your Consents > Globus Endpoint Performance Monitoring > rescind all"
+            )
+            logger.error(
+                "If neither of those work, please report this bug at https://github.com/E3SM-Project/zstash/issues, with details of what you were trying to do."
+            )
+            raise RuntimeError("Insufficient Globus consents") from err
         else:
             raise err
     return task
