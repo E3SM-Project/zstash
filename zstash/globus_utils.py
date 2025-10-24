@@ -146,7 +146,7 @@ def get_transfer_client_with_auth(
                 logger.error(
                     f"One possible cause: {TOKEN_FILE} may be configured for a different Globus endpoint. For example, you may have previously set a different destination endpoint for `--hpss=globus://`."
                 )
-                logger.error("Try deleting {TOKEN_FILE} and re-running.")
+                logger.error(f"Try deleting {TOKEN_FILE} and re-running.")
                 raise e
 
     # No stored tokens, need to authenticate
@@ -275,7 +275,7 @@ def submit_transfer_with_checks(transfer_client, transfer_data) -> GlobusHTTPRes
             logger.error(
                 f"One possible cause: {TOKEN_FILE} may be configured for a different Globus endpoint. For example, you may have previously set a different destination endpoint for `--hpss=globus://`."
             )
-            logger.error("Try deleting {TOKEN_FILE} and re-running.")
+            logger.error(f"Try deleting {TOKEN_FILE} and re-running.")
 
             logger.error(
                 "Another possible cause: insufficient Globus consents. It's possible the consent on https://auth.globus.org/v2/web/consents is for a different destination endpoint."

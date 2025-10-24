@@ -4,6 +4,9 @@ hpss_globus_endpoint="6c54cade-bde5-45c1-bdea-f4bd71dba2cc"
 hpss_path="globus://${hpss_globus_endpoint}/~/zstash_test/"
 cache=zstash # Set via `self.cache = "zstash"`
 
+# Start fresh by deleting token file:
+rm ~/.zstash_globus_tokens.json
+
 # From Claude:
 check_log_has()
 {

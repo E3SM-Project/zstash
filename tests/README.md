@@ -31,6 +31,7 @@ pytest tests/unit/test_*.py
 python -m unittest tests/integration/python_tests/group_by_command/test_*.py
 # Ran 69 tests in 327.570s
 # OK
+# NOTE: Some tests will be skipped on systems without hsi/HPSS access
 python -m unittest tests/integration/python_tests/group_by_workflow/test_*.py
 # Ran 4 tests in 2.666s
 # OK
@@ -53,8 +54,8 @@ time ./test_update_non_empty_hpss.bash
 
 # Log into globus.org
 # Log into endpoints (NERSC Perlmutter, Globus Tutorial Collection 1) at globus.org: File Manager > Add the endpoints in the "Collection" fields
-time ./test_ls_globus.bash
-# real	0m26.930s
+time ./test_ls_globus.bash # NOTE: You may be asked to paste an auth-code
+# real	0m40.297s
 # No errors
 ```
 
