@@ -292,7 +292,10 @@ test_different_endpoint3()
 # Follow these directions #####################################################
 
 # Example usage:
-# ./globus_auth.bash 21 /home/ac.forsyth2/ez/zstash /home/ac.forsyth2/zstash_tests /global/homes/f/forsyth/zstash_tests /home/f/forsyth/zstash_tests /compyfs/fors729/zstash_tests
+# ./globus_auth.bash 21 chrysalis /home/ac.forsyth2/ez/zstash /home/ac.forsyth2/zstash_tests /global/homes/f/forsyth/zstash_tests /home/f/forsyth/zstash_tests /compyfs/fors729/zstash_tests
+
+# NOTE: This test will not work from a repo on Compy located in /qfs/people/...
+# pic#compy-dtn will only transfer to/from /compyfs/...
 
 # Command line parameters:
 try_num="$1"
