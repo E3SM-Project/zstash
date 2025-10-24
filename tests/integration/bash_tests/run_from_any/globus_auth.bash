@@ -21,7 +21,7 @@ check_log_does_not_have()
     fi
 }
 
-# Running #####################################################################
+# Helper functions ############################################################
 setup()
 {
   echo "##########################################################################################################"
@@ -75,7 +75,8 @@ get_endpoint()
     esac
 }
 
-run_test_cases()
+# Tests #######################################################################
+test_single_auth_code()
 {
     local path_to_repo=$1
     local dst_endpoint=$2
@@ -95,7 +96,7 @@ run_test_cases()
     rm -rf ${INI_PATH}
     rm -rf ${TOKEN_FILE}
 
-    echo "Running globus_auth test"
+    echo "Running test_single_auth_code"
     echo "Exit codes: 0 -- success, 1 -- zstash failed, 2 -- grep check failed"
 
     case_name="run1"
@@ -155,12 +156,97 @@ run_test_cases()
     # Could also test -l and -v options, but the above code covers the important part.
 }
 
+test_different_endpoint1()
+{
+    local path_to_repo=$1
+    local dst_endpoint=$2
+    local dst_dir=$3
+
+    src_dir=${path_to_repo}/tests/utils/globus_auth
+    mkdir -p ${src_dir}
+    dst_endpoint_uuid=$(get_endpoint ${dst_endpoint})
+    globus_path=globus://${dst_endpoint_uuid}/${dst_dir}
+
+    echo "Running test_different_endpoint1"
+    echo "Exit codes: 0 -- success, 1 -- failure"
+
+    case_name="different_endpoint1"
+    setup ${case_name} "${src_dir}"
+    # Expecting to see exactly 1 authentication prompt
+    zstash create --hpss=${globus_path}/${case_name} zstash_demo 2>&1 | tee ${case_name}.log
+    check_log_has "INFO: Found stored refresh token - using it" ${case_name}.log
+    check_log_has "ERROR: One possible cause" ${case_name}.log
+    check_log_has "ERROR: Try deleting" ${case_name}.log
+    check_log_has "ERROR: Another possible cause" ${case_name}.log
+    check_log_has "ERROR: try revoking consents before re-running" ${case_name}.log
+    check_log_has "ERROR: Exception: Insufficient Globus consents" ${case_name}.log
+}
+
+test_different_endpoint2()
+{
+    local path_to_repo=$1
+    local dst_endpoint=$2
+    local dst_dir=$3
+
+    src_dir=${path_to_repo}/tests/utils/globus_auth
+    mkdir -p ${src_dir}
+    dst_endpoint_uuid=$(get_endpoint ${dst_endpoint})
+    globus_path=globus://${dst_endpoint_uuid}/${dst_dir}
+
+    echo "Running test_different_endpoint2"
+    echo "Exit codes: 0 -- success, 1 -- failure"
+
+    case_name="different_endpoint2a"
+    setup ${case_name} "${src_dir}"
+    zstash create --hpss=${globus_path}/${case_name} zstash_demo 2>&1 | tee ${case_name}.log
+    check_log_has ".zstash_globus_tokens.json exists. We can try to load tokens from it." ${case_name}.log
+    check_log_has ".zstash_globus_tokens.json may be configured for a different Globus endpoint." ${case_name}.log
+    check_log_has "Try deleting" ${case_name}.log
+    check_log_has "globus_sdk.services.auth.errors.AuthAPIError: ('POST', 'https://auth.globus.org/v2/oauth2/token', None, 400, 'Error', 'Bad Request')" ${case_name}.log
+
+    rm -rf ~/.zstash_globus_tokens.json
+    case_name="different_endpoint2b"
+    setup ${case_name} "${src_dir}"
+    # Expecting to see exactly 1 authentication prompt
+    zstash create --hpss=${globus_path}/${case_name} zstash_demo 2>&1 | tee ${case_name}.log
+    if [ $? != 0 ]; then
+        echo "${case_name} failed. Check ${case_name}_create.log for details."
+        exit 1
+    fi
+}
+
+test_different_endpoint3()
+{
+    local path_to_repo=$1
+    local dst_endpoint=$2
+    local dst_dir=$3
+
+    src_dir=${path_to_repo}/tests/utils/globus_auth
+    mkdir -p ${src_dir}
+    dst_endpoint_uuid=$(get_endpoint ${dst_endpoint})
+    globus_path=globus://${dst_endpoint_uuid}/${dst_dir}
+
+    echo "Running test_different_endpoint3"
+    echo "Exit codes: 0 -- success, 1 -- failure"
+
+    rm -rf ~/.zstash_globus_tokens.json
+    case_name="different_endpoint3"
+    setup ${case_name} "${src_dir}"
+    # Expecting to see exactly 1 authentication prompt
+    zstash create --hpss=${globus_path}/${case_name} zstash_demo 2>&1 | tee ${case_name}.log
+    if [ $? != 0 ]; then
+        echo "${case_name} failed. Check ${case_name}_create.log for details."
+        exit 1
+    fi
+
+}
+
 # Follow these directions #####################################################
 # Modify these parameters as needed.
 
 # Step 1. Update try_num for each new test run to avoid conflicts with previous runs.
 # Alternative: Remove previous test directories manually.
-try_num=17
+try_num=18
 
 # Step 2. Set paths for your environment by uncommenting the appropriate lines.
 # Ordered by: Chrysalis, Perlmutter, Compy
@@ -191,7 +277,21 @@ compy_dst_dir=/compyfs/fors729/zstash_tests/test_globus_auth_try${try_num} # Usi
 # E. Cleanup
 #  - Re-comment the line
 #  - `rm -rf ../../../utils/globus_auth` to remove test directories
-run_test_cases ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir}
-# run_test_cases ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
-# run_test_cases ${path_to_repo} NERSC_HPSS_ENDPOINT ${hpss_dst_dir}
-# run_test_cases ${path_to_repo} PIC_COMPY_DTN_ENDPOINT ${compy_dst_dir}
+# test_single_auth_code ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir}
+# test_single_auth_code ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
+# test_single_auth_code ${path_to_repo} NERSC_HPSS_ENDPOINT ${hpss_dst_dir}
+# test_single_auth_code ${path_to_repo} PIC_COMPY_DTN_ENDPOINT ${compy_dst_dir}
+
+# Step 4. Now, some follow-up tests
+
+# Make sure you use a different endpoint than the last one tested above.
+# Uncomment, run (expecting no auth codes to paste), re-comment:
+# test_different_endpoint1 ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
+
+# Reset consents again: https://auth.globus.org/v2/web/consents > Manage Your Consents > Globus Endpoint Performance Monitoring > rescind all"
+# Uncomment, run (expecting 1 auth code to paste), re-comment:
+# test_different_endpoint2 ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
+
+# Uncomment, run (expecting 1 auth code to paste), re-comment:
+test_different_endpoint3 ${path_to_repo} NERSC_HPSS_ENDPOINT ${hpss_dst_dir}
+# Check https://auth.globus.org/v2/web/consents: you should have *two* consents there now.
