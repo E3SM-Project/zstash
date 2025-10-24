@@ -15,7 +15,9 @@ tests/
   utils/ # Utilities for testing
 ```
 
-## Testing example for Perlmutter
+## Testing examples
+
+### Machine Independent
 
 ```bash
 rm -rf build
@@ -35,8 +37,12 @@ python -m unittest tests/integration/python_tests/group_by_workflow/test_*.py
 
 cd tests/integration/bash_tests/run_from_any/
 # Review the directions at the bottom of globus_auth.bash
-# You will need to modify the file and run several times.
+# Run `./globus_auth.bash` with the appropriate parameters.
+```
 
+### Perlmutter-specific
+
+```bash
 cd tests/integration/bash_tests/run_from_perlmutter/
 time ./follow_symlinks.sh # NOTE: you will have to change out paths for your username
 # real	0m31.851s
@@ -52,29 +58,9 @@ time ./test_ls_globus.bash
 # No errors
 ```
 
-## Testing example for Chrysalis
+### Chrysalis-specific
 
 ```bash
-rm -rf build
-conda clean --all --y
-conda env create -f conda/dev.yml -n zstash_dev_20251017_test1
-conda activate zstash_dev_20251017_test1
-pre-commit run --all-files
-python -m pip install .
-pytest tests/unit/test_*.py
-# 1 passed in 0.84s
-python -m unittest tests/integration/python_tests/group_by_command/test_*.py
-# Ran 69 tests in 110.139s
-# OK (skipped=32)
-# NOTE: Some tests are skipped because Chrysalis doesn't have direct `hsi`/HPSS access
-python -m unittest tests/integration/python_tests/group_by_workflow/test_*.py
-# Ran 4 tests in 6.889s
-# OK
-
-cd tests/integration/bash_tests/run_from_any/
-# Review the directions at the bottom of globus_auth.bash
-# You will need to modify the file and run several times.
-
 cd tests/integration/bash_tests/run_from_chrysalis/
 # If not done above, do the following:
 # Log into globus.org

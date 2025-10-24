@@ -75,6 +75,12 @@ get_endpoint()
     esac
 }
 
+confirm() {
+    read -p "$1 (y/n): " -n 1 -r
+    echo
+    [[ $REPLY =~ ^[Yy]$ ]]
+}
+
 # Tests #######################################################################
 test_single_auth_code()
 {
@@ -92,6 +98,11 @@ test_single_auth_code()
     TOKEN_FILE=${HOME}/.zstash_globus_tokens.json
 
     # Start fresh
+    echo "Reset Globus consents:"
+    echo "https://auth.globus.org/v2/web/consents > Globus Endpoint Performance Monitoring > rescind all"
+    if ! confirm "Have you revoked Globus consents?"; then
+        exit 1
+    fi
     rm -rf ${GLOBUS_CFG}
     rm -rf ${INI_PATH}
     rm -rf ${TOKEN_FILE}
@@ -154,6 +165,14 @@ test_single_auth_code()
     check_log_has "dir/file0.txt" run2_ls.log
     check_log_has "empty_dir" run2_ls.log
     # Could also test -l and -v options, but the above code covers the important part.
+
+    if ! confirm "Did you only have to paste an auth code once (for run1, not run2)?"; then
+        echo "Single-authentication test failed"
+        exit 1
+    fi
+    # Cleanup:
+    cd ${path_to_repo}/tests/integration/bash_tests/run_from_any
+    rm -rf ${path_to_repo}/tests/utils/globus_auth
 }
 
 test_different_endpoint1()
@@ -178,8 +197,16 @@ test_different_endpoint1()
     check_log_has "ERROR: One possible cause" ${case_name}.log
     check_log_has "ERROR: Try deleting" ${case_name}.log
     check_log_has "ERROR: Another possible cause" ${case_name}.log
-    check_log_has "ERROR: try revoking consents before re-running" ${case_name}.log
+    check_log_has "try revoking consents before re-running" ${case_name}.log
     check_log_has "ERROR: Exception: Insufficient Globus consents" ${case_name}.log
+
+    if ! confirm "Did you avoid having to paste any auth codes on this run?"; then
+        echo "test_different_endpoint1 failed"
+        exit 1
+    fi
+    # Cleanup:
+    cd ${path_to_repo}/tests/integration/bash_tests/run_from_any
+    rm -rf ${path_to_repo}/tests/utils/globus_auth
 }
 
 test_different_endpoint2()
@@ -192,6 +219,12 @@ test_different_endpoint2()
     mkdir -p ${src_dir}
     dst_endpoint_uuid=$(get_endpoint ${dst_endpoint})
     globus_path=globus://${dst_endpoint_uuid}/${dst_dir}
+
+    echo "Reset Globus consents:"
+    echo "https://auth.globus.org/v2/web/consents > Globus Endpoint Performance Monitoring > rescind all"
+    if ! confirm "Have you revoked Globus consents?"; then
+        exit 1
+    fi
 
     echo "Running test_different_endpoint2"
     echo "Exit codes: 0 -- success, 1 -- failure"
@@ -213,6 +246,14 @@ test_different_endpoint2()
         echo "${case_name} failed. Check ${case_name}_create.log for details."
         exit 1
     fi
+
+    if ! confirm "Did you only have to paste an auth code once (for 2b, not 2a)?"; then
+        echo "test_different_endpoint2 failed"
+        exit 1
+    fi
+    # Cleanup:
+    cd ${path_to_repo}/tests/integration/bash_tests/run_from_any
+    rm -rf ${path_to_repo}/tests/utils/globus_auth
 }
 
 test_different_endpoint3()
@@ -239,59 +280,73 @@ test_different_endpoint3()
         exit 1
     fi
 
+    if ! confirm "Did you only have to paste an auth code once?"; then
+        echo "test_different_endpoint2 failed"
+        exit 1
+    fi
+    # Cleanup:
+    cd ${path_to_repo}/tests/integration/bash_tests/run_from_any
+    rm -rf ${path_to_repo}/tests/utils/globus_auth
 }
 
 # Follow these directions #####################################################
-# Modify these parameters as needed.
 
-# Step 1. Update try_num for each new test run to avoid conflicts with previous runs.
-# Alternative: Remove previous test directories manually.
-try_num=18
+# Example usage:
+# ./globus_auth.bash 21 /home/ac.forsyth2/ez/zstash /home/ac.forsyth2/zstash_tests /global/homes/f/forsyth/zstash_tests /home/f/forsyth/zstash_tests /compyfs/fors729/zstash_tests
 
-# Step 2. Set paths for your environment by uncommenting the appropriate lines.
-# Ordered by: Chrysalis, Perlmutter, Compy
-# Running from:
-path_to_repo=/home/ac.forsyth2/ez/zstash/
-# path_to_repo=/global/homes/f/forsyth/ez/zstash
-# path_to_repo=/qfs/people/fors729/ez/zstash
-# Archiving to:
-chrysalis_dst_dir=/home/ac.forsyth2/zstash_tests/test_globus_auth_try${try_num}
-perlmutter_dst_dir=/global/homes/f/forsyth/zstash_tests/test_globus_auth_try${try_num}
-hpss_dst_dir=/home/f/forsyth/zstash_tests/test_globus_auth_try${try_num}
-compy_dst_dir=/compyfs/fors729/zstash_tests/test_globus_auth_try${try_num} # Using /qfs/people/fors729/ will result in permission denied
+# Command line parameters:
+try_num="$1"
+path_to_repo="$2" # /home/ac.forsyth2/ez/zstash, /global/homes/f/forsyth/ez/zstash, /qfs/people/fors729/ez/zstash
+chrysalis_dst_basedir="$3" # /home/ac.forsyth2/zstash_tests
+perlmutter_dst_basedir="$4" # /global/homes/f/forsyth/zstash_tests
+hpss_dst_basedir="$5" # /home/f/forsyth/zstash_tests
+compy_dst_basedir="$6" # /compyfs/fors729/zstash_tests (/qfs/people/fors729/ => permission denied)
 
-# Step 3. Run the test cases for each endpoint.
-# Do once: https://app.globus.org/file-manager?two_pane=true > For "Collection", select the endpoint for the machine you're on, and authenticate if needed.
-# For each line below:
-# A. Uncomment the appropriate line
-# B. https://app.globus.org/file-manager?two_pane=true > For "Collection", select the dst_endpoint name, and authenticate if needed.
-# C. https://auth.globus.org/v2/web/consents > Manage Your Consents > Globus Endpoint Performance Monitoring > rescind all"
-# D. Run the script with `./globus_auth.bash`
-#  - Paste the URL into your browser
-#  - Authenticate to src_endpoint if needed.
-#  - Authenticate to dst_endpoint if needed.
-#  - Provide a label
-#  - Copy the auth code to the command line
-#  - If the test hangs: check https://app.globus.org/activity for errors.
-#  - If you have to paste an auth code more than once, that counts as an error.
-# E. Cleanup
-#  - Re-comment the line
-#  - `rm -rf ../../../utils/globus_auth` to remove test directories
-# test_single_auth_code ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir}
-# test_single_auth_code ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
-# test_single_auth_code ${path_to_repo} NERSC_HPSS_ENDPOINT ${hpss_dst_dir}
-# test_single_auth_code ${path_to_repo} PIC_COMPY_DTN_ENDPOINT ${compy_dst_dir}
+echo "You may wish to clear your dst directories for a fresh start:"
+echo "Chrysalis: rm -rf ${chrysalis_dst_basedir}/test_globus_auth*"
+echo "Perlmutter: rm -rf ${perlmutter_dst_basedir}/test_globus_auth*"
+echo "Compy: rm -rf ${compy_dst_basedir}/test_globus_auth*"
+echo "This won't work on HPSS, because -rf flags are unsupported:"
+echo "NERSC HPSS: rm -rf ${hpss_dst_basedir}/test_globus_auth*"
+echo ""
+echo "It is therefore advisable to just increment a 'try number' to avoid directory conflicts."
+echo "Currently, try_num=${try_num}"
+if ! confirm "Is the try_num correct?"; then
+    exit 1
+fi
 
-# Step 4. Now, some follow-up tests
+chrysalis_dst_dir=${chrysalis_dst_basedir}/test_globus_auth_try${try_num}
+perlmutter_dst_dir=${perlmutter_dst_basedir}/test_globus_auth_try${try_num}
+hpss_dst_dir=${hpss_dst_basedir}/test_globus_auth_try${try_num}
+compy_dst_dir=${compy_dst_basedir}/test_globus_auth_try${try_num}
 
-# Make sure you use a different endpoint than the last one tested above.
-# Uncomment, run (expecting no auth codes to paste), re-comment:
-# test_different_endpoint1 ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
+echo "Go to https://app.globus.org/file-manager?two_pane=true > For "Collection", choose each of the following endpoints and, if needed, authenticate:"
+echo "LCRC Improv DTN, NERSC Perlmutter, NERSC HPSS, pic#compy-dtn"
+if ! confirm "Have you authenticated into all endpoints?"; then
+    exit 1
+fi
 
-# Reset consents again: https://auth.globus.org/v2/web/consents > Manage Your Consents > Globus Endpoint Performance Monitoring > rescind all"
-# Uncomment, run (expecting 1 auth code to paste), re-comment:
-# test_different_endpoint2 ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
+echo "Primary tests: single authentication code tests for each endpoint"
+echo "If a test hangs, check if https://app.globus.org/activity reports any errors on your transfers."
+echo "Testing transfer to LCRC Improv DTN ####################################"
+test_single_auth_code ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir}
+echo "Testing transfer to NERSC Perlmutter ###################################"
+test_single_auth_code ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
+echo "Testing transfer to NERSC HPSS #########################################"
+test_single_auth_code ${path_to_repo} NERSC_HPSS_ENDPOINT ${hpss_dst_dir}
+echo "Testing transfer to pic#compy-dtn ######################################"
+test_single_auth_code ${path_to_repo} PIC_COMPY_DTN_ENDPOINT ${compy_dst_dir}
 
-# Uncomment, run (expecting 1 auth code to paste), re-comment:
+echo "Follow-up tests: behavior when switching to different endpoints"
+echo "NOTE: if you commented out tests above, and your last endpoint used was NERSC_PERLMUTTER_ENDPOINT, the following test will not work properly."
+echo "Test 1: What if we switch to a different endpoint? #####################"
+test_different_endpoint1 ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
+echo "Test 2: What if we try a) revoking consents and then b) removing the token file? ###"
+test_different_endpoint2 ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
+echo "Test 3: What if we switch to a different endpoint again, but first remove the token file? ###"
 test_different_endpoint3 ${path_to_repo} NERSC_HPSS_ENDPOINT ${hpss_dst_dir}
-# Check https://auth.globus.org/v2/web/consents: you should have *two* consents there now.
+echo "Check https://auth.globus.org/v2/web/consents > Globus Endpoint Performance Monitoring: you should have *two* consents there now."
+if ! confirm "Does https://auth.globus.org/v2/web/consents > Globus Endpoint Performance Monitoring show *two* consents?"; then
+    exit 1
+fi
+echo "All globus_auth tests completed successfully."
