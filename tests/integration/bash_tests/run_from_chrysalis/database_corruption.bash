@@ -20,12 +20,12 @@ setup()
 run_test_cases()
 {
 
-    local try_num=$1
+    local unique_id=$1
 
     SRC_DIR=/lcrc/group/e3sm/ac.forsyth2/zstash_testing/test_database_corruption # Chrysalis
-    DST_DIR=globus://6bdc7956-fc0f-4ad2-989c-7aa5ee643a79/global/homes/f/forsyth/zstash/tests/test_database_corruption_try${try_num} # Perlmutter
-    # To start fresh with try_num=1, delete the above directory on Perlmutter before running. Example:
-    # rm -rf /global/homes/f/forsyth/zstash/tests/test_database_corruption_try1
+    DST_DIR=globus://6bdc7956-fc0f-4ad2-989c-7aa5ee643a79/global/homes/f/forsyth/zstash/tests/test_database_corruption_${unique_id} # Perlmutter
+    # To start fresh, delete the directories on Perlmutter before running. Example:
+    # rm -rf /global/homes/f/forsyth/zstash/tests/test_database_corruption_<unique_id>
 
     success_count=0
     fail_count=0

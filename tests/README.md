@@ -77,10 +77,10 @@ mkdir zstash_demo; echo 'file0 stuff' > zstash_demo/file0.txt
 zstash create --hpss=globus://6bdc7956-fc0f-4ad2-989c-7aa5ee643a79//global/homes/f/forsyth/zstash/tests/test_database_corruption_setup23 zstash_demo
 # You'll have to paste an auth code here, but NOT during the database_corruption test.
 rm -rf zstash_demo/
-# Then, increment `try_num` below to avoid using an old directory.
+# Then, set a unique_id below to avoid using an old directory.
 # Alternatively, start fresh by deleting the directory on Perlmutter:
-# `rm -rf /global/homes/f/forsyth/zstash/tests/test_database_corruption_try{try_num}`
-time ./database_corruption.bash try_num # NOTE: you will have to change out paths for your username
+# `rm -rf /global/homes/f/forsyth/zstash/tests/test_database_corruption_{unique_id}`
+time ./database_corruption.bash unique_id # NOTE: you will have to change out paths for your username
 # Success count: 25
 # Fail count: 0
 # real	6m43.994s
