@@ -298,7 +298,7 @@ test_different_endpoint3()
 # pic#compy-dtn will only transfer to/from /compyfs/...
 
 # Command line parameters:
-try_num="$1"
+unique_id="$1"
 src_machine="$2" # chrysalis, perlmutter, compy
 path_to_repo="$3" # /home/ac.forsyth2/ez/zstash, /global/homes/f/forsyth/ez/zstash, /qfs/people/fors729/ez/zstash
 chrysalis_dst_basedir="$4" # /home/ac.forsyth2/zstash_tests
@@ -306,10 +306,10 @@ perlmutter_dst_basedir="$5" # /global/homes/f/forsyth/zstash_tests
 hpss_dst_basedir="$6" # /home/f/forsyth/zstash_tests
 compy_dst_basedir="$7" # /compyfs/fors729/zstash_tests (/qfs/people/fors729/ => permission denied)
 
-chrysalis_dst_dir=${chrysalis_dst_basedir}/test_globus_auth_try${try_num}
-perlmutter_dst_dir=${perlmutter_dst_basedir}/test_globus_auth_try${try_num}
-hpss_dst_dir=${hpss_dst_basedir}/test_globus_auth_try${try_num}
-compy_dst_dir=${compy_dst_basedir}/test_globus_auth_try${try_num}
+chrysalis_dst_dir=${chrysalis_dst_basedir}/test_globus_auth_${unique_id}
+perlmutter_dst_dir=${perlmutter_dst_basedir}/test_globus_auth_${unique_id}
+hpss_dst_dir=${hpss_dst_basedir}/test_globus_auth_${unique_id}
+compy_dst_dir=${compy_dst_basedir}/test_globus_auth_${unique_id}
 
 # Determine which endpoints to use for the endpoint-switching tests
 # switch1 should never be the last-tested endpoint (i.e., compy)
@@ -346,9 +346,9 @@ echo "Compy: rm -rf ${compy_dst_basedir}/test_globus_auth*"
 echo "This won't work on HPSS, because -rf flags are unsupported:"
 echo "NERSC HPSS: rm -rf ${hpss_dst_basedir}/test_globus_auth*"
 echo ""
-echo "It is therefore advisable to just increment a 'try number' to avoid directory conflicts."
-echo "Currently, try_num=${try_num}"
-if ! confirm "Is the try_num correct?"; then
+echo "It is therefore advisable to just set a unique_id to avoid directory conflicts."
+echo "Currently, unique_id=${unique_id}"
+if ! confirm "Is the unique_id correct?"; then
     exit 1
 fi
 
@@ -362,8 +362,10 @@ echo "Primary tests: single authentication code tests for each endpoint"
 echo "If a test hangs, check if https://app.globus.org/activity reports any errors on your transfers."
 echo "Testing transfer to LCRC Improv DTN ####################################"
 test_single_auth_code ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir}
-echo "Testing transfer to NERSC Perlmutter ###################################"
-test_single_auth_code ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
+if [ "$src_machine" != "perlmutter" ]; then
+    echo "Testing transfer to NERSC Perlmutter ###################################"
+    test_single_auth_code ${path_to_repo} NERSC_PERLMUTTER_ENDPOINT ${perlmutter_dst_dir}
+fi
 echo "Testing transfer to NERSC HPSS #########################################"
 test_single_auth_code ${path_to_repo} NERSC_HPSS_ENDPOINT ${hpss_dst_dir}
 echo "Testing transfer to pic#compy-dtn ######################################"
