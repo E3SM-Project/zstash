@@ -19,10 +19,10 @@ jobs:
       - name: Checkout Code Repository
         uses: actions/checkout@v3
 
-      - name: Set up Python 3.13
+      - name: Set up Python 3.14
         uses: actions/setup-python@v4
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       # Run all pre-commit hooks on all the files.
       # Getting only staged files can be tricky in case a new PR is opened
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     defaults:
       run:
         shell: bash -l {0}
@@ -73,7 +73,7 @@ jobs:
           # Ensure we have the right Python version
           python --version
           # Fix pip issues for Python 3.12+
-          if [[ "${{ matrix.python-version }}" == "3.12" ]] || [[ "${{ matrix.python-version }}" == "3.13" ]]; then
+          if [[ "${{ matrix.python-version }}" == "3.12" ]] || [[ "${{ matrix.python-version }}" == "3.13" ]] || [[ "${{ matrix.python-version }}" == "3.14" ]]; then
             python -m ensurepip --upgrade || true
             python -m pip install --upgrade --force-reinstall pip setuptools wheel
           fi
@@ -121,7 +121,7 @@ jobs:
           environment-file: conda/dev.yml
           channel-priority: flexible  # Changed from strict to flexible
           auto-update-conda: true
-          python-version: "3.13"  # Use stable Python version for docs
+          python-version: "3.14"  # Use stable Python version for docs
 
       # sphinx-multiversion allows for version docs.
       - name: Build Sphinx Docs
