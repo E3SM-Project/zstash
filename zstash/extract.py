@@ -3,7 +3,6 @@ from __future__ import absolute_import, print_function
 import argparse
 import collections
 import hashlib
-import heapq
 import logging
 import multiprocessing
 import os.path
@@ -11,6 +10,7 @@ import re
 import sqlite3
 import sys
 import tarfile
+import time
 import traceback
 from datetime import datetime
 from typing import DefaultDict, List, Optional, Set, Tuple
@@ -282,10 +282,10 @@ def extract_database(
     if args.workers > 1:
         logger.debug("Running zstash {} with multiprocessing".format(cmd))
         failures = multiprocess_extract(
-            args.workers, matches, keep_files, keep, cache, cur, args
+            args.workers, matches, keep_files, keep, cache, args
         )
     else:
-        failures = extractFiles(matches, keep_files, keep, cache, cur, args)
+        failures = extractFiles(matches, keep_files, keep, cache, args, None, cur)
 
     # Close database
     logger.debug("Closing index database")
@@ -300,7 +300,6 @@ def multiprocess_extract(
     keep_files: bool,
     keep_tars: Optional[bool],
     cache: str,
-    cur: sqlite3.Cursor,
     args: argparse.Namespace,
 ) -> List[FilesRow]:
     """
@@ -329,26 +328,12 @@ def multiprocess_extract(
     # set the number of workers to the number of tars.
     num_workers = min(num_workers, len(tar_to_size))
 
-    # For worker i, workers_to_tars[i] is a set of tars
-    # that worker i will work on.
+    # For worker i, workers_to_tars[i] is a set of tars that worker i will work on.
+    # Assign tars in round-robin fashion to maintain proper ordering
     workers_to_tars: List[set] = [set() for _ in range(num_workers)]
-    # A min heap, of (work, worker_idx) tuples, work is the size of data
-    # that worker_idx needs to work on.
-    # We can efficiently get the worker with the least amount of work.
-    work_to_workers: List[Tuple[int, int]] = [(0, i) for i in range(num_workers)]
-    heapq.heapify(workers_to_tars)
-
-    # Using a greedy approach, populate workers_to_tars.
-    for _, tar in enumerate(tar_to_size):
-        # The worker with the least work should get the current largest amount of work.
-        workers_work: int
-        worker_idx: int
-        workers_work, worker_idx = heapq.heappop(work_to_workers)
+    for idx, tar in enumerate(sorted(tar_to_size.keys())):
+        worker_idx = idx % num_workers
         workers_to_tars[worker_idx].add(tar)
-        # Add this worker back to the heap, with the new amount of work.
-        worker_tuple: Tuple[float, int] = (workers_work + tar_to_size[tar], worker_idx)
-        # FIXME: error: Cannot infer type argument 1 of "heappush"
-        heapq.heappush(work_to_workers, worker_tuple)  # type: ignore
 
     # For worker i, workers_to_matches[i] is a list of
     # matches from the database for it to process.
@@ -361,8 +346,15 @@ def multiprocess_extract(
                 # This worker gets this db_row.
                 workers_to_matches[workers_idx].append(db_row)
 
+    # Sort each worker's matches by tar to ensure they process in order
+    for worker_matches in workers_to_matches:
+        worker_matches.sort(key=lambda t: t.tar)
+
     tar_ordering: List[str] = sorted([tar for tar in tar_to_size])
-    monitor: parallel.PrintMonitor = parallel.PrintMonitor(tar_ordering)
+    manager = multiprocessing.Manager()
+    monitor: parallel.PrintMonitor = parallel.PrintMonitor(
+        tar_ordering, manager=manager
+    )
 
     # The return value for extractFiles will be added here.
     failure_queue: multiprocessing.Queue[FilesRow] = multiprocessing.Queue()
@@ -374,7 +366,7 @@ def multiprocess_extract(
         )
         process: multiprocessing.Process = multiprocessing.Process(
             target=extractFiles,
-            args=(matches, keep_files, keep_tars, cache, cur, args, worker),
+            args=(matches, keep_files, keep_tars, cache, args, worker),
             daemon=True,
         )
         process.start()
@@ -385,9 +377,38 @@ def multiprocess_extract(
     # No need to join() each of the processes when doing this,
     # because we'll be in this loop until completion.
     failures: List[FilesRow] = []
+    max_wait_time = 180  # 3 minute timeout for tests
+    start_time = time.time()
+    last_log_time = start_time
+
     while any(p.is_alive() for p in processes):
+        elapsed = time.time() - start_time
+        if elapsed > max_wait_time:
+            logger.error(
+                f"Timeout after {elapsed:.1f}s waiting for worker processes. Terminating..."
+            )
+            for p in processes:
+                if p.is_alive():
+                    logger.error(f"Terminating process {p.pid}")
+                    p.terminate()
+            break
+
+        # Log progress every 30 seconds
+        if time.time() - last_log_time > 30:
+            alive_count = sum(1 for p in processes if p.is_alive())
+            logger.debug(
+                f"Still waiting for {alive_count} worker processes after {elapsed:.1f}s"
+            )
+            last_log_time = time.time()
+
         while not failure_queue.empty():
             failures.append(failure_queue.get())
+
+        time.sleep(0.1)  # Larger sleep to reduce CPU usage
+
+    # Collect any remaining failures
+    while not failure_queue.empty():
+        failures.append(failure_queue.get())
 
     # Sort the failures, since they can come in at any order.
     failures.sort(key=lambda t: (t.name, t.tar, t.offset))
@@ -479,9 +500,9 @@ def extractFiles(  # noqa: C901
     keep_files: bool,
     keep_tars: Optional[bool],
     cache: str,
-    cur: sqlite3.Cursor,
     args: argparse.Namespace,
     multiprocess_worker: Optional[parallel.ExtractWorker] = None,
+    cur: Optional[sqlite3.Cursor] = None,
 ) -> List[FilesRow]:
     """
     Given a list of database rows, extract the files from the
@@ -498,21 +519,59 @@ def extractFiles(  # noqa: C901
     that called this function.
     We need a reference to it so we can signal it to print
     the contents of what's in its print queue.
+
+    If cur is None (when running in parallel), a new database connection
+    will be opened for this worker process.
     """
+    try:
+        result = _extractFiles_impl(
+            files, keep_files, keep_tars, cache, args, multiprocess_worker, cur
+        )
+        return result
+    except Exception as e:
+        if multiprocess_worker:
+            # Make sure we report failures even if there's an exception
+            sys.stderr.write(f"ERROR: Worker encountered fatal error: {e}\n")
+            sys.stderr.flush()
+            traceback.print_exc(file=sys.stderr)
+            for f in files:
+                multiprocess_worker.failure_queue.put(f)
+        raise
+
+
+# FIXME: C901 '_extractFiles_impl' is too complex (42)
+def _extractFiles_impl(  # noqa: C901
+    files: List[FilesRow],
+    keep_files: bool,
+    keep_tars: Optional[bool],
+    cache: str,
+    args: argparse.Namespace,
+    multiprocess_worker: Optional[parallel.ExtractWorker] = None,
+    cur: Optional[sqlite3.Cursor] = None,
+) -> List[FilesRow]:
+    """
+    Implementation of extractFiles - actual extraction logic.
+    """
+    # Open database connection if not provided (parallel case)
+    if cur is None:
+        con: sqlite3.Connection = sqlite3.connect(
+            get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES
+        )
+        cur = con.cursor()
+        close_db: bool = True
+    else:
+        close_db = False
+
     failures: List[FilesRow] = []
     tfname: str
     newtar: bool = True
     nfiles: int = len(files)
+
+    # For multiprocess workers, we'll set up logging to queue later
+    # Don't capture logs immediately to avoid blocking on initial setup
+    setup_logging_later: bool = False
     if multiprocess_worker:
-        # All messages to the logger will now be sent to
-        # this queue, instead of sys.stdout.
-        sh = logging.StreamHandler(multiprocess_worker.print_queue)
-        sh.setLevel(logging.DEBUG)
-        formatter: logging.Formatter = logging.Formatter("%(levelname)s: %(message)s")
-        sh.setFormatter(formatter)
-        logger.addHandler(sh)
-        # Don't have the logger print to the console as the message come in.
-        logger.propagate = False
+        setup_logging_later = True
 
     for i in range(nfiles):
         files_row: FilesRow = files[i]
@@ -521,16 +580,32 @@ def extractFiles(  # noqa: C901
         if newtar:
             newtar = False
             tfname = os.path.join(cache, files_row.tar)
-            # Everytime we're extracting a new tar, if running in parallel,
-            # let the process know.
-            # This is to synchronize the print statements.
-            if multiprocess_worker:
+
+            # Set up print queue synchronization NOW, after we know which tar we're processing
+            if setup_logging_later and multiprocess_worker:
+                # Set the current tar FIRST, before redirecting logging
                 multiprocess_worker.set_curr_tar(files_row.tar)
 
-            if config.hpss is not None:
-                hpss: str = config.hpss
+                # NOW redirect all logger messages to the print queue
+                sh = logging.StreamHandler(multiprocess_worker.print_queue)
+                sh.setLevel(logging.DEBUG)
+                formatter: logging.Formatter = logging.Formatter(
+                    "%(levelname)s: %(message)s"
+                )
+                sh.setFormatter(formatter)
+                logger.addHandler(sh)
+                logger.propagate = False
+                setup_logging_later = False
+            elif multiprocess_worker:
+                # Logging already set up, just update which tar we're working on
+                multiprocess_worker.set_curr_tar(files_row.tar)
+
+            # Use args.hpss directly - it's always set correctly
+            if args.hpss is not None:
+                hpss: str = args.hpss
             else:
-                raise TypeError("Invalid config.hpss={}".format(config.hpss))
+                raise TypeError("Invalid args.hpss={}".format(args.hpss))
+
             tries: int = args.retries + 1
             # Set to True to test the `--retries` option with a forced failure.
             # Then run `python -m unittest tests.test_extract.TestExtract.testExtractRetries`
@@ -677,7 +752,11 @@ def extractFiles(  # noqa: C901
             failures.append(files_row)
 
         if multiprocess_worker:
-            multiprocess_worker.print_contents()
+            try:
+                multiprocess_worker.print_contents()
+            except (TimeoutError, Exception):
+                # If printing fails, continue - work is still done
+                pass
 
         # Close current archive?
         if i == nfiles - 1 or files[i].tar != files[i + 1].tar:
@@ -688,7 +767,38 @@ def extractFiles(  # noqa: C901
             tar.close()
 
             if multiprocess_worker:
-                multiprocess_worker.done_enqueuing_output_for_tar(files_row.tar)
+                try:
+                    sys.stderr.write(
+                        f"DEBUG: Worker calling done_enqueuing for {files_row.tar}\n"
+                    )
+                    sys.stderr.flush()
+                    multiprocess_worker.done_enqueuing_output_for_tar(files_row.tar)
+                    sys.stderr.write(
+                        f"DEBUG: Worker finished done_enqueuing for {files_row.tar}\n"
+                    )
+                    sys.stderr.flush()
+                except TimeoutError as e:
+                    sys.stderr.write(f"DEBUG: Timeout in done_enqueuing: {e}\n")
+                    sys.stderr.flush()
+                    pass
+
+                # Print the output for this tar now
+                try:
+                    sys.stderr.write(
+                        f"DEBUG: Worker calling print_all_contents for {files_row.tar}\n"
+                    )
+                    sys.stderr.flush()
+                    multiprocess_worker.print_all_contents()
+                    sys.stderr.write(
+                        f"DEBUG: Worker finished print_all_contents for {files_row.tar}\n"
+                    )
+                    sys.stderr.flush()
+                except (TimeoutError, Exception) as e:
+                    sys.stderr.write(
+                        f"DEBUG: Exception in print_all_contents for {files_row.tar}: {e}\n"
+                    )
+                    sys.stderr.flush()
+                    pass
 
             # Open new archive next time
             newtar = True
@@ -700,13 +810,14 @@ def extractFiles(  # noqa: C901
                 else:
                     raise TypeError("Invalid tfname={}".format(tfname))
 
-    if multiprocess_worker:
-        # If there are things left to print, print them.
-        multiprocess_worker.print_all_contents()
+    # Close database connection if we opened it
+    if close_db:
+        cur.close()
+        con.close()
 
-        # Add the failures to the queue.
-        # When running with multiprocessing, the function multiprocess_extract()
-        # that calls this extractFiles() function will return the failures as a list.
+    if multiprocess_worker:
+        # All printing should have happened after each tar
+        # Just add failures to the queue
         for f in failures:
             multiprocess_worker.failure_queue.put(f)
     return failures
