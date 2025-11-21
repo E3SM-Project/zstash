@@ -48,6 +48,8 @@ class PrintMonitor(object):
 
         # Lock for updating the counter
         self._lock: multiprocessing.synchronize.Lock = manager.Lock()
+        # Lock for printing (ensures atomic output)
+        self._print_lock: multiprocessing.synchronize.Lock = manager.Lock()
 
     def wait_turn(
         self, worker, workers_curr_tar: str, indef_wait: bool = True, *args, **kwargs
@@ -203,9 +205,21 @@ class ExtractWorker(object):
             tar_to_print: str = self.print_queue[0].tar
 
             # Print all applicable values in the print_queue for this tar
+            # Collect all messages for this tar
+            messages_to_print = []
             while self.print_queue and (self.print_queue[0].tar == tar_to_print):
                 msg: str = self.print_queue.popleft().msg
-                print(msg, end="", flush=True)
+                messages_to_print.append(msg)
+
+            # Print as single atomic write
+            if messages_to_print:
+                import sys
+
+                with self.print_monitor._print_lock:
+                    combined = "".join(messages_to_print)
+                    # Use write() instead of print() for better atomicity
+                    sys.stdout.write(combined)
+                    sys.stdout.flush()
 
             # After printing this tar, advance the counter if this tar is marked as done
             if self.is_output_done_enqueuing.get(tar_to_print, False):
@@ -226,6 +240,12 @@ class PrintQueue(collections.deque):
         self.curr_tar: Optional[str] = None
 
     def write(self, msg: str):
+        import sys
+
+        sys.stderr.write(
+            f"DEBUG: write() called, curr_tar={self.curr_tar}, msg={msg[:50]}\n"
+        )
+        sys.stderr.flush()
         if self.curr_tar:
             self.append(TarAndMsg(self.curr_tar, msg))
 
