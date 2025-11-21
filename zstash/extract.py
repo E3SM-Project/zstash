@@ -13,7 +13,7 @@ import tarfile
 import time
 import traceback
 from datetime import datetime
-from typing import DefaultDict, List, Optional, Set, Tuple
+from typing import DefaultDict, Dict, List, Optional, Set, Tuple
 
 import _hashlib
 import _io
@@ -378,11 +378,15 @@ def multiprocess_extract(  # noqa: C901
     start_time = time.time()
     last_log_time = start_time
 
-    # Track which tars have been printed
-    printed_tars: set = set()
+    # Buffer for out-of-order output
+    output_buffer: Dict[str, List[str]] = {}
     current_tar_idx = 0
 
-    while any(p.is_alive() for p in processes) or not output_queue.empty():
+    while (
+        any(p.is_alive() for p in processes)
+        or not output_queue.empty()
+        or output_buffer
+    ):
         elapsed = time.time() - start_time
         if elapsed > max_wait_time and any(p.is_alive() for p in processes):
             logger.error(f"Timeout after {elapsed:.1f}s. Terminating...")
@@ -399,22 +403,21 @@ def multiprocess_extract(  # noqa: C901
             )
             last_log_time = time.time()
 
-        # Print output in order
+        # Collect output into buffer
         while not output_queue.empty():
             tar_name, messages = output_queue.get()
-            # Only print if it's the next tar in sequence
-            if tar_name == tar_ordering[current_tar_idx]:
-                for msg in messages:
-                    print(msg, end="", flush=True)
-                printed_tars.add(tar_name)
-                current_tar_idx += 1
+            output_buffer[tar_name] = messages
 
-                # Check if we can print any queued tars now
-                # (This handles out-of-order queue additions)
+        # Print in order from buffer
+        while current_tar_idx < len(tar_ordering):
+            tar_name = tar_ordering[current_tar_idx]
+            if tar_name in output_buffer:
+                for msg in output_buffer[tar_name]:
+                    print(msg, end="", flush=True)
+                del output_buffer[tar_name]
+                current_tar_idx += 1
             else:
-                # Put it back for later
-                output_queue.put((tar_name, messages))
-                break
+                break  # Wait for this tar's output
 
         # Collect failures
         while not failure_queue.empty():
