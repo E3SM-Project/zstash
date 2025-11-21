@@ -552,6 +552,17 @@ def _extractFiles_impl(  # noqa: C901
     """
     Implementation of extractFiles - actual extraction logic.
     """
+    # Set up logging for this worker (do this once at the start)
+    if (
+        multiprocess_worker and cur is None
+    ):  # cur is None means we're in a worker process
+        sh = logging.StreamHandler(multiprocess_worker.print_queue)
+        sh.setLevel(logging.DEBUG)
+        formatter: logging.Formatter = logging.Formatter("%(levelname)s: %(message)s")
+        sh.setFormatter(formatter)
+        logger.addHandler(sh)
+        logger.propagate = False
+
     # Open database connection if not provided (parallel case)
     if cur is None:
         con: sqlite3.Connection = sqlite3.connect(
@@ -566,9 +577,6 @@ def _extractFiles_impl(  # noqa: C901
     tfname: str
     newtar: bool = True
     nfiles: int = len(files)
-
-    # Track if we've set up logging yet
-    logging_setup: bool = False
 
     for i in range(nfiles):
         files_row: FilesRow = files[i]
@@ -595,18 +603,6 @@ def _extractFiles_impl(  # noqa: C901
                     # Skip to next tar
                     newtar = True
                     continue
-
-                # NOW set up logging (only once)
-                if not logging_setup:
-                    sh = logging.StreamHandler(multiprocess_worker.print_queue)
-                    sh.setLevel(logging.DEBUG)
-                    formatter: logging.Formatter = logging.Formatter(
-                        "%(levelname)s: %(message)s"
-                    )
-                    sh.setFormatter(formatter)
-                    logger.addHandler(sh)
-                    logger.propagate = False
-                    logging_setup = True
 
                 # Set current tar for this worker
                 multiprocess_worker.set_curr_tar(files_row.tar)
@@ -769,9 +765,6 @@ def _extractFiles_impl(  # noqa: C901
             tar.close()
 
             if multiprocess_worker:
-                # Mark that all output for this tar is queued
-                multiprocess_worker.done_enqueuing_output_for_tar(files_row.tar)
-
                 # Now print everything and advance to next tar
                 try:
                     multiprocess_worker.print_all_contents()

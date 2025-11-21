@@ -195,31 +195,14 @@ class ExtractWorker(object):
 
     def print_all_contents(self, *args, **kwargs):
         """
-        Block until all of the contents of self.print_queue are printed.
-
-        If it's not our turn and the passed in timeout to print_monitor.wait_turn
-        is over, a NotYourTurnError exception is raised.
+        Print all contents from the queue without waiting for turn.
+        The worker already has its turn from the initial wait_turn() call.
         """
         while self.has_to_print():
-            # Try to print the first element in the queue.
+            # Get the tar for the first element
             tar_to_print: str = self.print_queue[0].tar
 
-            try:
-                self.print_monitor.wait_turn(self, tar_to_print, *args, **kwargs)
-            except TimeoutError:
-                # If we timeout waiting to print, dump to stdout without ordering
-                # This prevents deadlocks
-                while self.print_queue and (self.print_queue[0].tar == tar_to_print):
-                    err_msg: str = self.print_queue.popleft().msg
-                    print(err_msg, end="", flush=True)
-
-                # Mark as done even though we couldn't print in order
-                if self.is_output_done_enqueuing.get(tar_to_print, False):
-                    # Skip the monitor sync since it timed out
-                    pass
-                continue
-
-            # Print all applicable values in the print_queue.
+            # Print all applicable values in the print_queue for this tar
             while self.print_queue and (self.print_queue[0].tar == tar_to_print):
                 msg: str = self.print_queue.popleft().msg
                 print(msg, end="", flush=True)
