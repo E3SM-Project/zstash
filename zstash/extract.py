@@ -765,6 +765,9 @@ def _extractFiles_impl(  # noqa: C901
             tar.close()
 
             if multiprocess_worker:
+                # Mark that all output for this tar is queued
+                multiprocess_worker.done_enqueuing_output_for_tar(files_row.tar)
+
                 # Now print everything and advance to next tar
                 try:
                     multiprocess_worker.print_all_contents()

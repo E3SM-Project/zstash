@@ -207,14 +207,11 @@ class ExtractWorker(object):
                 msg: str = self.print_queue.popleft().msg
                 print(msg, end="", flush=True)
 
-            # If True, then all of the output for extracting tar_to_print was in the queue.
-            # Since we just finished printing all of it, we can move onto the next one.
-            if self.is_output_done_enqueuing[tar_to_print]:
-                # Let all of the other workers know that this worker is done.
+            # After printing this tar, advance the counter if this tar is marked as done
+            if self.is_output_done_enqueuing.get(tar_to_print, False):
                 try:
                     self.print_monitor.done_enqueuing_output_for_tar(self, tar_to_print)
                 except TimeoutError:
-                    # If we can't update the monitor, just continue
                     pass
 
 
