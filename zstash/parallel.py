@@ -5,8 +5,6 @@ import multiprocessing
 import time
 from typing import Dict, List, Optional
 
-from .settings import FilesRow
-
 
 class NotYourTurnError(Exception):
     """
@@ -123,39 +121,22 @@ class PrintMonitor(object):
 
 
 class ExtractWorker(object):
-    """
-    An object that is attached to a Process.
-    It redirects all of the output of the logging module to a queue.
-    Then with a PrintMonitor, it prints to the
-    terminal in the order defined by the PrintMonitor.
-
-    This worker is called during `zstash extract`.
-    """
-
     def __init__(
         self,
         print_monitor: PrintMonitor,
         tars_to_work_on: List[str],
-        # TODO: failure_queue has type `multiprocessing.Queue[FilesRow]`
         failure_queue,
+        output_queue,  # NEW: queue for output messages
         *args,
         **kwargs,
     ):
-        """
-        print_monitor is used to determine if it's this worker's turn to print.
-        tars_to_work_on is a list of the tars that this worker will process.
-        Any failures are added to the failure_queue, to return any failed values.
-        """
         self.print_monitor: PrintMonitor = print_monitor
-        # Every call to print() in the original function will
-        # be piped to this queue instead of the screen.
         self.print_queue: PrintQueue = PrintQueue()
-        # A tar is mapped to True when all of its output is in the queue.
         self.is_output_done_enqueuing: Dict[str, bool] = {
             tar: False for tar in tars_to_work_on
         }
-        # After extractFiles is done, all of the failures will be added to this queue.
-        self.failure_queue: multiprocessing.Queue[FilesRow] = failure_queue
+        self.failure_queue = failure_queue
+        self.output_queue = output_queue  # NEW
 
     def set_curr_tar(self, tar: str):
         """
@@ -197,31 +178,22 @@ class ExtractWorker(object):
 
     def print_all_contents(self, *args, **kwargs):
         """
-        Print all contents from the queue without waiting for turn.
-        The worker already has its turn from the initial wait_turn() call.
+        Send all queued messages to the output queue for the main process to print.
         """
         while self.has_to_print():
-            # Get the tar for the first element
             tar_to_print: str = self.print_queue[0].tar
 
-            # Print all applicable values in the print_queue for this tar
             # Collect all messages for this tar
             messages_to_print = []
             while self.print_queue and (self.print_queue[0].tar == tar_to_print):
                 msg: str = self.print_queue.popleft().msg
                 messages_to_print.append(msg)
 
-            # Print as single atomic write
+            # Send to output queue instead of printing
             if messages_to_print:
-                import sys
+                self.output_queue.put((tar_to_print, messages_to_print))
 
-                with self.print_monitor._print_lock:
-                    combined = "".join(messages_to_print)
-                    # Use write() instead of print() for better atomicity
-                    sys.stdout.write(combined)
-                    sys.stdout.flush()
-
-            # After printing this tar, advance the counter if this tar is marked as done
+            # After sending this tar's output, advance counter if done
             if self.is_output_done_enqueuing.get(tar_to_print, False):
                 try:
                     self.print_monitor.done_enqueuing_output_for_tar(self, tar_to_print)

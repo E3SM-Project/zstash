@@ -294,7 +294,8 @@ def extract_database(
     return failures
 
 
-def multiprocess_extract(
+# FIXME: C901 'multiprocess_extract' is too complex (21)
+def multiprocess_extract(  # noqa: C901
     num_workers: int,
     matches: List[FilesRow],
     keep_files: bool,
@@ -304,9 +305,6 @@ def multiprocess_extract(
 ) -> List[FilesRow]:
     """
     Extract the files from the matches in parallel.
-
-    A single unit of work is a tar and all of
-    the files in it to extract.
     """
     # A dict of tar -> size of files in it.
     # This is because we're trying to balance the load between
@@ -356,13 +354,15 @@ def multiprocess_extract(
         tar_ordering, manager=manager
     )
 
-    # The return value for extractFiles will be added here.
+    # Create queues for failures and output
     failure_queue: multiprocessing.Queue[FilesRow] = multiprocessing.Queue()
+    output_queue: multiprocessing.Queue[tuple] = multiprocessing.Queue()
+
     processes: List[multiprocessing.Process] = []
     for matches in workers_to_matches:
         tars_for_this_worker: List[str] = list(set(match.tar for match in matches))
         worker: parallel.ExtractWorker = parallel.ExtractWorker(
-            monitor, tars_for_this_worker, failure_queue
+            monitor, tars_for_this_worker, failure_queue, output_queue
         )
         process: multiprocessing.Process = multiprocessing.Process(
             target=extractFiles,
@@ -372,24 +372,22 @@ def multiprocess_extract(
         process.start()
         processes.append(process)
 
-    # While the processes are running, we need to empty the queue.
-    # Otherwise, it causes hanging.
-    # No need to join() each of the processes when doing this,
-    # because we'll be in this loop until completion.
+    # Collect output and failures while processes run
     failures: List[FilesRow] = []
-    max_wait_time = 180  # 3 minute timeout for tests
+    max_wait_time = 180
     start_time = time.time()
     last_log_time = start_time
 
-    while any(p.is_alive() for p in processes):
+    # Track which tars have been printed
+    printed_tars: set = set()
+    current_tar_idx = 0
+
+    while any(p.is_alive() for p in processes) or not output_queue.empty():
         elapsed = time.time() - start_time
-        if elapsed > max_wait_time:
-            logger.error(
-                f"Timeout after {elapsed:.1f}s waiting for worker processes. Terminating..."
-            )
+        if elapsed > max_wait_time and any(p.is_alive() for p in processes):
+            logger.error(f"Timeout after {elapsed:.1f}s. Terminating...")
             for p in processes:
                 if p.is_alive():
-                    logger.error(f"Terminating process {p.pid}")
                     p.terminate()
             break
 
@@ -397,20 +395,50 @@ def multiprocess_extract(
         if time.time() - last_log_time > 30:
             alive_count = sum(1 for p in processes if p.is_alive())
             logger.debug(
-                f"Still waiting for {alive_count} worker processes after {elapsed:.1f}s"
+                f"Still waiting for {alive_count} workers after {elapsed:.1f}s"
             )
             last_log_time = time.time()
 
+        # Print output in order
+        while not output_queue.empty():
+            tar_name, messages = output_queue.get()
+            # Only print if it's the next tar in sequence
+            if tar_name == tar_ordering[current_tar_idx]:
+                for msg in messages:
+                    print(msg, end="", flush=True)
+                printed_tars.add(tar_name)
+                current_tar_idx += 1
+
+                # Check if we can print any queued tars now
+                # (This handles out-of-order queue additions)
+            else:
+                # Put it back for later
+                output_queue.put((tar_name, messages))
+                break
+
+        # Collect failures
         while not failure_queue.empty():
             failures.append(failure_queue.get())
 
-        time.sleep(0.1)  # Larger sleep to reduce CPU usage
+        time.sleep(0.1)
 
-    # Collect any remaining failures
+    # Print any remaining output
+    remaining_output = []
+    while not output_queue.empty():
+        remaining_output.append(output_queue.get())
+
+    # Sort and print remaining output
+    remaining_output.sort(
+        key=lambda x: tar_ordering.index(x[0]) if x[0] in tar_ordering else 999
+    )
+    for tar_name, messages in remaining_output:
+        for msg in messages:
+            print(msg, end="", flush=True)
+
+    # Collect remaining failures
     while not failure_queue.empty():
         failures.append(failure_queue.get())
 
-    # Sort the failures, since they can come in at any order.
     failures.sort(key=lambda t: (t.name, t.tar, t.offset))
     return failures
 
