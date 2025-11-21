@@ -50,39 +50,33 @@ class PrintMonitor(object):
         self._lock: multiprocessing.synchronize.Lock = manager.Lock()
 
     def wait_turn(
-        # TODO: worker has type `ExtractWorker`
-        self,
-        worker,
-        workers_curr_tar: str,
-        indef_wait: bool = True,
-        *args,
-        **kwargs,
+        self, worker, workers_curr_tar: str, indef_wait: bool = True, *args, **kwargs
     ):
-        """
-        While a worker's current tar isn't the one
-        needed to be printed, wait.
+        import sys
 
-        A timeout is passed into self._cv.wait(), and if the
-        turn isn't given within that, a NotYourTurnError is raised.
-
-        If indef_wait is True, indefinitely wait until it's
-        the worker's turn.
-        """
         # Find the index of the worker's tar in the ordered list
         try:
             tar_index = self._tars_list.index(workers_curr_tar)
         except ValueError:
-            # Tar not in list, just return
+            sys.stderr.write(f"DEBUG: Tar {workers_curr_tar} not in list!\n")
+            sys.stderr.flush()
             return
 
-        max_wait_time = 180.0  # 3 minutes total wait
+        sys.stderr.write(
+            f"DEBUG: Worker waiting for tar {workers_curr_tar} (index {tar_index}), current index is {self._current_tar_index.value}\n"
+        )
+        sys.stderr.flush()
+
+        max_wait_time = 180.0
         start_time = time.time()
         attempted = False
 
         while True:
-            # Check if it's our turn
             if self._current_tar_index.value == tar_index:
-                # It's our turn!
+                sys.stderr.write(
+                    f"DEBUG: Worker got turn for tar {workers_curr_tar}!\n"
+                )
+                sys.stderr.flush()
                 return
 
             if attempted and not indef_wait:

@@ -567,11 +567,8 @@ def _extractFiles_impl(  # noqa: C901
     newtar: bool = True
     nfiles: int = len(files)
 
-    # For multiprocess workers, we'll set up logging to queue later
-    # Don't capture logs immediately to avoid blocking on initial setup
-    setup_logging_later: bool = False
-    if multiprocess_worker:
-        setup_logging_later = True
+    # Track if we've set up logging yet
+    logging_setup: bool = False
 
     for i in range(nfiles):
         files_row: FilesRow = files[i]
@@ -581,23 +578,37 @@ def _extractFiles_impl(  # noqa: C901
             newtar = False
             tfname = os.path.join(cache, files_row.tar)
 
-            # Set up print queue synchronization NOW, after we know which tar we're processing
-            if setup_logging_later and multiprocess_worker:
-                # Set the current tar FIRST, before redirecting logging
-                multiprocess_worker.set_curr_tar(files_row.tar)
+            # CRITICAL: Wait for our turn BEFORE doing anything with this tar
+            if multiprocess_worker:
+                try:
+                    multiprocess_worker.print_monitor.wait_turn(
+                        multiprocess_worker, files_row.tar, indef_wait=True
+                    )
+                except TimeoutError as e:
+                    logger.error(
+                        f"Timeout waiting for turn to process {files_row.tar}: {e}"
+                    )
+                    # Mark all remaining files from this tar as failed
+                    for j in range(i, nfiles):
+                        if files[j].tar == files_row.tar:
+                            failures.append(files[j])
+                    # Skip to next tar
+                    newtar = True
+                    continue
 
-                # NOW redirect all logger messages to the print queue
-                sh = logging.StreamHandler(multiprocess_worker.print_queue)
-                sh.setLevel(logging.DEBUG)
-                formatter: logging.Formatter = logging.Formatter(
-                    "%(levelname)s: %(message)s"
-                )
-                sh.setFormatter(formatter)
-                logger.addHandler(sh)
-                logger.propagate = False
-                setup_logging_later = False
-            elif multiprocess_worker:
-                # Logging already set up, just update which tar we're working on
+                # NOW set up logging (only once)
+                if not logging_setup:
+                    sh = logging.StreamHandler(multiprocess_worker.print_queue)
+                    sh.setLevel(logging.DEBUG)
+                    formatter: logging.Formatter = logging.Formatter(
+                        "%(levelname)s: %(message)s"
+                    )
+                    sh.setFormatter(formatter)
+                    logger.addHandler(sh)
+                    logger.propagate = False
+                    logging_setup = True
+
+                # Set current tar for this worker
                 multiprocess_worker.set_curr_tar(files_row.tar)
 
             # Use args.hpss directly - it's always set correctly
@@ -649,8 +660,6 @@ def _extractFiles_impl(  # noqa: C901
         # Extract file
         cmd: str = "Extracting" if keep_files else "Checking"
         logger.info(cmd + " %s" % (files_row.name))
-        # if multiprocess_worker:
-        #     print('{} is {} {} from {}'.format(multiprocess_worker, cmd, file[1], file[5]))
 
         if keep_files and not should_extract_file(files_row):
             # If we were going to extract, but aren't
@@ -751,13 +760,6 @@ def _extractFiles_impl(  # noqa: C901
             logger.error("Retrieving {}".format(files_row.name))
             failures.append(files_row)
 
-        if multiprocess_worker:
-            try:
-                multiprocess_worker.print_contents()
-            except (TimeoutError, Exception):
-                # If printing fails, continue - work is still done
-                pass
-
         # Close current archive?
         if i == nfiles - 1 or files[i].tar != files[i + 1].tar:
             # We're either on the last file or the tar is distinct from the tar of the next file.
@@ -767,38 +769,14 @@ def _extractFiles_impl(  # noqa: C901
             tar.close()
 
             if multiprocess_worker:
-                try:
-                    sys.stderr.write(
-                        f"DEBUG: Worker calling done_enqueuing for {files_row.tar}\n"
-                    )
-                    sys.stderr.flush()
-                    multiprocess_worker.done_enqueuing_output_for_tar(files_row.tar)
-                    sys.stderr.write(
-                        f"DEBUG: Worker finished done_enqueuing for {files_row.tar}\n"
-                    )
-                    sys.stderr.flush()
-                except TimeoutError as e:
-                    sys.stderr.write(f"DEBUG: Timeout in done_enqueuing: {e}\n")
-                    sys.stderr.flush()
-                    pass
+                # Mark that all output for this tar is queued
+                multiprocess_worker.done_enqueuing_output_for_tar(files_row.tar)
 
-                # Print the output for this tar now
+                # Now print everything and advance to next tar
                 try:
-                    sys.stderr.write(
-                        f"DEBUG: Worker calling print_all_contents for {files_row.tar}\n"
-                    )
-                    sys.stderr.flush()
                     multiprocess_worker.print_all_contents()
-                    sys.stderr.write(
-                        f"DEBUG: Worker finished print_all_contents for {files_row.tar}\n"
-                    )
-                    sys.stderr.flush()
                 except (TimeoutError, Exception) as e:
-                    sys.stderr.write(
-                        f"DEBUG: Exception in print_all_contents for {files_row.tar}: {e}\n"
-                    )
-                    sys.stderr.flush()
-                    pass
+                    logger.debug(f"Error printing contents for {files_row.tar}: {e}")
 
             # Open new archive next time
             newtar = True
@@ -816,8 +794,7 @@ def _extractFiles_impl(  # noqa: C901
         con.close()
 
     if multiprocess_worker:
-        # All printing should have happened after each tar
-        # Just add failures to the queue
+        # Add failures to the queue
         for f in failures:
             multiprocess_worker.failure_queue.put(f)
     return failures
