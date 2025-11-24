@@ -2,6 +2,7 @@ build/
 dist/
 tests/utils/test_follow_symlinks
 tests/utils/test_follow_symlinks_non_archived
+tests/utils/globus_tar_deletion
 zstash.egg-info/
 *.pyc
 *~
