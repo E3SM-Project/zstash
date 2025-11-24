@@ -21,6 +21,7 @@ from .settings import (
     get_db_filename,
     logger,
 )
+from .transfer_tracking import GlobusTransferCollection, HPSSTransferCollection
 from .utils import get_files_to_archive, update_config
 
 
@@ -29,8 +30,11 @@ def update():
     args: argparse.Namespace
     cache: str
     args, cache = setup_update()
+    htc = HPSSTransferCollection()
 
-    result: Optional[List[str]] = update_database(args, cache)
+    result: Optional[List[str]]
+    gtc: Optional[GlobusTransferCollection]
+    result, gtc = update_database(args, cache, htc)
 
     if result is None:
         # There was either nothing to update or `--dry-run` was set.
@@ -43,9 +47,17 @@ def update():
         hpss = config.hpss
     else:
         raise TypeError("Invalid config.hpss={}".format(config.hpss))
-    hpss_put(hpss, get_db_filename(cache), cache, keep=args.keep, is_index=True)
+    hpss_put(
+        hpss,
+        get_db_filename(cache),
+        cache,
+        keep=args.keep,
+        is_index=True,
+        gtc=gtc,
+        # htc=htc,  # Don't track index.db for deletion
+    )
 
-    globus_finalize(non_blocking=args.non_blocking)
+    globus_finalize(gtc, htc, non_blocking=args.non_blocking)
 
     # List failures
     if len(failures) > 0:
@@ -147,10 +159,11 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
 
 # C901 'update_database' is too complex (20)
 def update_database(  # noqa: C901
-    args: argparse.Namespace, cache: str
-) -> Optional[List[str]]:
+    args: argparse.Namespace, cache: str, htc: HPSSTransferCollection
+) -> Tuple[Optional[List[str]], Optional[GlobusTransferCollection]]:
     # Open database
     logger.debug("Opening index database")
+    gtc: Optional[GlobusTransferCollection] = None
     if not os.path.exists(get_db_filename(cache)):
         # The database file doesn't exist in the cache.
         # We need to retrieve it from HPSS
@@ -160,7 +173,7 @@ def update_database(  # noqa: C901
                 hpss: str = config.hpss
             else:
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
-            globus_activate(hpss)
+            gtc = globus_activate(hpss)
             hpss_get(hpss, get_db_filename(cache), cache)
         else:
             error_str: str = (
@@ -242,7 +255,7 @@ def update_database(  # noqa: C901
         # Close database
         con.commit()
         con.close()
-        return None
+        return None, gtc
 
     # --dry-run option
     if args.dry_run:
@@ -252,7 +265,7 @@ def update_database(  # noqa: C901
         # Close database
         con.commit()
         con.close()
-        return None
+        return None, gtc
 
     # Find last used tar archive
     itar: int = -1
@@ -263,24 +276,7 @@ def update_database(  # noqa: C901
         itar = max(itar, int(tfile_string[0:6], 16))
 
     failures: List[str]
-    if args.follow_symlinks:
-        try:
-            # Add files
-            failures = add_files(
-                cur,
-                con,
-                itar,
-                newfiles,
-                cache,
-                keep,
-                args.follow_symlinks,
-                non_blocking=args.non_blocking,
-                error_on_duplicate_tar=args.error_on_duplicate_tar,
-                overwrite_duplicate_tars=args.overwrite_duplicate_tars,
-            )
-        except FileNotFoundError:
-            raise Exception("Archive update failed due to broken symlink.")
-    else:
+    try:
         # Add files
         failures = add_files(
             cur,
@@ -293,10 +289,17 @@ def update_database(  # noqa: C901
             non_blocking=args.non_blocking,
             error_on_duplicate_tar=args.error_on_duplicate_tar,
             overwrite_duplicate_tars=args.overwrite_duplicate_tars,
+            gtc=gtc,
+            htc=htc,
         )
+    except FileNotFoundError as e:
+        if args.follow_symlinks:
+            raise Exception("Archive update failed due to broken symlink.")
+        else:
+            raise e
 
     # Close database
     con.commit()
     con.close()
 
-    return failures
+    return failures, gtc

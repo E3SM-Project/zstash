@@ -20,6 +20,7 @@ from globus_sdk.response import GlobusHTTPResponse
 from globus_sdk.services.auth.errors import AuthAPIError
 
 from .settings import logger
+from .utils import ts_utc
 
 # Global constants ############################################################
 HPSS_ENDPOINT_MAP: Dict[str, str] = {
@@ -46,7 +47,7 @@ INI_PATH: str = os.path.expanduser("~/.zstash.ini")
 TOKEN_FILE = os.path.expanduser("~/.zstash_globus_tokens.json")
 
 # Independent functions #######################################################
-# The functions here don't rely on the global variables defined in globus.py.
+# The functions here don't rely on the classes defined in globus.py.
 
 
 # Primarily used by globus_activate ###########################################
@@ -217,6 +218,13 @@ def save_tokens(token_response):
 
 
 # Primarily used by globus_transfer ###########################################
+def file_exists(archive_directory_listing, name: str) -> bool:
+    for entry in archive_directory_listing:
+        if entry.get("name") == name:
+            return True
+    return False
+
+
 def set_up_TransferData(
     transfer_type: str,
     local_endpoint: Optional[str],
@@ -290,3 +298,95 @@ def submit_transfer_with_checks(transfer_client, transfer_data) -> GlobusHTTPRes
         else:
             raise err
     return task
+
+
+def globus_block_wait(
+    transfer_client: TransferClient,
+    task_id: str,
+    wait_timeout: int,
+    max_retries: int,
+):
+
+    # poll every "polling_interval" seconds to speed up small transfers.  Report every 2 hours, stop waiting aftert 5*2 = 10 hours
+    logger.info(
+        f"{ts_utc()}: BLOCKING START: invoking task_wait for task_id = {task_id}"
+    )
+    task_status = "UNKNOWN"
+    retry_count = 0
+    while retry_count < max_retries:
+        try:
+            # Wait for the task to complete
+            logger.info(
+                f"{ts_utc()}: on task_wait try {retry_count + 1} out of {max_retries}"
+            )
+            transfer_client.task_wait(
+                task_id, timeout=wait_timeout, polling_interval=10
+            )
+            logger.info(f"{ts_utc()}: done with wait")
+        except Exception as e:
+            logger.error(f"Unexpected Exception: {e}")
+        else:
+            curr_task = transfer_client.get_task(task_id)
+            task_status = curr_task["status"]
+            if task_status == "SUCCEEDED":
+                break
+        finally:
+            retry_count += 1
+            logger.info(
+                f"{ts_utc()}: BLOCKING retry_count = {retry_count} of {max_retries} of timeout {wait_timeout} seconds"
+            )
+
+    if retry_count == max_retries:
+        logger.info(
+            f"{ts_utc()}: BLOCKING EXHAUSTED {max_retries} of timeout {wait_timeout} seconds"
+        )
+        task_status = "EXHAUSTED_TIMEOUT_RETRIES"
+
+    logger.info(
+        f"{ts_utc()}: BLOCKING ENDS: task_id {task_id} returned from task_wait with status {task_status}"
+    )
+
+    return task_status
+
+
+# Primarily used by globus_transfer, globus_finalize ##########################
+def globus_wait(transfer_client: TransferClient, task_id: str):
+    try:
+        """
+        A Globus transfer job (task) can be in one of the three states:
+        ACTIVE, SUCCEEDED, FAILED. The script every 20 seconds polls a
+        status of the transfer job (task) from the Globus Transfer service,
+        with 20 second timeout limit. If the task is ACTIVE after time runs
+        out 'task_wait' returns False, and True otherwise.
+        """
+        while not transfer_client.task_wait(task_id, timeout=300, polling_interval=20):
+            pass
+        """
+        The Globus transfer job (task) has been finished (SUCCEEDED or FAILED).
+        Check if the transfer SUCCEEDED or FAILED.
+        """
+        task = transfer_client.get_task(task_id)
+        if task["status"] == "SUCCEEDED":
+            src_ep = task["source_endpoint_id"]
+            dst_ep = task["destination_endpoint_id"]
+            label = task["label"]
+            logger.info(
+                "Globus transfer {}, from {} to {}: {} succeeded".format(
+                    task_id, src_ep, dst_ep, label
+                )
+            )
+        else:
+            logger.error("Transfer FAILED")
+    except TransferAPIError as e:
+        if e.code == "NoCredException":
+            logger.error(
+                "{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(
+                    e.message
+                )
+            )
+        else:
+            logger.error(e)
+        sys.exit(1)
+    except Exception as e:
+        logger.error("Exception: {}".format(e))
+        sys.exit(1)
