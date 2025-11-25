@@ -83,6 +83,14 @@ def globus_transfer(  # noqa: C901
     if not transfer_client:
         sys.exit(1)
 
+    # Force token refresh before long operation
+    try:
+        # Make a simple API call to trigger refresh if needed
+        transfer_client.endpoint_autoactivate(local_endpoint, if_expires_in=86400)
+        transfer_client.endpoint_autoactivate(remote_endpoint, if_expires_in=86400)
+    except Exception as e:
+        logger.warning(f"Token refresh check: {e}")
+
     if transfer_type == "get":
         if not archive_directory_listing:
             archive_directory_listing = transfer_client.operation_ls(
@@ -195,16 +203,17 @@ def globus_transfer(  # noqa: C901
 def globus_block_wait(
     task_id: str, wait_timeout: int, polling_interval: int, max_retries: int
 ):
-
-    # poll every "polling_interval" seconds to speed up small transfers.  Report every 2 hours, stop waiting aftert 5*2 = 10 hours
     logger.info(
         f"{ts_utc()}: BLOCKING START: invoking task_wait for task_id = {task_id}"
     )
     task_status = "UNKNOWN"
     retry_count = 0
+
     while retry_count < max_retries:
         try:
-            # Wait for the task to complete
+            # Refresh token before each wait attempt
+            transfer_client.endpoint_autoactivate(local_endpoint, if_expires_in=86400)
+            transfer_client.endpoint_autoactivate(remote_endpoint, if_expires_in=86400)
             logger.info(
                 f"{ts_utc()}: on task_wait try {retry_count + 1} out of {max_retries}"
             )
