@@ -48,7 +48,7 @@ def globus_activate(hpss: str):
     both_endpoints: List[Optional[str]] = [local_endpoint, remote_endpoint]
     transfer_client = get_transfer_client_with_auth(both_endpoints)
     for ep_id in both_endpoints:
-        r = transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
+        r = transfer_client.endpoint_activate(ep_id, if_expires_in=600)
         if r.get("code") == "AutoActivationFailed":
             logger.error(
                 f"The {ep_id} endpoint is not activated or the current activation expires soon. Please go to https://app.globus.org/file-manager/collections/{ep_id} and (re)activate the endpoint."
