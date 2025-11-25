@@ -71,7 +71,8 @@ test_globus_tar_deletion()
     local path_to_repo=$1
     local dst_endpoint=$2
     local dst_dir=$3
-    local case_name=$4
+    local blocking_str=$4
+    local keep_str=$5
 
     src_dir=${path_to_repo}/tests/utils/globus_tar_deletion
     rm -rf ${src_dir} # Start fresh
@@ -79,32 +80,25 @@ test_globus_tar_deletion()
     dst_endpoint_uuid=$(get_endpoint ${dst_endpoint})
     globus_path=globus://${dst_endpoint_uuid}/${dst_dir}
 
-    # GLOBUS_CFG=${HOME}/.globus-native-apps.cfg
-    # INI_PATH=${HOME}/.zstash.ini
-    # TOKEN_FILE=${HOME}/.zstash_globus_tokens.json
-
-    # Start fresh
-    # echo "Reset Globus consents:"
-    # echo "https://auth.globus.org/v2/web/consents > Globus Endpoint Performance Monitoring > rescind all"
-    # if ! confirm "Have you revoked Globus consents?"; then
-    #     exit 1
-    # fi
-    # rm -rf ${GLOBUS_CFG}
-    # rm -rf ${INI_PATH}
-    # rm -rf ${TOKEN_FILE}
-
+    case_name=${blocking_str}_${keep_str}
     echo "Running test_globus_tar_deletion on case=${case_name}"
     echo "Exit codes: 0 -- success, 1 -- zstash failed, 2 -- grep check failed"
 
     setup ${case_name} "${src_dir}"
 
-    if [ "$case_name" == "non-blocking" ]; then
+    if [ "$blocking_str" == "non-blocking" ]; then
         blocking_flag="--non-blocking"
     else
         blocking_flag=""
     fi
 
-    zstash create ${blocking_flag} --hpss=${globus_path}/${case_name} --maxsize 128 zstash_demo 2>&1 | tee ${case_name}.log
+    if [ "$keep_str" == "keep" ]; then
+        keep_flag="--keep"
+    else
+        keep_flag=""
+    fi
+
+    zstash create ${blocking_flag} ${keep_flag} --hpss=${globus_path}/${case_name} --maxsize 128 zstash_demo 2>&1 | tee ${case_name}.log
     if [ $? != 0 ]; then
         echo "${case_name} failed. Check ${case_name}_create.log for details. Cannot continue."
         exit 1
@@ -112,21 +106,32 @@ test_globus_tar_deletion()
     echo "${case_name} completed successfully. Checking ${case_name}.log now."
     check_log_has "Creating new tar archive 000000.tar" ${case_name}.log
 
+    echo ""
     echo "Checking directory status after 'zstash create' has completed. src should only have index.db. dst should have tar and index.db."
+    echo "Checking logs in current directory: ${PWD}"
 
+    echo ""
     echo "Checking src"
     ls ${src_dir}/${case_name}/ 2>&1 | tee ls_${case_name}_src_output.log
     check_log_has "${case_name}.log" ls_${case_name}_src_output.log
     check_log_has "zstash_demo" ls_${case_name}_src_output.log
+    echo ""
     ls ${src_dir}/${case_name}/zstash_demo 2>&1 | tee ls_${case_name}_src2_output.log
     check_log_has "zstash" ls_${case_name}_src2_output.log
+    echo ""
     ls ${src_dir}/${case_name}/zstash_demo/zstash 2>&1 | tee ls_${case_name}_src3_output.log
     check_log_has "index.db" ls_${case_name}_src3_output.log
-    check_log_does_not_have "tar" ls_${case_name}_src3_output.log # tar is deleted at src
+    if [ "$keep_str" == "keep" ]; then
+        check_log_has "000000.tar" ls_${case_name}_src3_output.log # tar is kept at src
+    else
+        check_log_does_not_have "000000.tar" ls_${case_name}_src3_output.log # tar is deleted at src
+    fi
 
+    echo ""
     echo "Checking dst"
     ls ${dst_dir}/ 2>&1 | tee ls_${case_name}_dst_output.log
     check_log_has "${case_name}" ls_${case_name}_dst_output.log
+    echo ""
     ls ${dst_dir}/${case_name}/ 2>&1 | tee ls_${case_name}_dst2_output.log
     check_log_has "index.db" ls_${case_name}_dst2_output.log
     check_log_has "000000.tar" ls_${case_name}_dst2_output.log # tar should be at dst
@@ -164,7 +169,9 @@ fi
 
 echo "Primary tests: single authentication code tests for each endpoint"
 echo "If a test hangs, check if https://app.globus.org/activity reports any errors on your transfers."
-test_globus_tar_deletion ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir} "blocking"
-test_globus_tar_deletion ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir} "non-blocking"
+test_globus_tar_deletion ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir} "blocking" "non-keep"
+test_globus_tar_deletion ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir} "non-blocking" "non-keep"
+test_globus_tar_deletion ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir} "blocking" "keep"
+test_globus_tar_deletion ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir} "non-blocking" "keep"
 
 echo "All globus tar deletion tests completed successfully."
