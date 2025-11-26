@@ -223,7 +223,7 @@ def set_up_TransferData(
     remote_endpoint: Optional[str],
     remote_path: str,
     name: str,
-    transfer_client: TransferClient,
+    transfer_client: TransferClient,  # Keep for compatibility, but won't use in v4
     transfer_data: Optional[TransferData] = None,
 ) -> TransferData:
     if not local_endpoint:
@@ -247,10 +247,10 @@ def set_up_TransferData(
     label = subdir_label + " " + filename
 
     if not transfer_data:
+        # In Globus SDK v4, TransferData no longer takes transfer_client as first arg
         transfer_data = TransferData(
-            transfer_client,
-            src_ep,
-            dst_ep,
+            source_endpoint=src_ep,
+            destination_endpoint=dst_ep,
             label=label,
             verify_checksum=True,
             preserve_timestamp=True,
