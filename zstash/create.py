@@ -57,7 +57,7 @@ def create():
         if url.scheme == "globus":
             # identify globus endpoints
             logger.debug(f"{ts_utc()}:Calling globus_activate(hpss)")
-            globus_activate(hpss)
+            globus_activate(hpss, args.globus_token_file)
         else:
             # config.hpss is not "none", so we need to
             # create target HPSS directory
@@ -175,6 +175,11 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
         "--overwrite-duplicate-tars",
         action="store_true",
         help="FOR ADVANCED USERS ONLY: If a duplicate tar is encountered, overwrite the existing database record with the new one (i.e., it will assume the latest tar is the correct one). If this flag is not set, zstash will permit multiple entries for the same tar in its database.",
+    )
+    optional.add_argument(
+        "--globus-token-file",
+        type=str,
+        help="Path to custom Globus token file. If not specified, uses ~/.zstash_globus_tokens.json",
     )
     optional.add_argument(
         "--for-developers-force-database-corruption",

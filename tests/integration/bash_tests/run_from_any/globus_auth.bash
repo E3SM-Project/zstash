@@ -368,7 +368,7 @@ test_custom_token_file()
     globus_path=globus://${dst_endpoint_uuid}/${dst_dir}
 
     echo "Running test_custom_token_file"
-    echo "This test verifies that ZSTASH_GLOBUS_TOKEN_FILE environment variable works"
+    echo "This test verifies that --globus-token-file parameter works"
     echo "Exit codes: 0 -- success, 1 -- failure"
 
     # Create a temporary directory for test tokens
@@ -378,14 +378,10 @@ test_custom_token_file()
     case_name="custom_token_file"
     setup ${case_name} "${src_dir}"
 
-    # Use custom token file via environment variable
-    export ZSTASH_GLOBUS_TOKEN_FILE="${CUSTOM_TOKEN_FILE}"
-
     # First run - should authenticate and save to custom location
-    zstash create --hpss=${globus_path}/${case_name}_run1 zstash_demo 2>&1 | tee ${case_name}_run1.log
+    zstash create --hpss=${globus_path}/${case_name}_run1 --globus-token-file="${CUSTOM_TOKEN_FILE}" zstash_demo 2>&1 | tee ${case_name}_run1.log
     if [ $? != 0 ]; then
         echo "${case_name} run1 failed. Check ${case_name}_run1.log for details."
-        unset ZSTASH_GLOBUS_TOKEN_FILE
         rm -rf ${TEMP_TOKEN_DIR}
         exit 1
     fi
@@ -393,25 +389,25 @@ test_custom_token_file()
     # Verify custom token file was created
     if [ ! -f "${CUSTOM_TOKEN_FILE}" ]; then
         echo "ERROR: Custom token file ${CUSTOM_TOKEN_FILE} was not created!"
-        unset ZSTASH_GLOBUS_TOKEN_FILE
         rm -rf ${TEMP_TOKEN_DIR}
         exit 1
     fi
 
-    # Verify token was saved to custom location
+    # Verify token was saved to custom location and custom path was used
+    check_log_has "INFO: Using custom token file: ${CUSTOM_TOKEN_FILE}" ${case_name}_run1.log
     check_log_has "INFO: Tokens saved successfully to ${CUSTOM_TOKEN_FILE}" ${case_name}_run1.log
     check_log_has "INFO: Token file ${CUSTOM_TOKEN_FILE} exists" ${case_name}_run1.log
 
     # Second run - should use token from custom location
-    zstash create --hpss=${globus_path}/${case_name}_run2 zstash_demo 2>&1 | tee ${case_name}_run2.log
+    zstash create --hpss=${globus_path}/${case_name}_run2 --globus-token-file="${CUSTOM_TOKEN_FILE}" zstash_demo 2>&1 | tee ${case_name}_run2.log
     if [ $? != 0 ]; then
         echo "${case_name} run2 failed. Check ${case_name}_run2.log for details."
-        unset ZSTASH_GLOBUS_TOKEN_FILE
         rm -rf ${TEMP_TOKEN_DIR}
         exit 1
     fi
 
     # Should have used the stored token
+    check_log_has "INFO: Using custom token file: ${CUSTOM_TOKEN_FILE}" ${case_name}_run2.log
     check_log_has "INFO: Found stored refresh token for endpoints" ${case_name}_run2.log
     check_log_does_not_have "Please go to this URL and login:" ${case_name}_run2.log
 
@@ -424,13 +420,11 @@ test_custom_token_file()
 
     if ! confirm "Did you only have to paste an auth code once (for run1, not run2)?"; then
         echo "test_custom_token_file failed"
-        unset ZSTASH_GLOBUS_TOKEN_FILE
         rm -rf ${TEMP_TOKEN_DIR}
         exit 1
     fi
 
     # Cleanup
-    unset ZSTASH_GLOBUS_TOKEN_FILE
     rm -rf ${TEMP_TOKEN_DIR}
     cd ${path_to_repo}/tests/integration/bash_tests/run_from_any
     rm -rf ${path_to_repo}/tests/utils/globus_auth

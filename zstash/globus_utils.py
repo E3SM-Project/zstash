@@ -43,17 +43,32 @@ ZSTASH_CLIENT_ID: str = "6c1629cf-446c-49e7-af95-323c6412397f"
 # State files
 GLOBUS_CFG: str = os.path.expanduser("~/.globus-native-apps.cfg")
 INI_PATH: str = os.path.expanduser("~/.zstash.ini")
-# Default token file - can be overridden via environment variable
+# Default token file - can be overridden via set_token_file_path()
 DEFAULT_TOKEN_FILE = os.path.expanduser("~/.zstash_globus_tokens.json")
+
+# Module-level variable to store custom token file path
+_custom_token_file: Optional[str] = None
 
 
 # Helper functions for token file management #################################
+def set_token_file_path(token_file: str) -> None:
+    """
+    Set a custom token file path for the current session.
+    This should be called before any Globus operations.
+    """
+    global _custom_token_file
+    _custom_token_file = token_file
+    logger.info(f"Using custom token file: {token_file}")
+
+
 def get_token_file_path() -> str:
     """
-    Get the token file path, checking environment variable first,
+    Get the token file path, checking custom path first,
     then falling back to default.
     """
-    return os.environ.get("ZSTASH_GLOBUS_TOKEN_FILE", DEFAULT_TOKEN_FILE)
+    if _custom_token_file:
+        return _custom_token_file
+    return DEFAULT_TOKEN_FILE
 
 
 def get_endpoint_key(endpoints: List[Optional[str]]) -> str:
