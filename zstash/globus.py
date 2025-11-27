@@ -13,6 +13,7 @@ from .globus_utils import (
     check_state_files,
     get_local_endpoint_id,
     get_transfer_client_with_auth,
+    set_token_file_path,
     set_up_TransferData,
     submit_transfer_with_checks,
 )
@@ -27,7 +28,7 @@ task_id = None
 archive_directory_listing: IterableTransferResponse = None
 
 
-def globus_activate(hpss: str):
+def globus_activate(hpss: str, token_file: Optional[str] = None):
     """
     Read the local globus endpoint UUID from ~/.zstash.ini.
     If the ini file does not exist, create an ini file with empty values,
@@ -40,6 +41,11 @@ def globus_activate(hpss: str):
     url = urlparse(hpss)
     if url.scheme != "globus":
         return
+
+    # Set the token file path if provided
+    if token_file:
+        set_token_file_path(token_file)
+
     check_state_files()
     remote_endpoint = url.netloc
     local_endpoint = get_local_endpoint_id(local_endpoint)
