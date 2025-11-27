@@ -356,6 +356,88 @@ EOF
     rm -rf ${path_to_repo}/tests/utils/globus_auth
 }
 
+test_custom_token_file()
+{
+    local path_to_repo=$1
+    local dst_endpoint=$2
+    local dst_dir=$3
+
+    src_dir=${path_to_repo}/tests/utils/globus_auth
+    mkdir -p ${src_dir}
+    dst_endpoint_uuid=$(get_endpoint ${dst_endpoint})
+    globus_path=globus://${dst_endpoint_uuid}/${dst_dir}
+
+    echo "Running test_custom_token_file"
+    echo "This test verifies that ZSTASH_GLOBUS_TOKEN_FILE environment variable works"
+    echo "Exit codes: 0 -- success, 1 -- failure"
+
+    # Create a temporary directory for test tokens
+    TEMP_TOKEN_DIR=$(mktemp -d)
+    CUSTOM_TOKEN_FILE="${TEMP_TOKEN_DIR}/custom_tokens.json"
+
+    case_name="custom_token_file"
+    setup ${case_name} "${src_dir}"
+
+    # Use custom token file via environment variable
+    export ZSTASH_GLOBUS_TOKEN_FILE="${CUSTOM_TOKEN_FILE}"
+
+    # First run - should authenticate and save to custom location
+    zstash create --hpss=${globus_path}/${case_name}_run1 zstash_demo 2>&1 | tee ${case_name}_run1.log
+    if [ $? != 0 ]; then
+        echo "${case_name} run1 failed. Check ${case_name}_run1.log for details."
+        unset ZSTASH_GLOBUS_TOKEN_FILE
+        rm -rf ${TEMP_TOKEN_DIR}
+        exit 1
+    fi
+
+    # Verify custom token file was created
+    if [ ! -f "${CUSTOM_TOKEN_FILE}" ]; then
+        echo "ERROR: Custom token file ${CUSTOM_TOKEN_FILE} was not created!"
+        unset ZSTASH_GLOBUS_TOKEN_FILE
+        rm -rf ${TEMP_TOKEN_DIR}
+        exit 1
+    fi
+
+    # Verify token was saved to custom location
+    check_log_has "INFO: Tokens saved successfully to ${CUSTOM_TOKEN_FILE}" ${case_name}_run1.log
+    check_log_has "INFO: Token file ${CUSTOM_TOKEN_FILE} exists" ${case_name}_run1.log
+
+    # Second run - should use token from custom location
+    zstash create --hpss=${globus_path}/${case_name}_run2 zstash_demo 2>&1 | tee ${case_name}_run2.log
+    if [ $? != 0 ]; then
+        echo "${case_name} run2 failed. Check ${case_name}_run2.log for details."
+        unset ZSTASH_GLOBUS_TOKEN_FILE
+        rm -rf ${TEMP_TOKEN_DIR}
+        exit 1
+    fi
+
+    # Should have used the stored token
+    check_log_has "INFO: Found stored refresh token for endpoints" ${case_name}_run2.log
+    check_log_does_not_have "Please go to this URL and login:" ${case_name}_run2.log
+
+    # Verify default token file was NOT created
+    DEFAULT_TOKEN_FILE=${HOME}/.zstash_globus_tokens.json
+    if [ -f "${DEFAULT_TOKEN_FILE}" ]; then
+        echo "WARNING: Default token file ${DEFAULT_TOKEN_FILE} exists when it shouldn't"
+        echo "This suggests the custom token file setting may not be working correctly"
+    fi
+
+    if ! confirm "Did you only have to paste an auth code once (for run1, not run2)?"; then
+        echo "test_custom_token_file failed"
+        unset ZSTASH_GLOBUS_TOKEN_FILE
+        rm -rf ${TEMP_TOKEN_DIR}
+        exit 1
+    fi
+
+    # Cleanup
+    unset ZSTASH_GLOBUS_TOKEN_FILE
+    rm -rf ${TEMP_TOKEN_DIR}
+    cd ${path_to_repo}/tests/integration/bash_tests/run_from_any
+    rm -rf ${path_to_repo}/tests/utils/globus_auth
+
+    echo "test_custom_token_file completed successfully"
+}
+
 # Follow these directions #####################################################
 
 # Example usage:
@@ -447,6 +529,8 @@ echo "Test 3: Switch to a third different endpoint (should prompt for auth) ##"
 test_different_endpoint3 ${path_to_repo} ${dst_endpoint_switch2} ${dst_dir_switch2}
 echo "Test 4: Verify legacy token format migration ###########################"
 test_legacy_token_migration ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir}
+echo "Test 5: Verify custom token file via environment variable ##############"
+test_custom_token_file ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir}
 
 echo "Check https://auth.globus.org/v2/web/consents > Globus Endpoint Performance Monitoring"
 echo "You should now have multiple consents (one for each endpoint pair authenticated)."
