@@ -16,7 +16,7 @@ check_log_does_not_have()
     local log_file="${2}"
     grep "${not_expected_grep}" ${log_file}
     if [ $? == 0 ]; then
-        echo "Not-expected grep '${expected_grep}' was found in ${log_file}. Test failed."
+        echo "Not-expected grep '${not_expected_grep}' was found in ${log_file}. Test failed."
         exit 2
     fi
 }
@@ -127,7 +127,8 @@ test_single_auth_code()
     check_log_has "INFO: Writing to empty ${INI_PATH}" ${case_name}.log
     check_log_has "INFO: Setting local_endpoint_id based on" ${case_name}.log
     # From get_transfer_client_with_auth
-    check_log_has "INFO: No stored tokens found - starting authentication" ${case_name}.log
+    check_log_has "INFO: No stored tokens found for endpoints" ${case_name}.log
+    check_log_has "starting authentication" ${case_name}.log
     check_log_has "Please go to this URL and login:" ${case_name}.log # Our one expected authentication prompt
     # From save_tokens
     check_log_has "INFO: Tokens saved successfully" ${case_name}.log
@@ -150,7 +151,8 @@ test_single_auth_code()
     check_log_has "INFO: Setting local_endpoint_id based on ${INI_PATH}" ${case_name}.log # Differs from run1
     check_log_has "INFO: Setting local_endpoint_id based on" ${case_name}.log
     # From get_transfer_client_with_auth
-    check_log_has "INFO: Found stored refresh token - using it" ${case_name}.log # Differs from run1
+    check_log_has "INFO: Found stored refresh token for endpoints" ${case_name}.log # Updated to match new log message
+    check_log_has "using it" ${case_name}.log
     check_log_does_not_have "Please go to this URL and login:" ${case_name}.log # There should be no login prompts for run2!
     # From save_tokens
     check_log_does_not_have "INFO: Tokens saved successfully" ${case_name}.log # Differs from run1
@@ -191,16 +193,25 @@ test_different_endpoint1()
 
     case_name="different_endpoint1"
     setup ${case_name} "${src_dir}"
-    # Expecting to see exactly 1 authentication prompt
+    # With multi-token support, this should now work and prompt for auth
+    # Expecting to see exactly 1 authentication prompt for the new endpoint
     zstash create --hpss=${globus_path}/${case_name} zstash_demo 2>&1 | tee ${case_name}.log
-    check_log_has "INFO: Found stored refresh token - using it" ${case_name}.log
-    check_log_has "ERROR: One possible cause" ${case_name}.log
-    check_log_has "ERROR: Try deleting" ${case_name}.log
-    check_log_has "ERROR: Another possible cause" ${case_name}.log
-    check_log_has "try revoking consents before re-running" ${case_name}.log
-    check_log_has "ERROR: Exception: Insufficient Globus consents" ${case_name}.log
+    if [ $? != 0 ]; then
+        echo "${case_name} failed. Check ${case_name}.log for details."
+        exit 1
+    fi
 
-    if ! confirm "Did you avoid having to paste any auth codes on this run?"; then
+    # Should see token not found for this endpoint pair, then authentication
+    check_log_has "INFO: No stored tokens found for endpoints" ${case_name}.log
+    check_log_has "starting authentication" ${case_name}.log
+    check_log_has "Please go to this URL and login:" ${case_name}.log
+    check_log_has "INFO: Tokens saved successfully" ${case_name}.log
+
+    # Should NOT see any errors about insufficient consents
+    check_log_does_not_have "ERROR: One possible cause" ${case_name}.log
+    check_log_does_not_have "ERROR: Insufficient Globus consents" ${case_name}.log
+
+    if ! confirm "Did you have to paste an auth code for this new endpoint?"; then
         echo "test_different_endpoint1 failed"
         exit 1
     fi
@@ -220,34 +231,29 @@ test_different_endpoint2()
     dst_endpoint_uuid=$(get_endpoint ${dst_endpoint})
     globus_path=globus://${dst_endpoint_uuid}/${dst_dir}
 
-    echo "Reset Globus consents:"
-    echo "https://auth.globus.org/v2/web/consents > Globus Endpoint Performance Monitoring > rescind all"
-    if ! confirm "Have you revoked Globus consents?"; then
-        exit 1
-    fi
-
     echo "Running test_different_endpoint2"
+    echo "This test verifies that we can switch back to a previously-used endpoint without re-authenticating"
     echo "Exit codes: 0 -- success, 1 -- failure"
 
-    case_name="different_endpoint2a"
+    case_name="different_endpoint2"
     setup ${case_name} "${src_dir}"
-    zstash create --hpss=${globus_path}/${case_name} zstash_demo 2>&1 | tee ${case_name}.log
-    check_log_has ".zstash_globus_tokens.json exists. We can try to load tokens from it." ${case_name}.log
-    check_log_has ".zstash_globus_tokens.json may be configured for a different Globus endpoint." ${case_name}.log
-    check_log_has "Try deleting" ${case_name}.log
-    check_log_has "globus_sdk.services.auth.errors.AuthAPIError: ('POST', 'https://auth.globus.org/v2/oauth2/token', None, 400, 'Error', 'Bad Request')" ${case_name}.log
-
-    rm -rf ~/.zstash_globus_tokens.json
-    case_name="different_endpoint2b"
-    setup ${case_name} "${src_dir}"
-    # Expecting to see exactly 1 authentication prompt
+    # This endpoint was already authenticated in test_different_endpoint1
+    # We should be able to use the stored token without prompting
     zstash create --hpss=${globus_path}/${case_name} zstash_demo 2>&1 | tee ${case_name}.log
     if [ $? != 0 ]; then
-        echo "${case_name} failed. Check ${case_name}_create.log for details."
+        echo "${case_name} failed. Check ${case_name}.log for details."
         exit 1
     fi
 
-    if ! confirm "Did you only have to paste an auth code once (for 2b, not 2a)?"; then
+    # Should find the stored token for this endpoint pair
+    check_log_has "INFO: Found stored refresh token for endpoints" ${case_name}.log
+    check_log_has "using it" ${case_name}.log
+
+    # Should NOT see authentication prompt
+    check_log_does_not_have "Please go to this URL and login:" ${case_name}.log
+    check_log_does_not_have "starting authentication" ${case_name}.log
+
+    if ! confirm "Did you NOT have to paste any auth codes for this run?"; then
         echo "test_different_endpoint2 failed"
         exit 1
     fi
@@ -268,22 +274,83 @@ test_different_endpoint3()
     globus_path=globus://${dst_endpoint_uuid}/${dst_dir}
 
     echo "Running test_different_endpoint3"
+    echo "This test verifies a third different endpoint (also requires auth)"
     echo "Exit codes: 0 -- success, 1 -- failure"
 
-    rm -rf ~/.zstash_globus_tokens.json
     case_name="different_endpoint3"
     setup ${case_name} "${src_dir}"
+    # This is a third endpoint that hasn't been authenticated yet
     # Expecting to see exactly 1 authentication prompt
     zstash create --hpss=${globus_path}/${case_name} zstash_demo 2>&1 | tee ${case_name}.log
     if [ $? != 0 ]; then
-        echo "${case_name} failed. Check ${case_name}_create.log for details."
+        echo "${case_name} failed. Check ${case_name}.log for details."
         exit 1
     fi
 
-    if ! confirm "Did you only have to paste an auth code once?"; then
-        echo "test_different_endpoint2 failed"
+    # Should see no stored token, then authentication
+    check_log_has "INFO: No stored tokens found for endpoints" ${case_name}.log
+    check_log_has "starting authentication" ${case_name}.log
+    check_log_has "Please go to this URL and login:" ${case_name}.log
+    check_log_has "INFO: Tokens saved successfully" ${case_name}.log
+
+    if ! confirm "Did you have to paste an auth code for this third endpoint?"; then
+        echo "test_different_endpoint3 failed"
         exit 1
     fi
+    # Cleanup:
+    cd ${path_to_repo}/tests/integration/bash_tests/run_from_any
+    rm -rf ${path_to_repo}/tests/utils/globus_auth
+}
+
+test_legacy_token_migration()
+{
+    local path_to_repo=$1
+    local dst_endpoint=$2
+    local dst_dir=$3
+
+    src_dir=${path_to_repo}/tests/utils/globus_auth
+    mkdir -p ${src_dir}
+    dst_endpoint_uuid=$(get_endpoint ${dst_endpoint})
+    globus_path=globus://${dst_endpoint_uuid}/${dst_dir}
+
+    TOKEN_FILE=${HOME}/.zstash_globus_tokens.json
+
+    echo "Running test_legacy_token_migration"
+    echo "This test verifies that legacy single-token format is handled gracefully"
+    echo "Exit codes: 0 -- success, 1 -- failure"
+
+    # Create a mock legacy token file (just the structure, not valid tokens)
+    cat > ${TOKEN_FILE} << 'EOF'
+{
+  "transfer.api.globus.org": {
+    "access_token": "fake_legacy_token",
+    "refresh_token": "fake_legacy_refresh",
+    "expires_at": 1234567890
+  }
+}
+EOF
+
+    case_name="legacy_migration"
+    setup ${case_name} "${src_dir}"
+
+    # Should detect legacy format and require re-authentication
+    zstash create --hpss=${globus_path}/${case_name} zstash_demo 2>&1 | tee ${case_name}.log
+    if [ $? != 0 ]; then
+        echo "${case_name} failed. Check ${case_name}.log for details."
+        exit 1
+    fi
+
+    # Should see migration message and re-authentication
+    check_log_has "INFO: Detected legacy token format, migrating to new format" ${case_name}.log
+    check_log_has "INFO: No stored tokens found for endpoints" ${case_name}.log
+    check_log_has "starting authentication" ${case_name}.log
+    check_log_has "Please go to this URL and login:" ${case_name}.log
+
+    if ! confirm "Did you have to paste an auth code to migrate from legacy format?"; then
+        echo "test_legacy_token_migration failed"
+        exit 1
+    fi
+
     # Cleanup:
     cd ${path_to_repo}/tests/integration/bash_tests/run_from_any
     rm -rf ${path_to_repo}/tests/utils/globus_auth
@@ -371,16 +438,19 @@ test_single_auth_code ${path_to_repo} NERSC_HPSS_ENDPOINT ${hpss_dst_dir}
 echo "Testing transfer to pic#compy-dtn ######################################"
 test_single_auth_code ${path_to_repo} PIC_COMPY_DTN_ENDPOINT ${compy_dst_dir}
 
-echo "Follow-up tests: behavior when switching to different endpoints"
-echo "NOTE: if you commented out tests above, and your last endpoint used was NERSC_PERLMUTTER_ENDPOINT, the following test will not work properly."
-echo "Test 1: What if we switch to a different endpoint? #####################"
+echo "Follow-up tests: multi-endpoint token storage behavior"
+echo "Test 1: Switch to a different endpoint (should prompt for new auth) ####"
 test_different_endpoint1 ${path_to_repo} ${dst_endpoint_switch1} ${dst_dir_switch1}
-echo "Test 2: What if we try a) revoking consents and then b) removing the token file? ###"
+echo "Test 2: Switch back to a previous endpoint (should use stored token) ###"
 test_different_endpoint2 ${path_to_repo} ${dst_endpoint_switch1} ${dst_dir_switch1}
-echo "Test 3: What if we switch to a different endpoint again, but first remove the token file? ###"
+echo "Test 3: Switch to a third different endpoint (should prompt for auth) ##"
 test_different_endpoint3 ${path_to_repo} ${dst_endpoint_switch2} ${dst_dir_switch2}
-echo "Check https://auth.globus.org/v2/web/consents > Globus Endpoint Performance Monitoring: you should have *two* consents there now."
-if ! confirm "Does https://auth.globus.org/v2/web/consents > Globus Endpoint Performance Monitoring show *two* consents?"; then
+echo "Test 4: Verify legacy token format migration ###########################"
+test_legacy_token_migration ${path_to_repo} LCRC_IMPROV_DTN_ENDPOINT ${chrysalis_dst_dir}
+
+echo "Check https://auth.globus.org/v2/web/consents > Globus Endpoint Performance Monitoring"
+echo "You should now have multiple consents (one for each endpoint pair authenticated)."
+if ! confirm "Does https://auth.globus.org/v2/web/consents show multiple consents as expected?"; then
     exit 1
 fi
 echo "All globus_auth tests completed successfully."
