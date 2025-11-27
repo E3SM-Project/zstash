@@ -106,6 +106,11 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
         help="do not wait for each Globus transfer until it completes.",
     )
     optional.add_argument(
+        "--globus-token-file",
+        type=str,
+        help="Path to custom Globus token file. If not specified, uses ~/.zstash_globus_tokens.json",
+    )
+    optional.add_argument(
         "--error-on-duplicate-tar",
         action="store_true",
         help="FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash's behavior will depend on whether or not the --overwrite-duplicate-tar flag is set.",
@@ -160,7 +165,7 @@ def update_database(  # noqa: C901
                 hpss: str = config.hpss
             else:
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
-            globus_activate(hpss)
+            globus_activate(hpss, args.globus_token_file)
             hpss_get(hpss, get_db_filename(cache), cache)
         else:
             error_str: str = (
