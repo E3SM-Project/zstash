@@ -67,6 +67,27 @@ confirm() {
     [[ $REPLY =~ ^[Yy]$ ]]
 }
 
+wait_for_directory() {
+    local dir_path="$1"
+    local max_wait=300  # 5 minutes
+    local waited=0
+
+    echo "Waiting for directory ${dir_path} to be created by Globus transfer..."
+    while [ ! -d "${dir_path}" ] && [ ${waited} -lt ${max_wait} ]; do
+        sleep 5
+        waited=$((waited + 5))
+        echo "  Waited ${waited}s..."
+    done
+
+    if [ -d "${dir_path}" ]; then
+        echo "Directory appeared after ${waited}s"
+        return 0
+    else
+        echo "Directory did not appear after ${max_wait}s"
+        return 1
+    fi
+}
+
 # Tests #######################################################################
 test_globus_tar_deletion()
 {
@@ -131,6 +152,9 @@ test_globus_tar_deletion()
 
     echo ""
     echo "Checking dst"
+    if [ "$blocking_str" == "non-blocking" ]; then
+        wait_for_directory "${dst_dir}/${case_name}" || return 1
+    fi
     ls ${dst_dir}/ 2>&1 | tee ls_${case_name}_dst_output.log
     check_log_has "${case_name}" ls_${case_name}_dst_output.log || return 2
     echo ""
