@@ -6,6 +6,7 @@
 tests/
   integration/ # Tests that call zstash from the command line
     bash_tests/ # Test zstash commands via bash scripts
+      run_from_any/ # Run these from any machine
       run_from_chrysalis/ # Run these from Chrysalis (these use Globus and/or require the Chrysalis file system)
       run_from_perlmutter/ # Run these from Perlmutter (these use `hsi` directly and/or require the Perlmutter file system)
     python_tests/ # Test zstash commands via Python unittest wrappers
@@ -39,6 +40,7 @@ python -m unittest tests/integration/python_tests/group_by_workflow/test_*.py
 cd tests/integration/bash_tests/run_from_any/
 # Review the directions at the bottom of globus_auth.bash
 # Run `./globus_auth.bash` with the appropriate parameters.
+# Run `./test_globus_tar_deletion.bash` with the appropriate parameters.
 ```
 
 ### Perlmutter-specific
