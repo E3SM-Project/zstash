@@ -203,11 +203,15 @@ run_test_with_tracking() {
     echo "=========================================="
 
     if test_globus_tar_deletion "${args[@]}"; then
+        # Print test result in the output block AND at the end
         echo "✓ ${test_name} PASSED"
+        test_results+=("✓ ${test_name} PASSED")
         ((tests_passed++))
         return 0
     else
+        # Print test result in the output block AND at the end
         echo "✗ ${test_name} FAILED"
+        test_results+=("✗ ${test_name} FAILED")
         ((tests_failed++))
         return 1
     fi
@@ -216,6 +220,7 @@ run_test_with_tracking() {
 # Initialize counters
 tests_passed=0
 tests_failed=0
+test_results=()
 
 echo "Primary tests: single authentication code tests for each endpoint"
 echo "If a test hangs, check if https://app.globus.org/activity reports any errors on your transfers."
@@ -228,6 +233,12 @@ run_test_with_tracking "non-blocking_keep" ${path_to_repo} LCRC_IMPROV_DTN_ENDPO
 
 # Print summary
 echo ""
+echo "=========================================="
+echo "TEST RESULTS"
+echo "=========================================="
+for result in "${test_results[@]}"; do
+    echo "${result}"
+done
 echo "=========================================="
 echo "TEST SUMMARY"
 echo "=========================================="
