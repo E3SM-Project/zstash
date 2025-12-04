@@ -7,6 +7,7 @@ import os.path
 import re
 import socket
 import sys
+import time
 from typing import Dict, List, Optional
 
 from globus_sdk import (
@@ -185,7 +186,20 @@ def load_tokens():
     if os.path.exists(TOKEN_FILE):
         try:
             with open(TOKEN_FILE, "r") as f:
-                return json.load(f)
+                tokens = json.load(f)
+
+            # Check if access token is expired or expiring soon
+            transfer_token = tokens.get("transfer.api.globus.org", {})
+            expires_at = transfer_token.get("expires_at")
+
+            if expires_at:
+                # Refresh if expiring within 1 hour
+                if time.time() > (expires_at - 3600):
+                    logger.info(
+                        "Access token expired or expiring soon - will need refresh"
+                    )
+
+            return tokens
         except (json.JSONDecodeError, IOError):
             return {}
     return {}
