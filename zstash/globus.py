@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function
 
 import sys
+import time
 from typing import List, Optional
 
 from globus_sdk import TransferAPIError, TransferClient, TransferData
@@ -25,6 +26,30 @@ transfer_client: TransferClient = None
 transfer_data: TransferData = None
 task_id = None
 archive_directory_listing: IterableTransferResponse = None
+
+DEBUG_LONG_TRANSFER: bool = False  # Set to true if testing token expiration handling
+
+
+def _debug_sleep_to_expire_token(context: str, retry_count: int = 0):
+    """
+    FOR DEBUGGING ONLY: Sleep to simulate token expiration during long operations.
+
+    Args:
+        context: Description of where this is being called (e.g., "blocking", "non-blocking")
+        retry_count: Current retry count (only sleep on first iteration)
+    """
+    if DEBUG_LONG_TRANSFER and retry_count == 0:
+        transfer_duration_mock_hours = 49
+        logger.info(
+            f"{ts_utc()}: TESTING ({context}): Sleeping for {transfer_duration_mock_hours} hours to let access token expire"
+        )
+        time.sleep(transfer_duration_mock_hours * 3600)
+        logger.info(
+            f"{ts_utc()}: TESTING ({context}): Woke up after {transfer_duration_mock_hours} hours. "
+            "Access token expired, RefreshTokenAuthorizer should automatically refresh on next API call."
+        )
+        return True  # Indicates sleep happened
+    return False  # No sleep
 
 
 def globus_activate(hpss: str):
@@ -88,6 +113,9 @@ def globus_transfer(  # noqa: C901
         # Make a simple API call to trigger refresh if needed
         transfer_client.endpoint_autoactivate(local_endpoint, if_expires_in=86400)
         transfer_client.endpoint_autoactivate(remote_endpoint, if_expires_in=86400)
+
+        # FOR DEBUGGING: Test non-blocking mode token refresh
+        _debug_sleep_to_expire_token("non-blocking")
     except Exception as e:
         logger.warning(f"Token refresh check: {e}")
 
@@ -214,6 +242,7 @@ def globus_block_wait(
             # Refresh token before each wait attempt
             transfer_client.endpoint_autoactivate(local_endpoint, if_expires_in=86400)
             transfer_client.endpoint_autoactivate(remote_endpoint, if_expires_in=86400)
+
             logger.info(
                 f"{ts_utc()}: on task_wait try {retry_count + 1} out of {max_retries}"
             )
@@ -226,6 +255,11 @@ def globus_block_wait(
         else:
             curr_task = transfer_client.get_task(task_id)
             task_status = curr_task["status"]
+
+            # FOR DEBUGGING: Test blocking mode token refresh
+            if _debug_sleep_to_expire_token("blocking", retry_count):
+                continue  # Force another iteration to test refresh
+
             if task_status == "SUCCEEDED":
                 break
         finally:

@@ -7,6 +7,7 @@ import os.path
 import re
 import socket
 import sys
+import time
 from typing import Dict, List, Optional
 
 from globus_sdk import (
@@ -192,8 +193,6 @@ def load_tokens():
             expires_at = transfer_token.get("expires_at")
 
             if expires_at:
-                import time
-
                 # Refresh if expiring within 1 hour
                 if time.time() > (expires_at - 3600):
                     logger.info(
