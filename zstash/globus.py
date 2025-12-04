@@ -47,13 +47,15 @@ def globus_activate(hpss: str):
         remote_endpoint = HPSS_ENDPOINT_MAP.get(remote_endpoint.upper())
     both_endpoints: List[Optional[str]] = [local_endpoint, remote_endpoint]
     transfer_client = get_transfer_client_with_auth(both_endpoints)
+    # Optional: Check endpoint status (for logging/debugging only)
     for ep_id in both_endpoints:
-        r = transfer_client.endpoint_autoactivate(ep_id, if_expires_in=600)
-        if r.get("code") == "AutoActivationFailed":
-            logger.error(
-                f"The {ep_id} endpoint is not activated or the current activation expires soon. Please go to https://app.globus.org/file-manager/collections/{ep_id} and (re)activate the endpoint."
+        try:
+            endpoint = transfer_client.get_endpoint(ep_id)
+            logger.info(
+                f"Endpoint {ep_id} status: {endpoint.get('activated', 'unknown')}"
             )
-            sys.exit(1)
+        except Exception as e:
+            logger.debug(f"Could not check endpoint status: {e}")
 
 
 def file_exists(name: str) -> bool:
@@ -85,8 +87,12 @@ def globus_transfer(  # noqa: C901
 
     if transfer_type == "get":
         if not archive_directory_listing:
+            # Normalize path to avoid double slashes
+            normalized_path = remote_path.lstrip("/")  # Remove leading slashes
+            if not normalized_path.startswith("/"):
+                normalized_path = "/" + normalized_path
             archive_directory_listing = transfer_client.operation_ls(
-                remote_endpoint, remote_path
+                remote_endpoint, normalized_path
             )
         if not file_exists(name):
             logger.error(
@@ -139,14 +145,17 @@ def globus_transfer(  # noqa: C901
 
         # DEBUG: review accumulated items in TransferData
         logger.info(f"{ts_utc()}: TransferData: accumulated items:")
-        attribs = transfer_data.__dict__
-        for item in attribs["data"]["DATA"]:
-            if item["DATA_TYPE"] == "transfer_item":
-                global_variable_tarfiles_pushed += 1
-                print(
-                    f"   (routine)  PUSHING (#{global_variable_tarfiles_pushed}) STORED source item: {item['source_path']}",
-                    flush=True,
-                )
+        # In Globus SDK v4, TransferData is iterable - iterate directly over items
+        try:
+            for item in transfer_data:
+                if item.get("DATA_TYPE") == "transfer_item":
+                    global_variable_tarfiles_pushed += 1
+                    print(
+                        f"   (routine)  PUSHING (#{global_variable_tarfiles_pushed}) STORED source item: {item['source_path']}",
+                        flush=True,
+                    )
+        except Exception as e:
+            logger.debug(f"Could not iterate transfer_data items: {e}")
 
         # SUBMIT new transfer here
         logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
@@ -289,14 +298,16 @@ def globus_finalize(non_blocking: bool = False):
     if transfer_data:
         # DEBUG: review accumulated items in TransferData
         logger.info(f"{ts_utc()}: FINAL TransferData: accumulated items:")
-        attribs = transfer_data.__dict__
-        for item in attribs["data"]["DATA"]:
-            if item["DATA_TYPE"] == "transfer_item":
-                global_variable_tarfiles_pushed += 1
-                print(
-                    f"    (finalize) PUSHING ({global_variable_tarfiles_pushed}) source item: {item['source_path']}",
-                    flush=True,
-                )
+        try:
+            for item in transfer_data:
+                if item.get("DATA_TYPE") == "transfer_item":
+                    global_variable_tarfiles_pushed += 1
+                    print(
+                        f"    (finalize) PUSHING ({global_variable_tarfiles_pushed}) source item: {item['source_path']}",
+                        flush=True,
+                    )
+        except Exception as e:
+            logger.debug(f"Could not iterate transfer_data items: {e}")
 
         # SUBMIT new transfer here
         logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
