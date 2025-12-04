@@ -133,7 +133,7 @@ def globus_transfer(  # noqa: C901
                     flush=True,
                 )
 
-        # SUBMIT new transfer here
+        # Submit the current transfer_data
         logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
         task = submit_transfer_with_checks(gtc.transfer_client, transfer_data)
         task_id = task.get("task_id")
@@ -142,14 +142,16 @@ def globus_transfer(  # noqa: C901
         logger.info(
             f"{ts_utc()}: SURFACE Submit Transfer returned new task_id = {task_id} for label {transfer_data['label']}"
         )
-        # Nullify the submitted transfer data structure so that a new one will be created on next call.
-        transfer_data = None
 
+        # Create new transfer record with the task info
         new_transfer = GlobusTransfer()
-        new_transfer.transfer_data = transfer_data
+        new_transfer.transfer_data = None  # This batch was submitted
         new_transfer.task_id = task_id
         new_transfer.task_status = "UNKNOWN"
         gtc.transfers.append(new_transfer)
+
+        # Reset for building the next batch
+        transfer_data = None
     except TransferAPIError as e:
         if e.code == "NoCredException":
             logger.error(
@@ -236,12 +238,17 @@ def globus_finalize(
         # Wait for any submitted transfers to complete
         # In non-blocking mode, this ensures index.db and any accumulated tar files complete
         # In blocking mode, this is redundant but harmless
+        skip_last_wait: bool = False
         if transfer and transfer.task_id:
+            if transfer.task_id == last_task_id:
+                skip_last_wait = (
+                    True  # No reason to call globus_wait twice on the same task_id
+                )
             logger.info(
                 f"{ts_utc()}: Waiting for transfer task_id={transfer.task_id} to complete"
             )
             globus_wait(gtc.transfer_client, transfer.task_id)
-        if last_task_id:
+        if last_task_id and (not skip_last_wait):
             logger.info(
                 f"{ts_utc()}: Waiting for last transfer task_id={last_task_id} to complete"
             )
