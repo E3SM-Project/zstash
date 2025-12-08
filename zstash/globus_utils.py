@@ -43,7 +43,43 @@ ZSTASH_CLIENT_ID: str = "6c1629cf-446c-49e7-af95-323c6412397f"
 # State files
 GLOBUS_CFG: str = os.path.expanduser("~/.globus-native-apps.cfg")
 INI_PATH: str = os.path.expanduser("~/.zstash.ini")
-TOKEN_FILE = os.path.expanduser("~/.zstash_globus_tokens.json")
+# Default token file - can be overridden via set_token_file_path()
+DEFAULT_TOKEN_FILE = os.path.expanduser("~/.zstash_globus_tokens.json")
+
+# Module-level variable to store custom token file path
+_custom_token_file: Optional[str] = None
+
+
+# Helper functions for token file management #################################
+def set_token_file_path(token_file: str) -> None:
+    """
+    Set a custom token file path for the current session.
+    This should be called before any Globus operations.
+    """
+    global _custom_token_file
+    _custom_token_file = token_file
+    logger.info(f"Using custom token file: {token_file}")
+
+
+def get_token_file_path() -> str:
+    """
+    Get the token file path, checking custom path first,
+    then falling back to default.
+    """
+    if _custom_token_file:
+        return _custom_token_file
+    return DEFAULT_TOKEN_FILE
+
+
+def get_endpoint_key(endpoints: List[Optional[str]]) -> str:
+    """
+    Generate a unique key for a pair of endpoints.
+    Sorts endpoints to ensure consistency regardless of order.
+    """
+    # Filter out None values and sort to ensure consistent key
+    sorted_eps = sorted([ep for ep in endpoints if ep is not None])
+    return ":".join(sorted_eps)
+
 
 # Independent functions #######################################################
 # The functions here don't rely on the global variables defined in globus.py.
@@ -51,6 +87,8 @@ TOKEN_FILE = os.path.expanduser("~/.zstash_globus_tokens.json")
 
 # Primarily used by globus_activate ###########################################
 def check_state_files():
+    token_file = get_token_file_path()
+
     if os.path.exists(GLOBUS_CFG):
         logger.warning(
             f"Globus CFG {GLOBUS_CFG} exists. This may be left over from earlier versions of zstash, and may cause issues. Consider deleting."
@@ -65,13 +103,13 @@ def check_state_files():
             f"{INI_PATH} does NOT exist. This means we won't be able to read the local endpoint ID from it."
         )
 
-    if os.path.exists(TOKEN_FILE):
+    if os.path.exists(token_file):
         logger.info(
-            f"Token file {TOKEN_FILE} exists. We can try to load tokens from it."
+            f"Token file {token_file} exists. We can try to load tokens from it."
         )
     else:
         logger.info(
-            f"Token file {TOKEN_FILE} does NOT exist. This means we won't be able to load tokens from it."
+            f"Token file {token_file} does NOT exist. This means we won't be able to load tokens from it."
         )
 
 
@@ -126,31 +164,40 @@ def get_local_endpoint_id(local_endpoint_id: Optional[str]) -> str:
 def get_transfer_client_with_auth(
     both_endpoints: List[Optional[str]],
 ) -> TransferClient:
+    endpoint_key = get_endpoint_key(both_endpoints)
+
     tokens = load_tokens()
 
-    # Check if we have stored refresh tokens
-    if "transfer.api.globus.org" in tokens:
-        token_data = tokens["transfer.api.globus.org"]
-        if "refresh_token" in token_data:
-            logger.info("Found stored refresh token - using it")
-            # Create a simple auth client for the RefreshTokenAuthorizer
-            auth_client = NativeAppAuthClient(ZSTASH_CLIENT_ID)
-            try:
-                transfer_authorizer = RefreshTokenAuthorizer(
-                    refresh_token=token_data["refresh_token"], auth_client=auth_client
+    # Check if we have stored refresh tokens for this endpoint pair
+    if endpoint_key in tokens:
+        endpoint_tokens = tokens[endpoint_key]
+        if "transfer.api.globus.org" in endpoint_tokens:
+            token_data = endpoint_tokens["transfer.api.globus.org"]
+            if "refresh_token" in token_data:
+                logger.info(
+                    f"Found stored refresh token for endpoints {endpoint_key} - using it"
                 )
-                transfer_client = TransferClient(authorizer=transfer_authorizer)
-                return transfer_client
-            except AuthAPIError as e:
-                logger.error("Stored refresh token is invalid.")
-                logger.error(
-                    f"One possible cause: {TOKEN_FILE} may be configured for a different Globus endpoint. For example, you may have previously set a different destination endpoint for `--hpss=globus://`."
-                )
-                logger.error(f"Try deleting {TOKEN_FILE} and re-running.")
-                raise e
+                # Create a simple auth client for the RefreshTokenAuthorizer
+                auth_client = NativeAppAuthClient(ZSTASH_CLIENT_ID)
+                try:
+                    transfer_authorizer = RefreshTokenAuthorizer(
+                        refresh_token=token_data["refresh_token"],
+                        auth_client=auth_client,
+                    )
+                    transfer_client = TransferClient(authorizer=transfer_authorizer)
+                    return transfer_client
+                except AuthAPIError:
+                    logger.warning(
+                        f"Stored refresh token for {endpoint_key} is invalid, will re-authenticate."
+                    )
+                    # Remove invalid token entry
+                    del tokens[endpoint_key]
+                    save_tokens_to_file(tokens)
 
-    # No stored tokens, need to authenticate
-    logger.info("No stored tokens found - starting authentication")
+    # No stored tokens for this endpoint pair, need to authenticate
+    logger.info(
+        f"No stored tokens found for endpoints {endpoint_key} - starting authentication"
+    )
 
     # Get the required scopes
     all_scopes = get_all_endpoint_scopes(both_endpoints)
@@ -169,7 +216,7 @@ def get_transfer_client_with_auth(
     token_response = client.oauth2_exchange_code_for_tokens(auth_code)
 
     # Save tokens for next time
-    save_tokens(token_response)
+    save_tokens(token_response, both_endpoints)
 
     # Get the transfer token and create authorizer
     globus_transfer_data = token_response.by_resource_server["transfer.api.globus.org"]
@@ -181,14 +228,63 @@ def get_transfer_client_with_auth(
     return transfer_client
 
 
-def load_tokens():
-    if os.path.exists(TOKEN_FILE):
+def load_tokens() -> Dict:
+    """
+    Load all tokens from the token file.
+    Returns a dict with structure:
+    {
+        "endpoint1:endpoint2": {
+            "transfer.api.globus.org": {
+                "access_token": "...",
+                "refresh_token": "...",
+                "expires_at": ...
+            }
+        },
+        ...
+    }
+
+    Also handles legacy single-token format for backward compatibility.
+    """
+    token_file = get_token_file_path()
+
+    if os.path.exists(token_file):
         try:
-            with open(TOKEN_FILE, "r") as f:
-                return json.load(f)
+            with open(token_file, "r") as f:
+                data = json.load(f)
+
+            # Check if this is the old single-token format
+            if "transfer.api.globus.org" in data:
+                # Legacy format detected - migrate it
+                logger.info("Detected legacy token format, migrating to new format")
+                # We can't determine the original endpoints, so we'll just
+                # return empty dict and let user re-authenticate
+                # Optionally, we could try to keep the old token with a generic key
+                return {}
+
+            return data
         except (json.JSONDecodeError, IOError):
+            logger.warning("Error reading token file")
             return {}
     return {}
+
+
+def save_tokens_to_file(tokens: Dict):
+    """
+    Save the complete token dictionary to file.
+    """
+    token_file = get_token_file_path()
+
+    try:
+        # Create directory if it doesn't exist
+        token_dir = os.path.dirname(token_file)
+        if token_dir and not os.path.exists(token_dir):
+            os.makedirs(token_dir)
+
+        with open(token_file, "w") as f:
+            json.dump(tokens, f, indent=2)
+        logger.info(f"Tokens saved successfully to {token_file}")
+    except IOError as e:
+        logger.error(f"Failed to save tokens: {e}")
 
 
 def get_all_endpoint_scopes(endpoints: List[Optional[str]]) -> str:
@@ -202,7 +298,16 @@ def get_all_endpoint_scopes(endpoints: List[Optional[str]]) -> str:
     return f"urn:globus:auth:scope:transfer.api.globus.org:all[{inner}]"
 
 
-def save_tokens(token_response):
+def save_tokens(token_response, endpoints: List[Optional[str]]):
+    """
+    Save tokens for a specific endpoint pair.
+    """
+    endpoint_key = get_endpoint_key(endpoints)
+
+    # Load existing tokens
+    all_tokens = load_tokens()
+
+    # Prepare tokens for this endpoint pair
     tokens_to_save = {}
     for resource_server, token_data in token_response.by_resource_server.items():
         tokens_to_save[resource_server] = {
@@ -211,9 +316,11 @@ def save_tokens(token_response):
             "expires_at": token_data.get("expires_at_seconds"),
         }
 
-    with open(TOKEN_FILE, "w") as f:
-        json.dump(tokens_to_save, f, indent=2)
-    logger.info("Tokens saved successfully")
+    # Store under the endpoint key
+    all_tokens[endpoint_key] = tokens_to_save
+
+    # Save everything back to file
+    save_tokens_to_file(all_tokens)
 
 
 # Primarily used by globus_transfer ###########################################
@@ -262,6 +369,8 @@ def set_up_TransferData(
 
 
 def submit_transfer_with_checks(transfer_client, transfer_data) -> GlobusHTTPResponse:
+    token_file = get_token_file_path()
+
     task: GlobusHTTPResponse
     try:
         task = transfer_client.submit_transfer(transfer_data)
@@ -273,9 +382,9 @@ def submit_transfer_with_checks(transfer_client, transfer_data) -> GlobusHTTPRes
             )
 
             logger.error(
-                f"One possible cause: {TOKEN_FILE} may be configured for a different Globus endpoint. For example, you may have previously set a different destination endpoint for `--hpss=globus://`."
+                f"One possible cause: {token_file} may be configured for a different Globus endpoint. For example, you may have previously set a different destination endpoint for `--hpss=globus://`."
             )
-            logger.error(f"Try deleting {TOKEN_FILE} and re-running.")
+            logger.error(f"Try deleting {token_file} and re-running.")
 
             logger.error(
                 "Another possible cause: insufficient Globus consents. It's possible the consent on https://auth.globus.org/v2/web/consents is for a different destination endpoint."
