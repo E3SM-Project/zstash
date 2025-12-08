@@ -169,8 +169,11 @@ def hpss_get(hpss: str, file_path: str, cache: str):
     """
     Get a file from the HPSS archive.
     """
-    # gtc will get set as part of globus_transfer
-    hpss_transfer(hpss, file_path, "get", cache, False)
+    url = urlparse(hpss)
+    gtc = None
+    if url.scheme == "globus":
+        gtc = GlobusTransferCollection()
+    hpss_transfer(hpss, file_path, "get", cache, False, gtc=gtc)
 
 
 def hpss_chgrp(hpss: str, group: str, recurse: bool = False):
