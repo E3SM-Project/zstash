@@ -478,19 +478,29 @@ class TestExtractFilesCheckpointSaving:
 class TestMultiprocessCheckpointWarning:
     """Tests for checkpoint behavior with multiprocessing."""
 
+    @patch("zstash.extract.CheckpointSaver")
     @patch("zstash.extract.parallel.PrintMonitor")
     @patch("zstash.extract.parallel.ExtractWorker")
     @patch("zstash.extract.multiprocessing.Process")
-    @patch("zstash.extract.logger")
-    def test_warning_logged_for_check_with_multiprocessing(
-        self, mock_logger, mock_process, mock_worker, mock_monitor, mock_extract_db
+    @patch("zstash.extract.multiprocessing.Queue")
+    def test_checkpoint_saver_created_for_check_with_multiprocessing(
+        self,
+        mock_queue,
+        mock_process,
+        mock_worker,
+        mock_monitor,
+        mock_checkpoint_saver,
+        mock_extract_db,
     ):
-        """Test that warning is logged when using --workers with check."""
+        """Test that CheckpointSaver is created when using --workers with check."""
         db_path, cur, con = mock_extract_db
 
         mock_proc = MagicMock()
         mock_proc.is_alive.return_value = False
         mock_process.return_value = mock_proc
+
+        mock_saver_instance = MagicMock()
+        mock_checkpoint_saver.return_value = mock_saver_instance
 
         files = [
             FilesRow(
@@ -511,11 +521,15 @@ class TestMultiprocessCheckpointWarning:
             operation="check",
         )
 
-        # Verify warning was logged
-        mock_logger.info.assert_any_call(
-            "Note: Checkpoint saving is disabled when using multiple workers. "
-            "Use --workers=1 with --resume for checkpoint support."
-        )
+        # Verify CheckpointSaver was created and started
+        mock_checkpoint_saver.assert_called_once()
+        mock_saver_instance.start.assert_called_once()
+
+        # Verify shutdown signal (None) was sent to queue
+        mock_queue.return_value.put.assert_any_call(None)
+
+        # Verify saver was joined
+        mock_saver_instance.join.assert_called_once_with(timeout=5)
 
     @patch("zstash.extract.parallel.PrintMonitor")
     @patch("zstash.extract.parallel.ExtractWorker")

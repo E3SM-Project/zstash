@@ -9,6 +9,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
+from six.moves.urllib.parse import urlparse
+
 from . import checkpoint
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_get, hpss_put
@@ -186,6 +188,14 @@ def update_database(  # noqa: C901
     cur: sqlite3.Cursor = con.cursor()
 
     update_config(cur)
+
+    if args.hpss is not None:
+        config.hpss = args.hpss
+    if config.hpss is not None and config.hpss != "none":
+        url = urlparse(config.hpss)
+        if url.scheme == "globus":
+            logger.info("Checking Globus authentication before file scanning...")
+            globus_activate(config.hpss)
 
     if config.maxsize is not None:
         maxsize = config.maxsize

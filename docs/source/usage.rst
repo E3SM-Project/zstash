@@ -158,8 +158,7 @@ where
 * ``--resume`` to resume checking from the last checkpoint. This automatically skips
   tar archives that have already been verified in a previous ``zstash check`` run.
   Particularly useful when checking large archives incrementally or resuming after
-  an interruption. Checkpoints are saved after each tar is verified. Note: checkpoint
-  saving is disabled when using ``--workers > 1``.
+  an interruption. Checkpoints are saved after each tar is verified.
 * ``--clear-checkpoint`` to clear any existing checkpoints and start verification from
   the beginning. Use this if you want to force a complete re-verification of the archive.
 * ``--error-on-duplicate-tar`` FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash will check if the size matches the *most recent* entry.
@@ -261,11 +260,7 @@ archive from scratch ::
 .. note::
     Checkpoints are stored in the ``index.db`` database and are specific to each operation
     (check vs extract). They persist across sessions and do not affect the archived data.
-
-.. note::
-    Checkpoint saving is automatically disabled when using multiple workers (``--workers > 1``)
-    because each worker would require its own database connection. Use ``--workers=1`` with
-    ``--resume`` for checkpoint support.
+    Checkpoint support also works with multiple workers (``--workers > 1``).
 
 Update
 ======
@@ -305,6 +300,12 @@ file versions will still be listed with the ``zstash ls`` and ``zstash ls -l`` c
 Starting with ``zstash v1.1.0`` the md5 hash for the tars will be computed on ``zstash create``.
 If you're using an existing database, then ``zstash update`` will begin keeping track
 of the tars automatically.
+
+.. note::
+    When using Globus for archiving (``--hpss=globus://...``), ``zstash update`` now checks
+    authentication immediately before scanning files. This provides faster feedback if
+    authentication has expired, rather than discovering the issue after a potentially lengthy
+    file scan.
 
 Example
 -------
