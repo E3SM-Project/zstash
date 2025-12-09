@@ -6,9 +6,12 @@ import os.path
 import sqlite3
 import stat
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
+from six.moves.urllib.parse import urlparse
+
+from . import checkpoint
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_get, hpss_put
 from .hpss_utils import add_files
@@ -106,6 +109,16 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
         help="do not wait for each Globus transfer until it completes.",
     )
     optional.add_argument(
+        "--resume",
+        action="store_true",
+        help="resume update from last checkpoint (optimizes file scanning)",
+    )
+    optional.add_argument(
+        "--clear-checkpoint",
+        action="store_true",
+        help="clear any existing update checkpoints and start fresh",
+    )
+    optional.add_argument(
         "--error-on-duplicate-tar",
         action="store_true",
         help="FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash's behavior will depend on whether or not the --overwrite-duplicate-tar flag is set.",
@@ -176,6 +189,14 @@ def update_database(  # noqa: C901
 
     update_config(cur)
 
+    if args.hpss is not None:
+        config.hpss = args.hpss
+    if config.hpss is not None and config.hpss != "none":
+        url = urlparse(config.hpss)
+        if url.scheme == "globus":
+            logger.info("Checking Globus authentication before file scanning...")
+            globus_activate(config.hpss)
+
     if config.maxsize is not None:
         maxsize = config.maxsize
     else:
@@ -194,6 +215,21 @@ def update_database(  # noqa: C901
     if args.hpss is not None:
         config.hpss = args.hpss
 
+    # Handle checkpoint clearing
+    if args.clear_checkpoint:
+        checkpoint.clear_checkpoints(cur, con, "update")
+        logger.info("Cleared checkpoints for update")
+
+    # Load checkpoint for resume
+    last_update_timestamp: Optional[datetime] = None
+    if args.resume:
+        ckpt = checkpoint.load_latest_checkpoint(cur, "update")
+        if ckpt:
+            last_update_timestamp = ckpt["timestamp"]
+            logger.info(f"Resuming update from checkpoint: {last_update_timestamp}")
+        else:
+            logger.info("No checkpoint found. Starting full update scan.")
+
     # Start doing actual work
     logger.debug("Running zstash update")
     logger.debug("Local path : {}".format(config.path))
@@ -205,9 +241,37 @@ def update_database(  # noqa: C901
 
     # Eliminate files that are already archived and up to date
     newfiles: List[str] = []
+
+    # Performance optimization - if resuming, first filter by mtime
+    if last_update_timestamp is not None:
+        logger.info("Filtering files by modification time since last checkpoint...")
+        files_to_check: List[str] = []
+        skipped_count: int = 0
+
+        for file_path in files:
+            file_statinfo: os.stat_result = os.lstat(file_path)
+            file_mdtime: datetime = datetime.fromtimestamp(
+                file_statinfo.st_mtime, tz=timezone.utc
+            )
+
+            # Only check files modified after (or close to) last update
+            # Add a small buffer (e.g., 1 hour) to account for any edge cases
+            time_buffer = timedelta(hours=1)
+            if file_mdtime >= (last_update_timestamp - time_buffer):
+                files_to_check.append(file_path)
+            else:
+                skipped_count += 1
+
+        logger.info(f"Skipped {skipped_count} files unchanged since last update")
+        logger.info(f"Checking {len(files_to_check)} potentially new/modified files")
+        files = files_to_check
+
+    # Now do the database comparison for remaining files
     for file_path in files:
         statinfo: os.stat_result = os.lstat(file_path)
-        mdtime_new: datetime = datetime.utcfromtimestamp(statinfo.st_mtime)
+        mdtime_new: datetime = datetime.fromtimestamp(
+            statinfo.st_mtime, tz=timezone.utc
+        )
         mode: int = statinfo.st_mode
         # For symbolic links or directories, size should be 0
         size_new: int
@@ -227,8 +291,14 @@ def update_database(  # noqa: C901
             else:
                 match: FilesRow = FilesRow(match_)
 
+            # Handle both timezone-aware and naive datetimes for backwards compatibility
+            match_mtime = match.mtime
+            if match_mtime.tzinfo is None:
+                # Database has naive datetime, make it aware for comparison
+                match_mtime = match_mtime.replace(tzinfo=timezone.utc)
+
             if (size_new == match.size) and (
-                abs((mdtime_new - match.mtime).total_seconds()) <= TIME_TOL
+                abs((mdtime_new - match_mtime).total_seconds()) <= TIME_TOL
             ):
                 # File exists with same size and modification time within tolerance
                 new = False
@@ -294,6 +364,24 @@ def update_database(  # noqa: C901
             error_on_duplicate_tar=args.error_on_duplicate_tar,
             overwrite_duplicate_tars=args.overwrite_duplicate_tars,
         )
+
+    # Save checkpoint after successful update
+    # Get the last tar that was created
+    cur.execute("select distinct tar from files ORDER BY tar DESC LIMIT 1")
+    result = cur.fetchone()
+    if result and not failures:
+        last_tar = result[0]
+        # Save checkpoint
+        checkpoint.save_checkpoint(
+            cur,
+            con,
+            "update",
+            last_tar,
+            len(newfiles),
+            len(newfiles),
+            status="completed",
+        )
+        logger.info(f"Saved checkpoint: update completed at {last_tar}")
 
     # Close database
     con.commit()

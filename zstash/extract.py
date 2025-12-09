@@ -1,4 +1,4 @@
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, annotations, print_function
 
 import argparse
 import collections
@@ -7,6 +7,7 @@ import heapq
 import logging
 import multiprocessing
 import os.path
+import queue
 import re
 import sqlite3
 import sys
@@ -18,7 +19,8 @@ from typing import DefaultDict, List, Optional, Set, Tuple
 import _hashlib
 import _io
 
-from . import parallel
+from . import checkpoint, parallel
+from .checkpoint import complete_checkpoint, save_checkpoint
 from .hpss import hpss_get
 from .settings import (
     BLOCK_SIZE,
@@ -31,6 +33,69 @@ from .settings import (
     logger,
 )
 from .utils import tars_table_exists, update_config
+
+
+class CheckpointSaver(multiprocessing.Process):
+    """
+    Dedicated process for saving checkpoints to avoid database conflicts.
+    Workers send checkpoint data via queue, this process saves them.
+    """
+
+    def __init__(
+        self,
+        checkpoint_queue: multiprocessing.Queue[Optional[Tuple]],
+        cache: str,
+        operation: str,
+    ):
+        super().__init__(daemon=True)
+        self.checkpoint_queue = checkpoint_queue
+        self.cache = cache
+        self.operation = operation
+        self.should_stop = multiprocessing.Event()
+
+    def run(self):
+        """Run the checkpoint saver loop."""
+        # Open our own database connection
+
+        con = sqlite3.connect(
+            get_db_filename(self.cache), detect_types=sqlite3.PARSE_DECLTYPES
+        )
+        cur = con.cursor()
+
+        while not self.should_stop.is_set() or not self.checkpoint_queue.empty():
+            try:
+                # Non-blocking get with timeout
+                checkpoint_data = self.checkpoint_queue.get(timeout=0.5)
+
+                if checkpoint_data is None:
+                    # Shutdown signal
+                    break
+
+                # Unpack checkpoint data
+                last_tar, files_processed, total_files, status = checkpoint_data
+
+                # Save to database
+                save_checkpoint(
+                    cur,
+                    con,
+                    self.operation,
+                    last_tar,
+                    files_processed,
+                    total_files,
+                    status,
+                )
+
+            except queue.Empty:
+                continue
+            except Exception as e:
+                logger.error(f"Error saving checkpoint: {e}")
+
+        # Cleanup
+        con.close()
+
+    def stop(self):
+        """Signal the saver to stop."""
+        self.should_stop.set()
 
 
 def extract(keep_files: bool = True):
@@ -99,6 +164,16 @@ def setup_extract() -> Tuple[argparse.Namespace, str]:
     )
     optional.add_argument("--tars", type=str, help="specify which tars to process")
     optional.add_argument(
+        "--resume",
+        action="store_true",
+        help="resume checking/extraction from last checkpoint (skips already verified archives)",
+    )
+    optional.add_argument(
+        "--clear-checkpoint",
+        action="store_true",
+        help="clear any existing checkpoints and start fresh",
+    )
+    optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
     optional.add_argument(
@@ -161,6 +236,48 @@ def parse_tars_option(tars: str, first_tar: str, last_tar: str) -> List[str]:
     return tar_list
 
 
+def handle_checkpoint_resume(
+    args: argparse.Namespace,
+    cur: sqlite3.Cursor,
+    con: sqlite3.Connection,
+    cmd_name: str,
+) -> None:
+    """
+    Handle checkpoint clearing and resume logic.
+    Extracted to reduce complexity of extract_database.
+    """
+    # Handle checkpoint clearing
+    if args.clear_checkpoint:
+        checkpoint.clear_checkpoints(cur, con, cmd_name)
+        logger.info(f"Cleared checkpoints for {cmd_name}")
+
+    # Handle resume from checkpoint
+    if args.resume:
+        ckpt = checkpoint.load_latest_checkpoint(cur, cmd_name)
+        if ckpt and ckpt["last_tar_index"] is not None:
+            last_verified_tar_index = ckpt["last_tar_index"]
+            logger.info(
+                f"Resuming from checkpoint: last verified tar index = {last_verified_tar_index:06x}"
+            )
+
+            # If --tars wasn't explicitly set and we have a checkpoint,
+            # auto-populate it to skip verified tars
+            if args.tars is None:
+                # Get the last tar name from database to use as upper bound
+                cur.execute("select distinct tar from files ORDER BY tar DESC LIMIT 1")
+                result = cur.fetchone()
+                if result:
+                    last_tar_name = result[0].replace(".tar", "")
+                    # Start from the next tar after the checkpoint
+                    next_tar_index = last_verified_tar_index + 1
+                    args.tars = f"{next_tar_index:06x}-{last_tar_name}"
+                    logger.info(f"Auto-set --tars to: {args.tars}")
+        else:
+            logger.info(
+                "No checkpoint found or checkpoint incomplete. Starting from beginning."
+            )
+
+
 def extract_database(
     args: argparse.Namespace, cache: str, keep_files: bool
 ) -> List[FilesRow]:
@@ -204,6 +321,10 @@ def extract_database(
         keep = True
     else:
         keep = args.keep
+
+    # Handle checkpoint operations
+    cmd_name = "extract" if keep_files else "check"
+    handle_checkpoint_resume(args, cur, con, cmd_name)
 
     # Start doing actual work
     cmd: str = "extract" if keep_files else "check"
@@ -277,15 +398,24 @@ def extract_database(
     # that extract the files by tape order.
     matches.sort(key=lambda t: (t.tar, t.offset))
 
+    # Save total file count for checkpoint tracking
+    total_files = len(matches)
+
     # Retrieve from tapes
     failures: List[FilesRow]
     if args.workers > 1:
         logger.debug("Running zstash {} with multiprocessing".format(cmd))
         failures = multiprocess_extract(
-            args.workers, matches, keep_files, keep, cache, cur, args
+            args.workers, matches, keep_files, keep, cache, cur, args, con, cmd
         )
     else:
-        failures = extractFiles(matches, keep_files, keep, cache, cur, args)
+        failures = extractFiles(
+            matches, keep_files, keep, cache, cur, args, None, con, cmd, total_files
+        )
+
+    # Mark checkpoint as completed if no failures
+    if not failures and args.resume:
+        checkpoint.complete_checkpoint(cur, con, cmd)
 
     # Close database
     logger.debug("Closing index database")
@@ -302,13 +432,23 @@ def multiprocess_extract(
     cache: str,
     cur: sqlite3.Cursor,
     args: argparse.Namespace,
+    con: sqlite3.Connection,
+    operation: str,
 ) -> List[FilesRow]:
     """
-    Extract the files from the matches in parallel.
+    Extract the files from the matches in parallel with checkpoint support.
 
-    A single unit of work is a tar and all of
-    the files in it to extract.
+    A single unit of work is a tar and all of the files in it to extract.
     """
+    # Create checkpoint queue and saver process ONLY for check operations
+    checkpoint_queue: Optional[multiprocessing.Queue[Optional[Tuple]]] = None
+    checkpoint_saver: Optional[CheckpointSaver] = None
+
+    if operation == "check":
+        checkpoint_queue = multiprocessing.Queue()
+        checkpoint_saver = CheckpointSaver(checkpoint_queue, cache, operation)
+        checkpoint_saver.start()
+
     # A dict of tar -> size of files in it.
     # This is because we're trying to balance the load between
     # the processes.
@@ -335,20 +475,19 @@ def multiprocess_extract(
     # A min heap, of (work, worker_idx) tuples, work is the size of data
     # that worker_idx needs to work on.
     # We can efficiently get the worker with the least amount of work.
-    work_to_workers: List[Tuple[int, int]] = [(0, i) for i in range(num_workers)]
-    heapq.heapify(workers_to_tars)
+    work_to_workers: List[Tuple[float, int]] = [(0.0, i) for i in range(num_workers)]
+    heapq.heapify(work_to_workers)
 
     # Using a greedy approach, populate workers_to_tars.
     for _, tar in enumerate(tar_to_size):
         # The worker with the least work should get the current largest amount of work.
-        workers_work: int
+        workers_work: float
         worker_idx: int
         workers_work, worker_idx = heapq.heappop(work_to_workers)
         workers_to_tars[worker_idx].add(tar)
         # Add this worker back to the heap, with the new amount of work.
         worker_tuple: Tuple[float, int] = (workers_work + tar_to_size[tar], worker_idx)
-        # FIXME: error: Cannot infer type argument 1 of "heappush"
-        heapq.heappush(work_to_workers, worker_tuple)  # type: ignore
+        heapq.heappush(work_to_workers, worker_tuple)
 
     # For worker i, workers_to_matches[i] is a list of
     # matches from the database for it to process.
@@ -374,7 +513,19 @@ def multiprocess_extract(
         )
         process: multiprocessing.Process = multiprocessing.Process(
             target=extractFiles,
-            args=(matches, keep_files, keep_tars, cache, cur, args, worker),
+            args=(
+                matches,
+                keep_files,
+                keep_tars,
+                cache,
+                cur,
+                args,
+                worker,
+                None,  # con=None - but pass checkpoint_queue instead
+                operation,
+                len(matches),
+                checkpoint_queue,
+            ),
             daemon=True,
         )
         process.start()
@@ -388,6 +539,15 @@ def multiprocess_extract(
     while any(p.is_alive() for p in processes):
         while not failure_queue.empty():
             failures.append(failure_queue.get())
+
+    # Signal checkpoint saver to stop (only if it was created)
+    if checkpoint_saver is not None and checkpoint_queue is not None:
+        checkpoint_queue.put(None)
+        checkpoint_saver.join(timeout=5)
+
+        # Mark as completed if no failures
+        if not failures:
+            complete_checkpoint(cur, con, operation)
 
     # Sort the failures, since they can come in at any order.
     failures.sort(key=lambda t: (t.name, t.tar, t.offset))
@@ -482,8 +642,14 @@ def extractFiles(  # noqa: C901
     cur: sqlite3.Cursor,
     args: argparse.Namespace,
     multiprocess_worker: Optional[parallel.ExtractWorker] = None,
+    con: Optional[sqlite3.Connection] = None,
+    operation: str = "extract",
+    total_files: int = 0,
+    checkpoint_queue: Optional[multiprocessing.Queue[Optional[Tuple]]] = None,
 ) -> List[FilesRow]:
     """
+    Extract files with checkpoint support even in multiprocessing mode.
+
     Given a list of database rows, extract the files from the
     tar archives to the current location on disk.
 
@@ -498,11 +664,16 @@ def extractFiles(  # noqa: C901
     that called this function.
     We need a reference to it so we can signal it to print
     the contents of what's in its print queue.
+
+    If checkpoint_queue is provided, checkpoint data is sent to it
+    instead of saving directly to the database.
     """
     failures: List[FilesRow] = []
     tfname: str
     newtar: bool = True
     nfiles: int = len(files)
+    files_processed: int = 0
+
     if multiprocess_worker:
         # All messages to the logger will now be sent to
         # this queue, instead of sys.stdout.
@@ -574,8 +745,6 @@ def extractFiles(  # noqa: C901
         # Extract file
         cmd: str = "Extracting" if keep_files else "Checking"
         logger.info(cmd + " %s" % (files_row.name))
-        # if multiprocess_worker:
-        #     print('{} is {} {} from {}'.format(multiprocess_worker, cmd, file[1], file[5]))
 
         if keep_files and not should_extract_file(files_row):
             # If we were going to extract, but aren't
@@ -676,6 +845,8 @@ def extractFiles(  # noqa: C901
             logger.error("Retrieving {}".format(files_row.name))
             failures.append(files_row)
 
+        files_processed += 1
+
         if multiprocess_worker:
             multiprocess_worker.print_contents()
 
@@ -686,6 +857,29 @@ def extractFiles(  # noqa: C901
             # Close current archive file
             logger.debug("Closing tar archive {}".format(tfname))
             tar.close()
+
+            # Save checkpoint - works with both single and multiprocessing
+            if operation == "check":
+                if checkpoint_queue is not None:
+                    # Multiprocessing mode: send to queue
+                    checkpoint_data = (
+                        files_row.tar,
+                        files_processed,
+                        total_files,
+                        "in_progress",
+                    )
+                    checkpoint_queue.put(checkpoint_data)
+                elif con is not None:
+                    # Single-worker mode: save directly
+                    save_checkpoint(
+                        cur,
+                        con,
+                        operation,
+                        files_row.tar,
+                        files_processed,
+                        total_files,
+                        status="in_progress",
+                    )
 
             if multiprocess_worker:
                 multiprocess_worker.done_enqueuing_output_for_tar(files_row.tar)
