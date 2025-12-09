@@ -281,8 +281,14 @@ def update_database(  # noqa: C901
             else:
                 match: FilesRow = FilesRow(match_)
 
+            # Handle both timezone-aware and naive datetimes for backwards compatibility
+            match_mtime = match.mtime
+            if match_mtime.tzinfo is None:
+                # Database has naive datetime, make it aware for comparison
+                match_mtime = match_mtime.replace(tzinfo=timezone.utc)
+
             if (size_new == match.size) and (
-                abs((mdtime_new - match.mtime).total_seconds()) <= TIME_TOL
+                abs((mdtime_new - match_mtime).total_seconds()) <= TIME_TOL
             ):
                 # File exists with same size and modification time within tolerance
                 new = False
