@@ -11,6 +11,7 @@ from typing import List, Optional, Tuple
 
 import _hashlib
 
+from . import checkpoint
 from .hpss import hpss_put
 from .settings import TupleFilesRowNoId, TupleTarsRowNoId, config, logger
 from .utils import create_tars_table, tars_table_exists, ts_utc
@@ -72,6 +73,7 @@ def add_files(
     failures: List[str] = []
     create_new_tar: bool = True
     nfiles: int = len(files)
+    files_processed: int = 0
     archived: List[TupleFilesRowNoId]
     tarsize: int
     tname: str
@@ -123,6 +125,7 @@ def add_files(
             # Increase tarsize by the size of the current file.
             # Use `tell()` to also include the tar's metadata in the size.
             tarsize = tarFileObject.tell()
+            files_processed += 1
         except Exception:
             # Catch all exceptions here.
             traceback.print_exc()
@@ -262,6 +265,21 @@ def add_files(
             # the last 6 columns matching the values of `archived`
             cur.executemany("insert into files values (NULL,?,?,?,?,?,?)", archived)
             con.commit()
+
+            # Save checkpoint after each tar is successfully created and uploaded
+            # This allows resuming from this point if the process is interrupted
+            checkpoint.save_checkpoint(
+                cur,
+                con,
+                "update",
+                tfname,
+                files_processed,
+                nfiles,
+                status="in_progress",
+            )
+            logger.debug(
+                f"Saved checkpoint: update - {tfname} ({files_processed}/{nfiles})"
+            )
 
             # Open new tar next time
             create_new_tar = True
