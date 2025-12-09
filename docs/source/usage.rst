@@ -136,7 +136,7 @@ Note: Most of the commands for this are the same for ``zstash extract`` and ``zs
 To verify that your files were uploaded on HPSS successfully,
 go to a **new, empty directory** and run: ::
 
-   $ zstash check --hpss=<path to HPSS> [--workers=<num of processes>] [--cache=<cache>] [--keep] [-v] [files]
+   $ zstash check --hpss=<path to HPSS> [--workers=<num of processes>] [--cache=<cache>] [--keep] [--resume] [--clear-checkpoint] [-v] [files]
 
 where
 
@@ -155,6 +155,13 @@ where
   an incomplete tar file, then the archive you're checking
   must have been created using ``zstash >= v1.1.0``.
 * ``--tars`` to specify specific tars to check. See below for example usage.
+* ``--resume`` to resume checking from the last checkpoint. This automatically skips
+  tar archives that have already been verified in a previous ``zstash check`` run.
+  Particularly useful when checking large archives incrementally or resuming after
+  an interruption. Checkpoints are saved after each tar is verified. Note: checkpoint
+  saving is disabled when using ``--workers > 1``.
+* ``--clear-checkpoint`` to clear any existing checkpoints and start verification from
+  the beginning. Use this if you want to force a complete re-verification of the archive.
 * ``--error-on-duplicate-tar`` FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash will check if the size matches the *most recent* entry.
 * ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to check (standard wildcards supported).
@@ -223,13 +230,50 @@ Example usage of ``--tars``::
   # Mix and match
   zstash check --tars=000030-00003e,00004e,00005a-
 
+Resuming Interrupted Checks
+----------------------------
+
+If a check operation is interrupted (e.g., due to time limits, system issues, or manual
+cancellation), you can resume from where it left off using the ``--resume`` flag.
+
+**Example**: Resume a check operation ::
+
+  $ zstash check --hpss=test/E3SM_simulations/20170731.F20TR.ne30_ne30.edison --resume
+  INFO: Loaded checkpoint: check from 2025-12-08 15:30:22 - last tar: 00002a.tar
+  INFO: Resuming from checkpoint: last verified tar index = 00002a
+  INFO: Auto-set --tars to: 00002b-000050
+  INFO: Opening tar archive zstash/00002b.tar
+  ...
+
+``zstash check`` will automatically determine which tars have already been verified and
+skip them, only checking the remaining archives. This can save hours or days when working
+with large archives.
+
+**Performance improvement**: On a large archive with 100 tars where 90 have already been
+verified, using ``--resume`` will only check the remaining 10 tars instead of starting
+over from the beginning.
+
+**Starting fresh**: If you want to discard previous checkpoints and verify the entire
+archive from scratch ::
+
+  $ zstash check --hpss=test/E3SM_simulations/20170731.F20TR.ne30_ne30.edison --clear-checkpoint
+
+.. note::
+    Checkpoints are stored in the ``index.db`` database and are specific to each operation
+    (check vs extract). They persist across sessions and do not affect the archived data.
+
+.. note::
+    Checkpoint saving is automatically disabled when using multiple workers (``--workers > 1``)
+    because each worker would require its own database connection. Use ``--workers=1`` with
+    ``--resume`` for checkpoint support.
+
 Update
 ======
 
 An existing zstash archive can be updated to add new or modified files: ::
 
    $ cd <mydir>
-   $ zstash update --hpss=<path to HPSS> [--cache=<cache>] [--dry-run] [--exclude] [--keep] [-v]
+   $ zstash update --hpss=<path to HPSS> [--cache=<cache>] [--dry-run] [--exclude] [--keep] [--resume] [--clear-checkpoint] [-v]
 
 where
 
@@ -242,6 +286,13 @@ where
 * ``--keep`` to keep a copy of the tar files on the local file system after
   they have been extracted from the archive. Normally, they are deleted after
   successful transfer.
+* ``--resume`` to resume an update operation from the last checkpoint. When enabled,
+  ``zstash`` will skip scanning files that haven't been modified since the last update,
+  dramatically reducing the time needed to identify new or changed files. This is
+  particularly useful for large directory trees or when resuming interrupted updates.
+  Checkpoints are saved after each tar archive is created and uploaded.
+* ``--clear-checkpoint`` to clear any existing checkpoints and perform a full file scan.
+  Use this if you want to force a complete rescan of all files in the directory.
 * ``--non-blocking`` Zstash will submit a Globus transfer and immediately create a subsequent tarball. That is, Zstash will not wait until the transfer completes to start creating a subsequent tarball. On machines where it takes more time to create a tarball than transfer it, each Globus transfer will have one file. On machines where it takes less time to create a tarball than transfer it, the first transfer will have one file, but the number of tarballs in subsequent transfers will grow finding dynamically the most optimal number of tarballs per transfer. NOTE: zstash is currently always non-blocking.
 * ``--error-on-duplicate-tar`` FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash's behavior will depend on whether or not the --overwrite-duplicate-tar flag is set.
 * ``--overwrite-duplicate-tars`` FOR ADVANCED USERS ONLY: If a duplicate tar is encountered, overwrite the existing database record with the new one (i.e., it will assume the latest tar is the correct one). If this flag is not set, zstash will permit multiple entries for the same tar in its database.
@@ -292,6 +343,47 @@ and therefore could potentially hold more data. This is a design choice that
 was made out of caution to avoid the risk of damaging an existing tar file by 
 appending to it.
 
+Resuming Interrupted Updates
+-----------------------------
+
+Large update operations can be interrupted due to time limits, connection issues, or
+manual cancellation. The ``--resume`` flag allows you to continue where you left off
+with significant performance improvements.
+
+**Example**: Resume an interrupted update ::
+
+  $ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+  $ zstash update --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison --resume
+  INFO: Resuming update from checkpoint: 2025-12-08 14:15:30
+  INFO: Filtering files by modification time since last checkpoint...
+  INFO: Skipped 850000 files unchanged since last update
+  INFO: Checking 5000 potentially new/modified files
+  ...
+
+When using ``--resume``, zstash performs an optimized file scan:
+
+1. Files with modification times before the last checkpoint are automatically skipped
+2. Only recently modified files are compared against the database
+3. New or changed files are added to new tar archives
+4. Checkpoints are saved after each tar is successfully created
+
+**Performance improvement**: For a directory with 1 million files where only 10,000 have
+changed since the last update, ``--resume`` can reduce the scanning phase from hours to
+minutes by skipping the database comparison for 990,000 unchanged files.
+
+**Starting fresh**: To perform a complete rescan of all files ::
+
+  $ zstash update --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison --clear-checkpoint
+
+.. note::
+    The ``--resume`` flag uses a 1-hour buffer when filtering files by modification time
+    to account for clock skew and edge cases. Files modified within 1 hour before the
+    last checkpoint will still be checked.
+
+.. note::
+    Checkpoints track the last tar archive created and the timestamp of the update operation.
+    They are stored in the ``index.db`` database and do not affect the archived data.
+
 
 Extract
 =======
@@ -301,7 +393,7 @@ Note: Most of the commands for this are the same for ``zstash check`` and ``zsta
 To extract files from an existing zstash archive into current <mydir>: ::
 
    $ cd <mydir>
-   $ zstash extract --hpss=<path to HPSS> [--workers=<num of processes>] [--cache=<cache>] [--keep] [-v] [files]
+   $ zstash extract --hpss=<path to HPSS> [--workers=<num of processes>] [--cache=<cache>] [--keep] [--resume] [--clear-checkpoint] [-v] [files]
 
 where
 
@@ -324,6 +416,11 @@ where
   an incomplete tar file, then the archive you're extracting from
   must have been created using ``zstash >= v1.1.0``.
 * ``--tars`` to	specify	specific tars to extract. See "Check" above for example usage.
+* ``--resume`` to resume extraction from the last checkpoint. This flag works similarly
+  to ``--resume`` in ``zstash check``, automatically determining which tar archives have
+  already been processed and skipping them. Useful for resuming large extraction operations.
+* ``--clear-checkpoint`` to clear any existing checkpoints and start extraction from
+  the beginning.
 * ``--error-on-duplicate-tar`` FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash will check if the size matches the *most recent* entry.
 * ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to be extracted (standard wildcards supported).
@@ -333,6 +430,11 @@ where
     containing **wildcards should be enclosed in double quotes ("...")** 
     to avoid shell substitution.
   * Names of specific tar archives to extract all files within these tar archives.
+
+.. note::
+    While ``--resume`` is supported for extract operations, it is most useful with
+    ``zstash check`` where the goal is to verify archives incrementally. For extraction,
+    you typically want specific files rather than processing all tars sequentially.
 
 You must pass in the **path relative to the top level** for the file(s). For help 
 finding path names, you can use ``zstash ls`` as documented below.
@@ -530,4 +632,3 @@ Starting with version 0.3, you can check the version of zstash from the command 
 
    $ zstash version
    v0.3.0
-
