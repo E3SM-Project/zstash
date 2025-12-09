@@ -6,7 +6,7 @@ import os.path
 import sqlite3
 import stat
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
 from . import checkpoint
@@ -240,7 +240,9 @@ def update_database(  # noqa: C901
 
         for file_path in files:
             file_statinfo: os.stat_result = os.lstat(file_path)
-            file_mdtime: datetime = datetime.utcfromtimestamp(file_statinfo.st_mtime)
+            file_mdtime: datetime = datetime.fromtimestamp(
+                file_statinfo.st_mtime, tz=timezone.utc
+            )
 
             # Only check files modified after (or close to) last update
             # Add a small buffer (e.g., 1 hour) to account for any edge cases
@@ -257,7 +259,9 @@ def update_database(  # noqa: C901
     # Now do the database comparison for remaining files
     for file_path in files:
         statinfo: os.stat_result = os.lstat(file_path)
-        mdtime_new: datetime = datetime.utcfromtimestamp(statinfo.st_mtime)
+        mdtime_new: datetime = datetime.fromtimestamp(
+            statinfo.st_mtime, tz=timezone.utc
+        )
         mode: int = statinfo.st_mode
         # For symbolic links or directories, size should be 0
         size_new: int

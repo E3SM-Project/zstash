@@ -5,7 +5,7 @@ Integration tests for update.py checkpoint functionality
 import os
 import sqlite3
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,7 +19,7 @@ def mock_update_db():
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
 
-    con = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES)
+    con = sqlite3.connect(db_path)
     cur = con.cursor()
 
     # Create files table
@@ -29,7 +29,7 @@ def mock_update_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
             size INTEGER,
-            mtime DATETIME,
+            mtime TEXT,
             md5 TEXT,
             tar TEXT,
             offset INTEGER
@@ -64,14 +64,22 @@ def mock_update_db():
 class TestUpdateCheckpointFiltering:
     """Tests for timestamp-based file filtering during resume."""
 
+    @patch("zstash.update.config")
     @patch("zstash.update.get_files_to_archive")
     @patch("zstash.update.os.lstat")
-    def test_resume_filters_by_mtime(self, mock_lstat, mock_get_files, mock_update_db):
+    def test_resume_filters_by_mtime(
+        self, mock_lstat, mock_get_files, mock_config, mock_update_db
+    ):
         """Test that resume filters files by modification time."""
         db_path, cur, con = mock_update_db
 
+        # Setup config mock
+        mock_config.maxsize = 268435456
+        mock_config.hpss = "none"
+        mock_config.path = "/test/path"
+
         # Create a checkpoint from 1 hour ago
-        checkpoint_time = datetime.utcnow() - timedelta(hours=1)
+        checkpoint_time = datetime.now(timezone.utc) - timedelta(hours=1)
 
         # Manually insert checkpoint with specific timestamp
         checkpoint.create_checkpoint_table(cur, con)
@@ -81,7 +89,15 @@ class TestUpdateCheckpointFiltering:
             (operation, last_tar, last_tar_index, timestamp, files_processed, total_files, status)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            ("update", "000001.tar", 1, checkpoint_time, 10, 10, "completed"),
+            (
+                "update",
+                "000001.tar",
+                1,
+                checkpoint_time.isoformat(),
+                10,
+                10,
+                "completed",
+            ),
         )
         con.commit()
 
@@ -125,9 +141,15 @@ class TestUpdateCheckpointFiltering:
         # In a real scenario, we'd check that only new_file.txt was processed
         # This is demonstrated by the filtering logic in the actual code
 
-    def test_resume_without_checkpoint_processes_all(self, mock_update_db):
+    @patch("zstash.update.config")
+    def test_resume_without_checkpoint_processes_all(self, mock_config, mock_update_db):
         """Test that without checkpoint, all files are processed."""
         db_path, cur, con = mock_update_db
+
+        # Setup config mock
+        mock_config.maxsize = 268435456
+        mock_config.hpss = "none"
+        mock_config.path = "/test/path"
 
         from zstash.update import update_database
 
@@ -152,20 +174,25 @@ class TestUpdateCheckpointFiltering:
 class TestUpdateCheckpointSaving:
     """Tests for checkpoint saving during update."""
 
+    @patch("zstash.hpss_utils.config")
     @patch("zstash.hpss_utils.hpss_put")
     @patch("zstash.hpss_utils.tarfile.open")
     def test_checkpoint_saved_after_tar_creation(
-        self, mock_tarfile, mock_hpss_put, mock_update_db
+        self, mock_tarfile, mock_hpss_put, mock_config, mock_update_db
     ):
         """Test that checkpoint is saved after each tar is created."""
         db_path, cur, con = mock_update_db
+
+        # Setup config mock
+        mock_config.maxsize = 268435456
+        mock_config.hpss = "none"
 
         # Setup mock tar
         mock_tar = MagicMock()
         mock_tar.offset = 0
         mock_tarinfo = MagicMock()
         mock_tarinfo.size = 100
-        mock_tarinfo.mtime = datetime.utcnow().timestamp()
+        mock_tarinfo.mtime = datetime.now(timezone.utc).timestamp()
         mock_tarinfo.isfile.return_value = True
         mock_tarinfo.islnk.return_value = False
         mock_tar.gettarinfo.return_value = mock_tarinfo
@@ -206,14 +233,27 @@ class TestUpdateCheckpointSaving:
 
             shutil.rmtree(cache_dir, ignore_errors=True)
 
-    def test_checkpoint_marked_completed_on_success(self, mock_update_db):
+    @patch("zstash.update.config")
+    def test_checkpoint_marked_completed_on_success(self, mock_config, mock_update_db):
         """Test that checkpoint is marked completed after successful update."""
         db_path, cur, con = mock_update_db
+
+        # Setup config mock
+        mock_config.maxsize = 268435456
+        mock_config.hpss = "none"
+        mock_config.path = "/test/path"
 
         # Insert a file record to simulate completed update
         cur.execute(
             "INSERT INTO files VALUES (NULL, ?, ?, ?, ?, ?, ?)",
-            ("test.txt", 100, datetime.utcnow(), "abc123", "000001.tar", 0),
+            (
+                "test.txt",
+                100,
+                datetime.now(timezone.utc).isoformat(),
+                "abc123",
+                "000001.tar",
+                0,
+            ),
         )
         con.commit()
 
@@ -243,9 +283,15 @@ class TestUpdateCheckpointSaving:
 class TestUpdateClearCheckpoint:
     """Tests for clearing checkpoints during update."""
 
-    def test_clear_checkpoint_flag(self, mock_update_db):
+    @patch("zstash.update.config")
+    def test_clear_checkpoint_flag(self, mock_config, mock_update_db):
         """Test that --clear-checkpoint removes existing checkpoints."""
         db_path, cur, con = mock_update_db
+
+        # Setup config mock
+        mock_config.maxsize = 268435456
+        mock_config.hpss = "none"
+        mock_config.path = "/test/path"
 
         # Create a checkpoint
         checkpoint.save_checkpoint(
@@ -282,7 +328,7 @@ class TestTimestampFiltering:
         # time_buffer = timedelta(hours=1)
         # if file_mdtime >= (last_update_timestamp - time_buffer)
 
-        checkpoint_time = datetime.utcnow()
+        checkpoint_time = datetime.now(timezone.utc)
         time_buffer = timedelta(hours=1)
 
         # File modified 59 minutes before checkpoint (within buffer)
@@ -295,7 +341,7 @@ class TestTimestampFiltering:
 
     def test_file_after_checkpoint_included(self):
         """Test that files modified after checkpoint are included."""
-        checkpoint_time = datetime.utcnow()
+        checkpoint_time = datetime.now(timezone.utc)
         time_buffer = timedelta(hours=1)
 
         # File modified after checkpoint
@@ -345,9 +391,15 @@ class TestHpssUtilsCheckpointIntegration:
 class TestBackwardsCompatibility:
     """Tests for backwards compatibility with old databases."""
 
-    def test_old_database_without_checkpoint_table(self, mock_update_db):
+    @patch("zstash.update.config")
+    def test_old_database_without_checkpoint_table(self, mock_config, mock_update_db):
         """Test that operations work on databases without checkpoint table."""
         db_path, cur, con = mock_update_db
+
+        # Setup config mock
+        mock_config.maxsize = 268435456
+        mock_config.hpss = "none"
+        mock_config.path = "/test/path"
 
         from zstash.update import update_database
 

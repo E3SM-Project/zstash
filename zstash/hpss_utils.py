@@ -6,7 +6,7 @@ import os.path
 import sqlite3
 import tarfile
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
 import _hashlib
@@ -331,5 +331,5 @@ def add_file(
         tar.addfile(tarinfo)
 
     size = tarinfo.size
-    mtime = datetime.utcfromtimestamp(tarinfo.mtime)
+    mtime = datetime.fromtimestamp(tarinfo.mtime, tz=timezone.utc)
     return offset, size, mtime, md5

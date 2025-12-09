@@ -8,7 +8,7 @@ zstash update and check operations, enabling efficient resume capabilities.
 from __future__ import absolute_import, print_function
 
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from .settings import logger
@@ -40,7 +40,7 @@ def create_checkpoint_table(cur: sqlite3.Cursor, con: sqlite3.Connection) -> Non
             operation TEXT NOT NULL,
             last_tar TEXT,
             last_tar_index INTEGER,
-            timestamp DATETIME NOT NULL,
+            timestamp TEXT NOT NULL,
             files_processed INTEGER,
             total_files INTEGER,
             status TEXT
@@ -85,7 +85,7 @@ def save_checkpoint(
         except ValueError:
             logger.warning(f"Could not parse tar index from: {last_tar}")
 
-    timestamp = datetime.utcnow()
+    timestamp = datetime.now(timezone.utc)
 
     cur.execute(
         """
@@ -97,7 +97,7 @@ def save_checkpoint(
             operation,
             last_tar,
             last_tar_index,
-            timestamp,
+            timestamp.isoformat(),  # Store as ISO string
             files_processed,
             total_files,
             status,
@@ -148,12 +148,20 @@ def load_latest_checkpoint(
         logger.debug(f"No checkpoint found for operation: {operation}")
         return None
 
+    # Parse timestamp - may be string or datetime depending on sqlite3 config
+    timestamp_raw = row[4]
+    if isinstance(timestamp_raw, str):
+        # Parse ISO format string to datetime
+        timestamp = datetime.fromisoformat(timestamp_raw.replace(" ", "T"))
+    else:
+        timestamp = timestamp_raw
+
     checkpoint: CheckpointDict = {
         "id": row[0],
         "operation": row[1],
         "last_tar": row[2],
         "last_tar_index": row[3],
-        "timestamp": row[4],
+        "timestamp": timestamp,
         "files_processed": row[5],
         "total_files": row[6],
         "status": row[7],
@@ -193,7 +201,7 @@ def complete_checkpoint(
             LIMIT 1
         )
     """,
-        (datetime.utcnow(), operation),
+        (datetime.now(timezone.utc).isoformat(), operation),  # Store as ISO string
     )
     con.commit()
     logger.info(f"Checkpoint completed for operation: {operation}")

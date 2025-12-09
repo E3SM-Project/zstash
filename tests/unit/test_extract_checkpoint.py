@@ -8,7 +8,7 @@ covered by test_checkpoint.py or test_update_checkpoint.py.
 import os
 import sqlite3
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,7 +23,7 @@ def mock_extract_db():
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
 
-    con = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES)
+    con = sqlite3.connect(db_path)
     cur = con.cursor()
 
     # Create files table
@@ -33,7 +33,7 @@ def mock_extract_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
             size INTEGER,
-            mtime DATETIME,
+            mtime TEXT,
             md5 TEXT,
             tar TEXT,
             offset INTEGER
@@ -58,15 +58,16 @@ def mock_extract_db():
     cur.execute("INSERT INTO config VALUES (NULL, 'maxsize', '268435456')")
 
     # Insert test files across 5 tars
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
+    now_str = now.isoformat()
     test_files = [
-        ("file1.txt", 100, now, "hash1", "000001.tar", 0),
-        ("file2.txt", 200, now, "hash2", "000001.tar", 512),
-        ("file3.txt", 300, now, "hash3", "000002.tar", 0),
-        ("file4.txt", 400, now, "hash4", "000003.tar", 0),
-        ("file5.txt", 500, now, "hash5", "000003.tar", 512),
-        ("file6.txt", 600, now, "hash6", "000004.tar", 0),
-        ("file7.txt", 700, now, "hash7", "000005.tar", 0),
+        ("file1.txt", 100, now_str, "hash1", "000001.tar", 0),
+        ("file2.txt", 200, now_str, "hash2", "000001.tar", 512),
+        ("file3.txt", 300, now_str, "hash3", "000002.tar", 0),
+        ("file4.txt", 400, now_str, "hash4", "000003.tar", 0),
+        ("file5.txt", 500, now_str, "hash5", "000003.tar", 512),
+        ("file6.txt", 600, now_str, "hash6", "000004.tar", 0),
+        ("file7.txt", 700, now_str, "hash7", "000005.tar", 0),
     ]
 
     for f in test_files:
@@ -82,6 +83,57 @@ def mock_extract_db():
 
 class TestHandleCheckpointResume:
     """Tests for handle_checkpoint_resume function."""
+
+    def test_clear_checkpoint_flag(self, mock_extract_db):
+        """Test that --clear-checkpoint flag clears checkpoints."""
+        db_path, cur, con = mock_extract_db
+
+        # Create a checkpoint
+        checkpoint.save_checkpoint(cur, con, "check", "000002.tar", 3, 5, "in_progress")
+
+        # Create mock args with clear_checkpoint=True
+        args = MagicMock()
+        args.clear_checkpoint = True
+        args.resume = False
+        args.tars = None
+
+        extract.handle_checkpoint_resume(args, cur, con, "check")
+
+        # Verify checkpoint was cleared
+        ckpt = checkpoint.load_latest_checkpoint(cur, "check")
+        assert ckpt is None
+
+    def test_resume_without_checkpoint(self, mock_extract_db):
+        """Test resume when no checkpoint exists."""
+        db_path, cur, con = mock_extract_db
+
+        args = MagicMock()
+        args.clear_checkpoint = False
+        args.resume = True
+        args.tars = None
+
+        # Should not raise exception
+        extract.handle_checkpoint_resume(args, cur, con, "check")
+
+        # args.tars should remain None
+        assert args.tars is None
+
+    def test_resume_with_checkpoint(self, mock_extract_db):
+        """Test resume with existing checkpoint auto-sets --tars."""
+        db_path, cur, con = mock_extract_db
+
+        # Create a checkpoint at tar 000001
+        checkpoint.save_checkpoint(cur, con, "check", "000001.tar", 2, 5, "in_progress")
+
+        args = MagicMock()
+        args.clear_checkpoint = False
+        args.resume = True
+        args.tars = None
+
+        extract.handle_checkpoint_resume(args, cur, con, "check")
+
+        # Should set args.tars to start from 000002 (next after checkpoint)
+        assert args.tars == "000002-000005"
 
     def test_resume_calculates_correct_tar_range(self, mock_extract_db):
         """Test that resume correctly calculates the tar range from checkpoint."""
@@ -131,7 +183,7 @@ class TestHandleCheckpointResume:
 
         extract.handle_checkpoint_resume(args, cur, con, "check")
 
-        # Should NOT override
+        # Should preserve the explicit setting
         assert args.tars == "000001-000003"
 
     def test_clear_and_resume_together(self, mock_extract_db):
@@ -157,22 +209,29 @@ class TestHandleCheckpointResume:
 class TestExtractFilesCheckpointSaving:
     """Tests for checkpoint saving in extractFiles function."""
 
+    @patch("zstash.extract.os.remove")
     @patch("zstash.extract.tarfile.open")
     @patch("zstash.extract.hpss_get")
     @patch("zstash.extract.os.path.exists")
     @patch("zstash.extract.should_extract_file")
     @patch("zstash.extract.check_sizes_match")
+    @patch("zstash.extract.config")
     def test_checkpoint_saved_after_each_tar_not_each_file(
         self,
+        mock_config,
         mock_check_sizes,
         mock_should_extract,
         mock_exists,
         mock_hpss_get,
         mock_tarfile_open,
+        mock_remove,
         mock_extract_db,
     ):
         """Test that checkpoint is saved per tar, not per file."""
         db_path, cur, con = mock_extract_db
+
+        # Setup config mock
+        mock_config.hpss = "none"
 
         # Setup mocks
         mock_exists.return_value = True
@@ -193,7 +252,7 @@ class TestExtractFilesCheckpointSaving:
         mock_tarfile_open.return_value = mock_tar
 
         # Create files from 2 different tars
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         files = [
             FilesRow((1, "file1.txt", 100, now, "abc", "000001.tar", 0)),
             FilesRow((2, "file2.txt", 200, now, "def", "000001.tar", 512)),
@@ -227,22 +286,29 @@ class TestExtractFilesCheckpointSaving:
         assert ckpt["last_tar"] == "000002.tar"
         assert ckpt["files_processed"] == 3
 
+    @patch("zstash.extract.os.remove")
     @patch("zstash.extract.tarfile.open")
     @patch("zstash.extract.hpss_get")
     @patch("zstash.extract.os.path.exists")
     @patch("zstash.extract.should_extract_file")
     @patch("zstash.extract.check_sizes_match")
+    @patch("zstash.extract.config")
     def test_checkpoint_tracks_files_processed_correctly(
         self,
+        mock_config,
         mock_check_sizes,
         mock_should_extract,
         mock_exists,
         mock_hpss_get,
         mock_tarfile_open,
+        mock_remove,
         mock_extract_db,
     ):
         """Test that files_processed counter increments correctly."""
         db_path, cur, con = mock_extract_db
+
+        # Setup config mock
+        mock_config.hpss = "none"
 
         # Setup mocks
         mock_exists.return_value = True
@@ -259,7 +325,7 @@ class TestExtractFilesCheckpointSaving:
         mock_tar.extractfile.return_value = mock_extracted
         mock_tarfile_open.return_value = mock_tar
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         files = [
             FilesRow((1, "f1.txt", 100, now, "a", "000001.tar", 0)),
             FilesRow((2, "f2.txt", 200, now, "b", "000001.tar", 512)),
@@ -290,22 +356,29 @@ class TestExtractFilesCheckpointSaving:
         count2 = cur.fetchone()[0]
         assert count2 == 5
 
+    @patch("zstash.extract.os.remove")
     @patch("zstash.extract.tarfile.open")
     @patch("zstash.extract.hpss_get")
     @patch("zstash.extract.os.path.exists")
     @patch("zstash.extract.should_extract_file")
     @patch("zstash.extract.check_sizes_match")
+    @patch("zstash.extract.config")
     def test_no_checkpoint_saved_for_extract_operation(
         self,
+        mock_config,
         mock_check_sizes,
         mock_should_extract,
         mock_exists,
         mock_hpss_get,
         mock_tarfile_open,
+        mock_remove,
         mock_extract_db,
     ):
         """Test that checkpoints are NOT saved during extract (only check)."""
         db_path, cur, con = mock_extract_db
+
+        # Setup config mock
+        mock_config.hpss = "none"
 
         mock_exists.return_value = True
         mock_check_sizes.return_value = True
@@ -321,7 +394,11 @@ class TestExtractFilesCheckpointSaving:
         mock_tar.extractfile.return_value = mock_extracted
         mock_tarfile_open.return_value = mock_tar
 
-        files = [FilesRow((1, "f.txt", 100, datetime.utcnow(), "a", "000001.tar", 0))]
+        files = [
+            FilesRow(
+                (1, "f.txt", 100, datetime.now(timezone.utc), "a", "000001.tar", 0)
+            )
+        ]
         args = MagicMock()
         args.retries = 1
         args.error_on_duplicate_tar = False
@@ -337,22 +414,29 @@ class TestExtractFilesCheckpointSaving:
         ckpt = checkpoint.load_latest_checkpoint(cur, "check")
         assert ckpt is None
 
+    @patch("zstash.extract.os.remove")
     @patch("zstash.extract.tarfile.open")
     @patch("zstash.extract.hpss_get")
     @patch("zstash.extract.os.path.exists")
     @patch("zstash.extract.should_extract_file")
     @patch("zstash.extract.check_sizes_match")
+    @patch("zstash.extract.config")
     def test_no_checkpoint_with_multiprocessing(
         self,
+        mock_config,
         mock_check_sizes,
         mock_should_extract,
         mock_exists,
         mock_hpss_get,
         mock_tarfile_open,
+        mock_remove,
         mock_extract_db,
     ):
         """Test that checkpoints are NOT saved when using multiprocessing."""
         db_path, cur, con = mock_extract_db
+
+        # Setup config mock
+        mock_config.hpss = "none"
 
         mock_exists.return_value = True
         mock_check_sizes.return_value = True
@@ -368,7 +452,11 @@ class TestExtractFilesCheckpointSaving:
         mock_tar.extractfile.return_value = mock_extracted
         mock_tarfile_open.return_value = mock_tar
 
-        files = [FilesRow((1, "f.txt", 100, datetime.utcnow(), "a", "000001.tar", 0))]
+        files = [
+            FilesRow(
+                (1, "f.txt", 100, datetime.now(timezone.utc), "a", "000001.tar", 0)
+            )
+        ]
         args = MagicMock()
         args.retries = 1
         args.error_on_duplicate_tar = False
@@ -404,7 +492,11 @@ class TestMultiprocessCheckpointWarning:
         mock_proc.is_alive.return_value = False
         mock_process.return_value = mock_proc
 
-        files = [FilesRow((1, "f.txt", 100, datetime.utcnow(), "a", "000001.tar", 0))]
+        files = [
+            FilesRow(
+                (1, "f.txt", 100, datetime.now(timezone.utc), "a", "000001.tar", 0)
+            )
+        ]
         args = MagicMock()
 
         extract.multiprocess_extract(
@@ -439,7 +531,11 @@ class TestMultiprocessCheckpointWarning:
         mock_proc.is_alive.return_value = False
         mock_process.return_value = mock_proc
 
-        files = [FilesRow((1, "f.txt", 100, datetime.utcnow(), "a", "000001.tar", 0))]
+        files = [
+            FilesRow(
+                (1, "f.txt", 100, datetime.now(timezone.utc), "a", "000001.tar", 0)
+            )
+        ]
         args = MagicMock()
 
         extract.multiprocess_extract(
@@ -569,7 +665,15 @@ class TestResumeEdgeCases:
             (operation, last_tar, last_tar_index, timestamp, files_processed, total_files, status)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            ("check", "invalid.tar", None, datetime.utcnow(), 1, 7, "in_progress"),
+            (
+                "check",
+                "invalid.tar",
+                None,
+                datetime.now(timezone.utc),
+                1,
+                7,
+                "in_progress",
+            ),
         )
         con.commit()
 
