@@ -437,6 +437,8 @@ def multiprocess_extract(
 ) -> List[FilesRow]:
     """
     Extract the files from the matches in parallel with checkpoint support.
+
+    A single unit of work is a tar and all of the files in it to extract.
     """
     # Create checkpoint queue and saver process ONLY for check operations
     checkpoint_queue: Optional[multiprocessing.Queue[Optional[Tuple]]] = None
@@ -448,6 +450,8 @@ def multiprocess_extract(
         checkpoint_saver.start()
 
     # A dict of tar -> size of files in it.
+    # This is because we're trying to balance the load between
+    # the processes.
     tar_to_size_unsorted: DefaultDict[str, float] = collections.defaultdict(float)
     db_row: FilesRow
     tar: str
@@ -455,39 +459,53 @@ def multiprocess_extract(
     for db_row in matches:
         tar, size = db_row.tar, db_row.size
         tar_to_size_unsorted[tar] += size
-
+    # Sort by the size.
     tar_to_size: collections.OrderedDict[str, float] = collections.OrderedDict(
         sorted(tar_to_size_unsorted.items(), key=lambda x: x[1])
     )
 
+    # We don't want to instantiate more processes than we need to.
+    # So, if the number of tars is less than the number of workers,
+    # set the number of workers to the number of tars.
     num_workers = min(num_workers, len(tar_to_size))
 
+    # For worker i, workers_to_tars[i] is a set of tars
+    # that worker i will work on.
     workers_to_tars: List[set] = [set() for _ in range(num_workers)]
+    # A min heap, of (work, worker_idx) tuples, work is the size of data
+    # that worker_idx needs to work on.
+    # We can efficiently get the worker with the least amount of work.
     work_to_workers: List[Tuple[float, int]] = [(0.0, i) for i in range(num_workers)]
-    heapq.heapify(work_to_workers)  # Fixed: was heapify(workers_to_tars)
+    heapq.heapify(work_to_workers)
 
+    # Using a greedy approach, populate workers_to_tars.
     for _, tar in enumerate(tar_to_size):
-        workers_work: float  # Changed from int
+        # The worker with the least work should get the current largest amount of work.
+        workers_work: float
         worker_idx: int
         workers_work, worker_idx = heapq.heappop(work_to_workers)
         workers_to_tars[worker_idx].add(tar)
+        # Add this worker back to the heap, with the new amount of work.
         worker_tuple: Tuple[float, int] = (workers_work + tar_to_size[tar], worker_idx)
-        heapq.heappush(work_to_workers, worker_tuple)  # No type: ignore needed!
+        heapq.heappush(work_to_workers, worker_tuple)
 
+    # For worker i, workers_to_matches[i] is a list of
+    # matches from the database for it to process.
     workers_to_matches: List[List[FilesRow]] = [[] for _ in range(num_workers)]
     for db_row in matches:
         tar = db_row.tar
         workers_idx: int
         for workers_idx in range(len(workers_to_tars)):
             if tar in workers_to_tars[workers_idx]:
+                # This worker gets this db_row.
                 workers_to_matches[workers_idx].append(db_row)
 
     tar_ordering: List[str] = sorted([tar for tar in tar_to_size])
     monitor: parallel.PrintMonitor = parallel.PrintMonitor(tar_ordering)
 
+    # The return value for extractFiles will be added here.
     failure_queue: multiprocessing.Queue[FilesRow] = multiprocessing.Queue()
     processes: List[multiprocessing.Process] = []
-
     for matches in workers_to_matches:
         tars_for_this_worker: List[str] = list(set(match.tar for match in matches))
         worker: parallel.ExtractWorker = parallel.ExtractWorker(
@@ -513,6 +531,10 @@ def multiprocess_extract(
         process.start()
         processes.append(process)
 
+    # While the processes are running, we need to empty the queue.
+    # Otherwise, it causes hanging.
+    # No need to join() each of the processes when doing this,
+    # because we'll be in this loop until completion.
     failures: List[FilesRow] = []
     while any(p.is_alive() for p in processes):
         while not failure_queue.empty():
@@ -628,6 +650,21 @@ def extractFiles(  # noqa: C901
     """
     Extract files with checkpoint support even in multiprocessing mode.
 
+    Given a list of database rows, extract the files from the
+    tar archives to the current location on disk.
+
+    If keep_files is False, the files are not extracted.
+    This is used for when checking if the files in an HPSS
+    repository are valid.
+
+    If keep_tars is True, the tar archives that are downloaded are kept,
+    even after the program has terminated. Otherwise, they are deleted.
+
+    If running in parallel, then multiprocess_worker is the Worker
+    that called this function.
+    We need a reference to it so we can signal it to print
+    the contents of what's in its print queue.
+
     If checkpoint_queue is provided, checkpoint data is sent to it
     instead of saving directly to the database.
     """
@@ -638,11 +675,14 @@ def extractFiles(  # noqa: C901
     files_processed: int = 0
 
     if multiprocess_worker:
+        # All messages to the logger will now be sent to
+        # this queue, instead of sys.stdout.
         sh = logging.StreamHandler(multiprocess_worker.print_queue)
         sh.setLevel(logging.DEBUG)
         formatter: logging.Formatter = logging.Formatter("%(levelname)s: %(message)s")
         sh.setFormatter(formatter)
         logger.addHandler(sh)
+        # Don't have the logger print to the console as the message come in.
         logger.propagate = False
 
     for i in range(nfiles):
@@ -812,6 +852,9 @@ def extractFiles(  # noqa: C901
 
         # Close current archive?
         if i == nfiles - 1 or files[i].tar != files[i + 1].tar:
+            # We're either on the last file or the tar is distinct from the tar of the next file.
+
+            # Close current archive file
             logger.debug("Closing tar archive {}".format(tfname))
             tar.close()
 
@@ -841,8 +884,10 @@ def extractFiles(  # noqa: C901
             if multiprocess_worker:
                 multiprocess_worker.done_enqueuing_output_for_tar(files_row.tar)
 
+            # Open new archive next time
             newtar = True
 
+            # Delete this tar if the corresponding command-line arg was used.
             if not keep_tars:
                 if tfname is not None:
                     os.remove(tfname)
@@ -850,10 +895,14 @@ def extractFiles(  # noqa: C901
                     raise TypeError("Invalid tfname={}".format(tfname))
 
     if multiprocess_worker:
+        # If there are things left to print, print them.
         multiprocess_worker.print_all_contents()
+
+        # Add the failures to the queue.
+        # When running with multiprocessing, the function multiprocess_extract()
+        # that calls this extractFiles() function will return the failures as a list.
         for f in failures:
             multiprocess_worker.failure_queue.put(f)
-
     return failures
 
 
