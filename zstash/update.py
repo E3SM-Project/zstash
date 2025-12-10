@@ -6,8 +6,10 @@ import os.path
 import sqlite3
 import stat
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Tuple
+
+from six.moves.urllib.parse import urlparse
 
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_get, hpss_put
@@ -99,6 +101,15 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
         "--cache",
         type=str,
         help='path to the zstash archive on the local file system. The default name is "zstash".',
+    )
+    optional.add_argument(
+        "--modified-since",
+        type=str,
+        help=(
+            "only consider files modified after this timestamp (ISO format: YYYY-MM-DDTHH:MM:SS). "
+            "Use this to significantly speed up updates by skipping unchanged files. "
+            "Example: --modified-since=2025-12-08T14:00:00"
+        ),
     )
     optional.add_argument(
         "--non-blocking",
@@ -194,6 +205,13 @@ def update_database(  # noqa: C901
     if args.hpss is not None:
         config.hpss = args.hpss
 
+    # Check Globus authentication early to fail fast before file scanning
+    if config.hpss is not None and config.hpss != "none":
+        url = urlparse(config.hpss)
+        if url.scheme == "globus":
+            logger.info("Checking Globus authentication before file scanning...")
+            globus_activate(config.hpss)
+
     # Start doing actual work
     logger.debug("Running zstash update")
     logger.debug("Local path : {}".format(config.path))
@@ -201,12 +219,63 @@ def update_database(  # noqa: C901
     logger.debug("Max size  : {}".format(maxsize))
     logger.debug("Keep local tar files  : {}".format(keep))
 
+    # Parse --modified-since if provided
+    modified_since_dt: Optional[datetime] = None
+    if args.modified_since:
+        try:
+            modified_since_dt = datetime.fromisoformat(args.modified_since)
+            # If the parsed datetime is naive, make it timezone-aware (assume UTC)
+            if modified_since_dt.tzinfo is None:
+                modified_since_dt = modified_since_dt.replace(tzinfo=timezone.utc)
+            logger.info(
+                "Filtering files: only considering files modified after {}".format(
+                    modified_since_dt
+                )
+            )
+        except ValueError as e:
+            error_str = (
+                "Invalid --modified-since format. Expected ISO format (YYYY-MM-DDTHH:MM:SS): {}"
+            ).format(e)
+            logger.error(error_str)
+            raise ValueError(error_str)
+
     files: List[str] = get_files_to_archive(cache, args.include, args.exclude)
+
+    statinfo: os.stat_result
+    # Pre-filter by modification time if --modified-since was provided
+    if modified_since_dt is not None:
+        files_before_filter = len(files)
+        filtered_files: List[str] = []
+
+        for file_path in files:
+            try:
+                statinfo = os.lstat(file_path)
+                # Use timezone-aware datetime for comparison
+                file_mtime: datetime = datetime.fromtimestamp(
+                    statinfo.st_mtime, tz=timezone.utc
+                )
+
+                if file_mtime > modified_since_dt:
+                    filtered_files.append(file_path)
+            except (OSError, IOError) as e:
+                # If we can't stat the file, include it to be safe
+                logger.warning(
+                    "Could not stat {}, including in scan: {}".format(file_path, e)
+                )
+                filtered_files.append(file_path)
+
+        files = filtered_files
+        skipped_count = files_before_filter - len(files)
+        logger.info(
+            "Pre-filtered {} files by modification time (skipped {} unchanged files)".format(
+                len(files), skipped_count
+            )
+        )
 
     # Eliminate files that are already archived and up to date
     newfiles: List[str] = []
     for file_path in files:
-        statinfo: os.stat_result = os.lstat(file_path)
+        statinfo = os.lstat(file_path)
         mdtime_new: datetime = datetime.utcfromtimestamp(statinfo.st_mtime)
         mode: int = statinfo.st_mode
         # For symbolic links or directories, size should be 0
