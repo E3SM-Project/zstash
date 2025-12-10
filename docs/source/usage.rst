@@ -223,13 +223,72 @@ Example usage of ``--tars``::
   # Mix and match
   zstash check --tars=000030-00003e,00004e,00005a-
 
+Checking Recent Archives Only
+------------------------------
+
+When verifying large archives that have been built up over multiple ``zstash update`` operations,
+you often only need to verify the most recently added archives. The ``--tars`` option allows you
+to skip previously verified archives and check only new ones.
+
+**Finding which tar archives are in your archive:**
+
+You can query the database to see the range of tar archives::
+
+  $ sqlite3 zstash/index.db "SELECT DISTINCT tar FROM files ORDER BY tar"
+  000000.tar
+  000001.tar
+  ...
+  000032.tar
+
+Or find the last tar archive::
+
+  $ sqlite3 zstash/index.db "SELECT DISTINCT tar FROM files ORDER BY tar DESC LIMIT 1"
+  000032.tar
+
+**Example workflow for verifying only recent archives:**
+
+After an initial ``zstash create`` that created archives 000000.tar through 00001d.tar,
+you verified everything::
+
+  $ zstash check --hpss=test/E3SM_simulations/20170731.F20TR.ne30_ne30.edison
+  # Verified archives 000000 through 00001d
+
+Later, you ran ``zstash update`` which added archives 00001e.tar through 000032.tar.
+To verify only the new archives::
+
+  $ zstash check --hpss=test/E3SM_simulations/20170731.F20TR.ne30_ne30.edison --tars=00001e-
+  INFO: Opening tar archive zstash/00001e.tar
+  ...
+
+This skips verification of archives 000000 through 00001d (which you already verified)
+and starts from 00001e through the end.
+
+**Performance improvement:** For an archive with 100 tar files where you've already verified
+the first 90, using ``--tars=00005a-`` will only check the remaining 10 tar files instead of
+re-checking all 100.
+
+**Finding tar archives for files modified in a time range:**
+
+If you know when files were added, you can find the relevant tar archives::
+
+  $ sqlite3 zstash/index.db \
+    "SELECT DISTINCT tar FROM files WHERE mtime > '2025-12-08' ORDER BY tar"
+  00001e.tar
+  00001f.tar
+  ...
+  000032.tar
+
+Then verify just those archives::
+
+  $ zstash check --hpss=... --tars=00001e-000032
+
 Update
 ======
 
 An existing zstash archive can be updated to add new or modified files: ::
 
    $ cd <mydir>
-   $ zstash update --hpss=<path to HPSS> [--cache=<cache>] [--dry-run] [--exclude] [--keep] [-v]
+   $ zstash update --hpss=<path to HPSS> [--cache=<cache>] [--dry-run] [--exclude] [--keep] [--modified-since=<timestamp>] [-v]
 
 where
 
@@ -242,6 +301,9 @@ where
 * ``--keep`` to keep a copy of the tar files on the local file system after
   they have been extracted from the archive. Normally, they are deleted after
   successful transfer.
+* ``--modified-since`` to only consider files modified after a specific timestamp (ISO format: YYYY-MM-DDTHH:MM:SS). 
+  This dramatically speeds up updates by skipping files that haven't changed since the specified time, 
+  avoiding expensive database comparisons. See detailed examples below.
 * ``--non-blocking`` Zstash will submit a Globus transfer and immediately create a subsequent tarball. That is, Zstash will not wait until the transfer completes to start creating a subsequent tarball. On machines where it takes more time to create a tarball than transfer it, each Globus transfer will have one file. On machines where it takes less time to create a tarball than transfer it, the first transfer will have one file, but the number of tarballs in subsequent transfers will grow finding dynamically the most optimal number of tarballs per transfer. NOTE: zstash is currently always non-blocking.
 * ``--error-on-duplicate-tar`` FOR ADVANCED USERS ONLY: Raise an error if a tar file with the same name already exists in the database. If this flag is set, zstash will exit if it sees a duplicate tar. If it is not set, zstash's behavior will depend on whether or not the --overwrite-duplicate-tar flag is set.
 * ``--overwrite-duplicate-tars`` FOR ADVANCED USERS ONLY: If a duplicate tar is encountered, overwrite the existing database record with the new one (i.e., it will assume the latest tar is the correct one). If this flag is not set, zstash will permit multiple entries for the same tar in its database.
@@ -291,6 +353,153 @@ though the first archive tar file (000000.tar) is smaller than the target size
 and therefore could potentially hold more data. This is a design choice that 
 was made out of caution to avoid the risk of damaging an existing tar file by 
 appending to it.
+
+Speeding Up Updates with --modified-since
+------------------------------------------
+
+When archiving large simulation directories with millions of files, ``zstash update`` can spend
+hours or even days scanning files and comparing them against the database before it begins
+archiving. This is particularly problematic when resuming an interrupted archiving operation.
+
+The ``--modified-since`` flag dramatically reduces this time by filtering out files based on
+their modification time **before** comparing against the database. Only files modified after
+the specified timestamp are considered for archiving.
+
+**How it works:**
+
+Without ``--modified-since``:
+
+1. Scan all files on disk (e.g., 1,000,000 files)
+2. For each file, query database and compare size/mtime (1,000,000 database comparisons)
+3. Archive new/modified files
+
+With ``--modified-since``:
+
+1. Scan all files on disk (e.g., 1,000,000 files) 
+2. Filter by modification time (keep only 50,000 files modified after timestamp)
+3. For each remaining file, query database and compare (50,000 database comparisons)
+4. Archive new/modified files
+
+**Performance improvement:** For a directory with 1 million files where only 50,000 have
+been modified since a certain time, ``--modified-since`` reduces database comparisons
+from 1 million to 50,000, cutting the scanning phase from hours to minutes.
+
+Example: Resuming an Interrupted Update
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Initial archiving run that gets interrupted::
+
+  $ cd $CSCRATCH/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+  $ zstash update --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+  INFO: Gathering list of files to archive
+  INFO: Creating new tar archive 000001.tar
+  ...
+  # Process interrupted at 2025-12-08 14:35:00
+
+Resume the update, using a timestamp shortly before the interruption::
+
+  $ zstash update --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
+    --modified-since=2025-12-08T14:00:00
+  INFO: Filtering files: only considering files modified after 2025-12-08 14:00:00
+  INFO: Pre-filtered 950000 files by modification time (skipped 950000 unchanged files)
+  INFO: Creating new tar archive 000002.tar
+  ...
+
+By using a timestamp 30 minutes before the interruption, you ensure no files are missed
+while dramatically reducing the scanning time.
+
+Tips for Using --modified-since
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Choosing the timestamp:**
+
+* Use a timestamp slightly before the operation started (e.g., 30-60 minutes earlier)
+* Check your log files to see when the previous update began
+* It's safer to go earlier rather than risk missing files
+
+**Timestamp format:**
+
+The timestamp must be in ISO format: ``YYYY-MM-DDTHH:MM:SS``
+
+Valid examples::
+
+  --modified-since=2025-12-08T14:00:00
+  --modified-since=2025-12-08T14:30:15
+  --modified-since="2025-12-08 14:00:00"  # Space separator also works
+
+**Getting the current time for next run:**
+
+On most systems::
+
+  $ date -u +%Y-%m-%dT%H:%M:%S
+  2025-12-08T14:00:00
+
+Automating Timestamp Tracking
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can create a simple wrapper script to automatically track update times::
+
+  #!/bin/bash
+  # track_update.sh
+  
+  ARCHIVE_PATH="$1"
+  TIMESTAMP_FILE=".zstash_last_update"
+  
+  # Save current time before update
+  date -u +%Y-%m-%dT%H:%M:%S > "$TIMESTAMP_FILE"
+  
+  # Run the update
+  zstash update --hpss="$ARCHIVE_PATH"
+  
+  echo "Last update timestamp saved to $TIMESTAMP_FILE"
+
+Usage::
+
+  $ chmod +x track_update.sh
+  $ ./track_update.sh test/ACME_simulations/20170731.F20TR.ne30_ne30.edison
+
+To resume after an interruption::
+
+  $ LAST_UPDATE=$(cat .zstash_last_update)
+  $ zstash update --hpss=test/ACME_simulations/20170731.F20TR.ne30_ne30.edison \
+    --modified-since="$LAST_UPDATE"
+
+Example: Incremental Archiving Workflow
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For ongoing simulations that periodically need archiving::
+
+  # First archiving
+  $ cd $CSCRATCH/simulation
+  $ date -u +%Y-%m-%dT%H:%M:%S > .last_archive_time
+  $ zstash update --hpss=test/simulation
+  
+  # ... simulation runs for several days, generating new files ...
+  
+  # Incremental archiving (only archive new files)
+  $ LAST_TIME=$(cat .last_archive_time)
+  $ date -u +%Y-%m-%dT%H:%M:%S > .last_archive_time
+  $ zstash update --hpss=test/simulation --modified-since="$LAST_TIME"
+  INFO: Pre-filtered 1500000 files by modification time (skipped 1480000 unchanged files)
+  INFO: Creating new tar archive 000015.tar
+  ...
+
+This approach ensures each update only considers files that have actually changed,
+dramatically reducing the time needed for each archiving operation.
+
+When NOT to Use --modified-since
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Don't use this flag if:**
+
+* You've manually modified old files (they won't be re-archived)
+* You're unsure about file modification times
+* You're doing a complete re-archive for verification
+* The number of files is small (performance gain is minimal)
+
+**Important:** The flag filters by file system modification time, not by whether the file
+is already in the archive. If you modify an old file after using ``--modified-since``, you'll
+need to run update without the flag or with an earlier timestamp to catch it.
 
 
 Extract
@@ -530,4 +739,3 @@ Starting with version 0.3, you can check the version of zstash from the command 
 
    $ zstash version
    v0.3.0
-
