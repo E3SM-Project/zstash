@@ -3,12 +3,102 @@ from __future__ import absolute_import, print_function
 import os
 import shlex
 import sqlite3
+import stat as stat_module
 import subprocess
+from collections import OrderedDict
 from datetime import datetime, timezone
 from fnmatch import fnmatch
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from .settings import TupleTarsRow, config, logger
+
+
+# Classes #####################################################################
+class DirectoryScanner:
+    """Helper class to scan directories and collect file stats."""
+
+    def __init__(self, cache_path: str):
+        self.cache_path = cache_path
+        self.file_stats: Dict[str, Tuple[int, datetime]] = {}
+        self.dir_count = 0
+        self.file_count = 0
+        self.empty_dir_count = 0
+
+    def scan_directory(self, path: str):
+        """Recursively scan directory using os.scandir() for efficiency."""
+        try:
+            entries = list(os.scandir(path))
+            # Sort entries to match os.walk's deterministic order.
+            # This ensures consistent ordering across runs and filesystems.
+            entries.sort(key=lambda e: e.name)
+        except PermissionError:
+            logger.warning(f"Permission denied: {path}")
+            return
+
+        self.dir_count += 1
+        has_contents = False
+        subdirs_to_process = []  # Defer subdirectory recursion
+
+        for entry in entries:
+            # Skip the cache directory entirely
+            if entry.path == self.cache_path or entry.path.startswith(
+                self.cache_path + os.sep
+            ):
+                continue
+
+            try:
+                # Get stat info - scandir provides this efficiently
+                # Use entry.stat(follow_symlinks=False) to match os.lstat() behavior
+                stat_info = entry.stat(follow_symlinks=False)
+                mode = stat_info.st_mode
+
+                if entry.is_dir(follow_symlinks=False):
+                    # Don't recurse yet - just remember it
+                    has_contents = True
+                    subdirs_to_process.append(entry.path)
+                else:
+                    # It's a file or symlink
+                    has_contents = True
+                    self.file_count += 1
+
+                    # For symbolic links or directories, size should be 0
+                    if stat_module.S_ISLNK(mode):
+                        size = 0
+                    else:
+                        size = stat_info.st_size
+
+                    mtime = datetime.utcfromtimestamp(stat_info.st_mtime)
+
+                    # Normalize the path.
+                    # By building from path + entry.name,
+                    # we guarantee the argument to normpath is constructed
+                    # identically to how os.walk did it in previous code iterations.
+                    normalized_path = os.path.normpath(os.path.join(path, entry.name))
+                    self.file_stats[normalized_path] = (size, mtime)
+
+            except (OSError, PermissionError) as e:
+                logger.warning(f"Error accessing {entry.path}: {e}")
+                continue
+
+        # Handle empty directories BEFORE recursing into subdirs
+        if not has_contents and path != ".":
+            self.empty_dir_count += 1
+            normalized_path = os.path.normpath(path)
+            # Get actual mtime for empty directory
+            try:
+                stat_info = os.lstat(path)
+                mtime = datetime.utcfromtimestamp(stat_info.st_mtime)
+                self.file_stats[normalized_path] = (0, mtime)
+            except (OSError, PermissionError):
+                # Fallback if we can't stat the directory
+                self.file_stats[normalized_path] = (0, datetime.utcnow())
+
+        # Now recurse into subdirectories
+        for subdir in subdirs_to_process:
+            self.scan_directory(subdir)
+
+
+# Functions #####################################################################
 
 
 def ts_utc():
@@ -71,42 +161,74 @@ def run_command(command: str, error_str: str):
         raise RuntimeError(error_str)
 
 
-def get_files_to_archive(cache: str, include: str, exclude: str) -> List[str]:
-    # List of files
+# Sort paths to match original behavior (directory first, then filename)
+def path_sort_key(path: str) -> Tuple[str, str]:
+    directory: str = os.path.dirname(path)
+    filename: str = os.path.basename(path)
+    return (directory, filename)
+
+
+def get_files_to_archive_with_stats(
+    cache: str, include: str, exclude: str
+) -> Dict[str, Tuple[int, datetime]]:
+    """
+    OPTIMIZED VERSION: Gather list of files to archive along with their stats.
+
+    Uses os.scandir() to get file stats during the directory walk,
+    eliminating the need to stat files again later during database comparison.
+
+    Returns:
+        Dictionary mapping file_path -> (size, mtime)
+    """
+
     logger.info("Gathering list of files to archive")
-    # Tuples of the form (path, filename)
-    file_tuples: List[Tuple[str, str]] = []
-    # Walk the current directory
-    for root, dirnames, filenames in os.walk("."):
-        if not dirnames and not filenames:
-            # There are no subdirectories nor are there files.
-            # This directory is empty.
-            file_tuples.append((root, ""))
-        for filename in filenames:
-            # Loop over files
-            # filenames is a list, so if it is empty, no looping will occur.
-            file_tuples.append((root, filename))
+    cache_path = os.path.join(".", cache)
+    scanner = DirectoryScanner(cache_path)
+    scanner.scan_directory(".")
+    file_stats = scanner.file_stats
 
-    # Sort first on directories (x[0])
-    # Further sort on filenames (x[1])
-    file_tuples = sorted(file_tuples, key=lambda x: (x[0], x[1]))
-
-    # Relative file paths, excluding the cache
-    files: List[str] = [
-        os.path.normpath(os.path.join(x[0], x[1]))
-        for x in file_tuples
-        if x[0] != os.path.join(".", cache)
-    ]
-
-    # First, add files based on include pattern
+    # Apply include/exclude filters
     if include is not None:
-        files = include_files(include, files)
-
-    # Then, eliminate files based on exclude pattern
+        file_list = list(file_stats.keys())
+        filtered_list = include_files(include, file_list)
+        # Keep only files that passed the filter
+        file_stats = {path: file_stats[path] for path in filtered_list}
     if exclude is not None:
-        files = exclude_files(exclude, files)
+        file_list = list(file_stats.keys())
+        filtered_list = exclude_files(exclude, file_list)
+        # Keep only files that passed the filter
+        file_stats = {path: file_stats[path] for path in filtered_list}
 
-    return files
+    # Extract directory and filename BEFORE normalization for sorting
+    # For empty directories, preserve original behavior: use directory path with empty filename
+    path_components = []
+    for path in file_stats.keys():
+        size, mtime = file_stats[path]
+        # Empty directories (size 0) should use full path as directory, empty string as filename
+        if size == 0 and not os.path.isfile(path):
+            directory = path
+            filename = ""
+        else:
+            directory = os.path.dirname(path)
+            filename = os.path.basename(path)
+        path_components.append((directory, filename, path))
+
+    # Sort on directory and filename like original
+    path_components.sort(key=lambda x: (x[0], x[1]))
+
+    # NOW build the ordered dict with normalized paths
+    file_stats = OrderedDict((x[2], file_stats[x[2]]) for x in path_components)
+
+    return file_stats
+
+
+def get_files_to_archive(cache: str, include: str, exclude: str) -> List[str]:
+    """
+    LEGACY VERSION: Still used for `zstash create`.
+    Uses the optimized version but returns only the file list.
+    """
+    file_stats = get_files_to_archive_with_stats(cache, include, exclude)
+    return list(file_stats.keys())
 
 
 def update_config(cur: sqlite3.Cursor):

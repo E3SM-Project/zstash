@@ -4,24 +4,15 @@ import argparse
 import logging
 import os.path
 import sqlite3
-import stat
 import sys
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_get, hpss_put
 from .hpss_utils import add_files
-from .settings import (
-    DEFAULT_CACHE,
-    TIME_TOL,
-    FilesRow,
-    TupleFilesRow,
-    config,
-    get_db_filename,
-    logger,
-)
-from .utils import get_files_to_archive, update_config
+from .settings import DEFAULT_CACHE, TIME_TOL, config, get_db_filename, logger
+from .utils import get_files_to_archive_with_stats, update_config
 
 
 def update():
@@ -201,40 +192,54 @@ def update_database(  # noqa: C901
     logger.debug("Max size  : {}".format(maxsize))
     logger.debug("Keep local tar files  : {}".format(keep))
 
-    files: List[str] = get_files_to_archive(cache, args.include, args.exclude)
+    file_stats: Dict[str, Tuple[int, datetime]] = get_files_to_archive_with_stats(
+        cache, args.include, args.exclude
+    )
 
-    # Eliminate files that are already archived and up to date
-    newfiles: List[str] = []
-    for file_path in files:
-        statinfo: os.stat_result = os.lstat(file_path)
-        mdtime_new: datetime = datetime.utcfromtimestamp(statinfo.st_mtime)
-        mode: int = statinfo.st_mode
-        # For symbolic links or directories, size should be 0
-        size_new: int
-        if stat.S_ISLNK(mode) or stat.S_ISDIR(mode):
-            size_new = 0
+    files: List[str] = list(file_stats.keys())
+
+    # Dictionary mapping file path -> (size, mtime) for O(1) lookup
+    archived_files: Dict[str, Tuple[int, datetime]] = {}
+
+    cur.execute("SELECT name, size, mtime FROM files")
+    db_rows = cur.fetchall()
+
+    for row in db_rows:
+        file_path: str = row[0]
+        size: int = row[1]
+        mtime: datetime = row[2]
+
+        # If file appears multiple times, keep the one with latest mtime
+        if file_path in archived_files:
+            existing_mtime = archived_files[file_path][1]
+            if mtime > existing_mtime:
+                archived_files[file_path] = (size, mtime)
         else:
-            size_new = statinfo.st_size
+            archived_files[file_path] = (size, mtime)
 
-        # Select the file matching the path.
-        cur.execute("select * from files where name = ?", (file_path,))
-        new: bool = True
-        while True:
-            # Get the corresponding row in the 'files' table
-            match_: Optional[TupleFilesRow] = cur.fetchone()
-            if match_ is None:
-                break
-            else:
-                match: FilesRow = FilesRow(match_)
+    newfiles: List[str] = []
+    files_checked = 0
 
-            if (size_new == match.size) and (
-                abs((mdtime_new - match.mtime).total_seconds()) <= TIME_TOL
-            ):
-                # File exists with same size and modification time within tolerance
-                new = False
-                break
-        if new:
+    for file_path in files:
+        # Get the stat info we already collected during filesystem walk
+        size_new, mdtime_new = file_stats[file_path]
+
+        # Check if file exists in database
+        if file_path not in archived_files:
+            # File not in database - it's new
             newfiles.append(file_path)
+        else:
+            # File exists in database - check if it changed
+            archived_size, archived_mtime = archived_files[file_path]
+
+            if not (
+                (size_new == archived_size)
+                and (abs((mdtime_new - archived_mtime).total_seconds()) <= TIME_TOL)
+            ):
+                # File has changed
+                newfiles.append(file_path)
+
+        files_checked += 1
 
     # Anything to do?
     if len(newfiles) == 0:
@@ -262,6 +267,7 @@ def update_database(  # noqa: C901
         tfile_string: str = tfile[0]
         itar = max(itar, int(tfile_string[0:6], 16))
 
+    # Add files
     failures: List[str]
     if args.follow_symlinks:
         try:
