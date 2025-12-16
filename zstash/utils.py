@@ -4,6 +4,7 @@ import os
 import shlex
 import sqlite3
 import subprocess
+import time
 from datetime import datetime, timezone
 from fnmatch import fnmatch
 from typing import Any, List, Tuple
@@ -72,39 +73,143 @@ def run_command(command: str, error_str: str):
 
 
 def get_files_to_archive(cache: str, include: str, exclude: str) -> List[str]:
+    # PERFORMANCE: Start timing file gathering
+    gather_total_start = time.time()
+    logger.info("-" * 80)
+    logger.info("PERFORMANCE (get_files_to_archive): Starting file discovery")
+
     # List of files
     logger.info("Gathering list of files to archive")
+
+    # PERFORMANCE: Time the os.walk operation
+    walk_start = time.time()
     # Tuples of the form (path, filename)
     file_tuples: List[Tuple[str, str]] = []
+    dir_count = 0
+    file_count = 0
+    empty_dir_count = 0
+
     # Walk the current directory
     for root, dirnames, filenames in os.walk("."):
+        dir_count += 1
+
         if not dirnames and not filenames:
             # There are no subdirectories nor are there files.
             # This directory is empty.
             file_tuples.append((root, ""))
+            empty_dir_count += 1
         for filename in filenames:
             # Loop over files
             # filenames is a list, so if it is empty, no looping will occur.
             file_tuples.append((root, filename))
+            file_count += 1
 
+        # Progress logging every 1000 directories
+        if dir_count % 1000 == 0:
+            elapsed = time.time() - walk_start
+            rate = dir_count / elapsed if elapsed > 0 else 0
+            logger.info(
+                f"PERFORMANCE (walk): Scanned {dir_count} directories, "
+                f"{file_count} files ({rate:.1f} dirs/sec, {elapsed:.1f}s elapsed)"
+            )
+
+    walk_elapsed = time.time() - walk_start
+    logger.info("PERFORMANCE (walk): Completed filesystem walk")
+    logger.info(f"  - Directories scanned: {dir_count}")
+    logger.info(f"  - Files found: {file_count}")
+    logger.info(f"  - Empty directories: {empty_dir_count}")
+    logger.info(f"  - Time: {walk_elapsed:.2f} seconds")
+    logger.info(
+        f"  - Rate: {dir_count / walk_elapsed:.1f} dirs/sec, {file_count / walk_elapsed:.1f} files/sec"
+    )
+
+    # PERFORMANCE: Time the sorting operation
+    sort_start = time.time()
     # Sort first on directories (x[0])
     # Further sort on filenames (x[1])
     file_tuples = sorted(file_tuples, key=lambda x: (x[0], x[1]))
+    sort_elapsed = time.time() - sort_start
+    logger.info(
+        f"PERFORMANCE (sort): Sorted {len(file_tuples)} entries: {sort_elapsed:.2f} seconds"
+    )
 
+    # PERFORMANCE: Time the path normalization
+    normalize_start = time.time()
     # Relative file paths, excluding the cache
-    files: List[str] = [
-        os.path.normpath(os.path.join(x[0], x[1]))
-        for x in file_tuples
-        if x[0] != os.path.join(".", cache)
-    ]
+    cache_path = os.path.join(".", cache)
+    files: List[str] = []
+    cache_excluded_count = 0
 
-    # First, add files based on include pattern
+    for x in file_tuples:
+        if x[0] != cache_path:
+            files.append(os.path.normpath(os.path.join(x[0], x[1])))
+        else:
+            cache_excluded_count += 1
+
+    normalize_elapsed = time.time() - normalize_start
+    logger.info(
+        f"PERFORMANCE (normalize): Normalized paths: {normalize_elapsed:.2f} seconds"
+    )
+    logger.info(f"  - Files after cache exclusion: {len(files)}")
+    logger.info(f"  - Cache entries excluded: {cache_excluded_count}")
+
+    initial_file_count = len(files)
+
+    # PERFORMANCE: Time include filtering
+    include_elapsed = 0.0
     if include is not None:
+        include_start = time.time()
         files = include_files(include, files)
+        include_elapsed = time.time() - include_start
+        logger.info(
+            f"PERFORMANCE (include filter): Applied include pattern '{include}': {include_elapsed:.2f} seconds"
+        )
+        logger.info(
+            f"  - Files after include: {len(files)} (filtered out {initial_file_count - len(files)})"
+        )
+        initial_file_count = len(files)
 
-    # Then, eliminate files based on exclude pattern
+    # PERFORMANCE: Time exclude filtering
+    exclude_elapsed = 0.0
     if exclude is not None:
+        exclude_start = time.time()
         files = exclude_files(exclude, files)
+        exclude_elapsed = time.time() - exclude_start
+        logger.info(
+            f"PERFORMANCE (exclude filter): Applied exclude pattern '{exclude}': {exclude_elapsed:.2f} seconds"
+        )
+        logger.info(
+            f"  - Files after exclude: {len(files)} (filtered out {initial_file_count - len(files)})"
+        )
+
+    gather_total_elapsed = time.time() - gather_total_start
+    logger.info("-" * 80)
+    logger.info(
+        f"PERFORMANCE (get_files_to_archive): TOTAL TIME: {gather_total_elapsed:.2f} seconds"
+    )
+    logger.info(f"PERFORMANCE (get_files_to_archive): Final file count: {len(files)}")
+
+    # Breakdown percentages
+    if gather_total_elapsed > 0:
+        logger.info("PERFORMANCE (get_files_to_archive): Time breakdown:")
+        logger.info(
+            f"  - Filesystem walk: {walk_elapsed:.2f}s ({walk_elapsed / gather_total_elapsed * 100:.1f}%)"
+        )
+        logger.info(
+            f"  - Sorting: {sort_elapsed:.2f}s ({sort_elapsed / gather_total_elapsed * 100:.1f}%)"
+        )
+        logger.info(
+            f"  - Path normalization: {normalize_elapsed:.2f}s ({normalize_elapsed / gather_total_elapsed * 100:.1f}%)"
+        )
+        if include is not None:
+            logger.info(
+                f"  - Include filtering: {include_elapsed:.2f}s ({include_elapsed / gather_total_elapsed * 100:.1f}%)"
+            )
+        if exclude is not None:
+            logger.info(
+                f"  - Exclude filtering: {exclude_elapsed:.2f}s ({exclude_elapsed / gather_total_elapsed * 100:.1f}%)"
+            )
+    logger.info("-" * 80)
 
     return files
 

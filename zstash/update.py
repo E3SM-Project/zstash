@@ -6,6 +6,7 @@ import os.path
 import sqlite3
 import stat
 import sys
+import time
 from datetime import datetime
 from typing import List, Optional, Tuple
 
@@ -149,7 +150,15 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
 def update_database(  # noqa: C901
     args: argparse.Namespace, cache: str
 ) -> Optional[List[str]]:
+
+    # PERFORMANCE: Start overall timing
+    overall_start = time.time()
+    logger.info("=" * 80)
+    logger.info("PERFORMANCE PROFILING: Starting update_database")
+    logger.info("=" * 80)
+
     # Open database
+    db_start = time.time()
     logger.debug("Opening index database")
     if not os.path.exists(get_db_filename(cache)):
         # The database file doesn't exist in the cache.
@@ -175,6 +184,10 @@ def update_database(  # noqa: C901
     cur: sqlite3.Cursor = con.cursor()
 
     update_config(cur)
+    db_elapsed = time.time() - db_start
+    logger.info(
+        f"PERFORMANCE: Database open and config update: {db_elapsed:.2f} seconds"
+    )
 
     if config.maxsize is not None:
         maxsize = config.maxsize
@@ -201,11 +214,28 @@ def update_database(  # noqa: C901
     logger.debug("Max size  : {}".format(maxsize))
     logger.debug("Keep local tar files  : {}".format(keep))
 
+    # PERFORMANCE: Time file gathering
+    gather_start = time.time()
+    logger.info("PERFORMANCE: Starting file gathering...")
     files: List[str] = get_files_to_archive(cache, args.include, args.exclude)
+    gather_elapsed = time.time() - gather_start
+    logger.info(f"PERFORMANCE: File gathering completed: {gather_elapsed:.2f} seconds")
+    logger.info(f"PERFORMANCE: Total files found: {len(files)}")
+
+    # PERFORMANCE: Time database checking
+    check_start = time.time()
+    logger.info("PERFORMANCE: Starting database comparison...")
 
     # Eliminate files that are already archived and up to date
     newfiles: List[str] = []
+    files_checked = 0
+    stat_time = 0.0
+    db_query_time = 0.0
+    comparison_time = 0.0
+
     for file_path in files:
+        # Time stat operations
+        stat_op_start = time.time()
         statinfo: os.stat_result = os.lstat(file_path)
         mdtime_new: datetime = datetime.utcfromtimestamp(statinfo.st_mtime)
         mode: int = statinfo.st_mode
@@ -215,9 +245,16 @@ def update_database(  # noqa: C901
             size_new = 0
         else:
             size_new = statinfo.st_size
+        stat_time += time.time() - stat_op_start
 
+        # Time database query
+        db_query_start = time.time()
         # Select the file matching the path.
         cur.execute("select * from files where name = ?", (file_path,))
+        db_query_time += time.time() - db_query_start
+
+        # Time comparison logic
+        comp_start = time.time()
         new: bool = True
         while True:
             # Get the corresponding row in the 'files' table
@@ -235,6 +272,39 @@ def update_database(  # noqa: C901
                 break
         if new:
             newfiles.append(file_path)
+        comparison_time += time.time() - comp_start
+
+        files_checked += 1
+        # Progress logging every 1000 files
+        if files_checked % 1000 == 0:
+            elapsed_so_far = time.time() - check_start
+            rate = files_checked / elapsed_so_far if elapsed_so_far > 0 else 0
+            logger.info(
+                f"PERFORMANCE: Checked {files_checked}/{len(files)} files "
+                f"({rate:.1f} files/sec, {elapsed_so_far:.1f}s elapsed)"
+            )
+
+    check_elapsed = time.time() - check_start
+    logger.info("=" * 80)
+    logger.info("PERFORMANCE: Database comparison completed")
+    logger.info(f"PERFORMANCE: Total comparison time: {check_elapsed:.2f} seconds")
+    logger.info(f"PERFORMANCE: Files checked: {files_checked}")
+    logger.info(f"PERFORMANCE: New files to archive: {len(newfiles)}")
+    logger.info(
+        f"PERFORMANCE: Average rate: {files_checked / check_elapsed:.1f} files/sec"
+    )
+    logger.info("-" * 80)
+    logger.info("PERFORMANCE: Time breakdown:")
+    logger.info(
+        f"  - stat operations: {stat_time:.2f}s ({stat_time / check_elapsed * 100:.1f}%)"
+    )
+    logger.info(
+        f"  - database queries: {db_query_time:.2f}s ({db_query_time / check_elapsed * 100:.1f}%)"
+    )
+    logger.info(
+        f"  - comparison logic: {comparison_time:.2f}s ({comparison_time / check_elapsed * 100:.1f}%)"
+    )
+    logger.info("=" * 80)
 
     # Anything to do?
     if len(newfiles) == 0:
@@ -242,6 +312,9 @@ def update_database(  # noqa: C901
         # Close database
         con.commit()
         con.close()
+
+        overall_elapsed = time.time() - overall_start
+        logger.info(f"PERFORMANCE: Total execution time: {overall_elapsed:.2f} seconds")
         return None
 
     # --dry-run option
@@ -252,7 +325,16 @@ def update_database(  # noqa: C901
         # Close database
         con.commit()
         con.close()
+
+        overall_elapsed = time.time() - overall_start
+        logger.info(
+            f"PERFORMANCE: Total execution time (dry-run): {overall_elapsed:.2f} seconds"
+        )
         return None
+
+    # PERFORMANCE: Time tar archive preparation
+    tar_prep_start = time.time()
+    logger.info("PERFORMANCE: Finding last used tar archive...")
 
     # Find last used tar archive
     itar: int = -1
@@ -261,6 +343,13 @@ def update_database(  # noqa: C901
     for tfile in tfiles:
         tfile_string: str = tfile[0]
         itar = max(itar, int(tfile_string[0:6], 16))
+
+    tar_prep_elapsed = time.time() - tar_prep_start
+    logger.info(f"PERFORMANCE: Tar archive preparation: {tar_prep_elapsed:.2f} seconds")
+
+    # PERFORMANCE: Time file addition
+    add_files_start = time.time()
+    logger.info("PERFORMANCE: Starting add_files operation...")
 
     failures: List[str]
     if args.follow_symlinks:
@@ -295,8 +384,34 @@ def update_database(  # noqa: C901
             overwrite_duplicate_tars=args.overwrite_duplicate_tars,
         )
 
+    add_files_elapsed = time.time() - add_files_start
+    logger.info(
+        f"PERFORMANCE: add_files operation completed: {add_files_elapsed:.2f} seconds"
+    )
+
     # Close database
     con.commit()
     con.close()
+
+    overall_elapsed = time.time() - overall_start
+    logger.info("=" * 80)
+    logger.info("PERFORMANCE: Update complete - Summary:")
+    logger.info(
+        f"  - Database open/config: {db_elapsed:.2f}s ({db_elapsed / overall_elapsed * 100:.1f}%)"
+    )
+    logger.info(
+        f"  - File gathering: {gather_elapsed:.2f}s ({gather_elapsed / overall_elapsed * 100:.1f}%)"
+    )
+    logger.info(
+        f"  - Database comparison: {check_elapsed:.2f}s ({check_elapsed / overall_elapsed * 100:.1f}%)"
+    )
+    logger.info(
+        f"  - Tar preparation: {tar_prep_elapsed:.2f}s ({tar_prep_elapsed / overall_elapsed * 100:.1f}%)"
+    )
+    logger.info(
+        f"  - Add files: {add_files_elapsed:.2f}s ({add_files_elapsed / overall_elapsed * 100:.1f}%)"
+    )
+    logger.info(f"  - TOTAL TIME: {overall_elapsed:.2f} seconds")
+    logger.info("=" * 80)
 
     return failures
