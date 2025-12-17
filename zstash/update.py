@@ -4,25 +4,16 @@ import argparse
 import logging
 import os.path
 import sqlite3
-import stat
 import sys
 import time
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_get, hpss_put
 from .hpss_utils import add_files
-from .settings import (
-    DEFAULT_CACHE,
-    TIME_TOL,
-    FilesRow,
-    TupleFilesRow,
-    config,
-    get_db_filename,
-    logger,
-)
-from .utils import get_files_to_archive, update_config
+from .settings import DEFAULT_CACHE, TIME_TOL, config, get_db_filename, logger
+from .utils import get_files_to_archive_with_stats, update_config
 
 
 def update():
@@ -214,79 +205,88 @@ def update_database(  # noqa: C901
     logger.debug("Max size  : {}".format(maxsize))
     logger.debug("Keep local tar files  : {}".format(keep))
 
-    # PERFORMANCE: Time file gathering
+    # PERFORMANCE: Time file gathering WITH STATS (OPTIMIZATION)
     gather_start = time.time()
-    logger.info("PERFORMANCE: Starting file gathering...")
-    files: List[str] = get_files_to_archive(cache, args.include, args.exclude)
+    logger.info("PERFORMANCE: Starting file gathering with stats (OPTIMIZED)...")
+    file_stats: Dict[str, Tuple[int, datetime]] = get_files_to_archive_with_stats(
+        cache, args.include, args.exclude
+    )
+    files: List[str] = list(file_stats.keys())
     gather_elapsed = time.time() - gather_start
     logger.info(f"PERFORMANCE: File gathering completed: {gather_elapsed:.2f} seconds")
     logger.info(f"PERFORMANCE: Total files found: {len(files)}")
 
-    # PERFORMANCE: Time database checking
+    # PERFORMANCE: Time database checking - OPTIMIZED VERSION
     check_start = time.time()
-    logger.info("PERFORMANCE: Starting database comparison...")
+    logger.info("PERFORMANCE: Starting database comparison (OPTIMIZED - NO STATS)...")
 
-    # Eliminate files that are already archived and up to date
+    # OPTIMIZATION: Load all archived files into memory once
+    db_load_start = time.time()
+    logger.info("PERFORMANCE: Loading database into memory...")
+
+    # Dictionary mapping file path -> (size, mtime) for O(1) lookup
+    archived_files: Dict[str, Tuple[int, datetime]] = {}
+
+    cur.execute("SELECT name, size, mtime FROM files")
+    db_rows = cur.fetchall()
+
+    for row in db_rows:
+        file_path: str = row[0]
+        size: int = row[1]
+        mtime: datetime = row[2]
+
+        # If file appears multiple times, keep the one with latest mtime
+        if file_path in archived_files:
+            existing_mtime = archived_files[file_path][1]
+            if mtime > existing_mtime:
+                archived_files[file_path] = (size, mtime)
+        else:
+            archived_files[file_path] = (size, mtime)
+
+    db_load_elapsed = time.time() - db_load_start
+    logger.info(f"PERFORMANCE: Database loaded: {db_load_elapsed:.2f} seconds")
+    logger.info(f"PERFORMANCE: Archived files in database: {len(archived_files)}")
+
+    # OPTIMIZATION: Compare using pre-collected stats - NO os.lstat() calls!
+    comparison_start = time.time()
     newfiles: List[str] = []
     files_checked = 0
-    stat_time = 0.0
-    db_query_time = 0.0
-    comparison_time = 0.0
 
     for file_path in files:
-        # Time stat operations
-        stat_op_start = time.time()
-        statinfo: os.stat_result = os.lstat(file_path)
-        mdtime_new: datetime = datetime.utcfromtimestamp(statinfo.st_mtime)
-        mode: int = statinfo.st_mode
-        # For symbolic links or directories, size should be 0
-        size_new: int
-        if stat.S_ISLNK(mode) or stat.S_ISDIR(mode):
-            size_new = 0
-        else:
-            size_new = statinfo.st_size
-        stat_time += time.time() - stat_op_start
+        # Get the stat info we already collected during filesystem walk
+        size_new, mdtime_new = file_stats[file_path]
 
-        # Time database query
-        db_query_start = time.time()
-        # Select the file matching the path.
-        cur.execute("select * from files where name = ?", (file_path,))
-        db_query_time += time.time() - db_query_start
-
-        # Time comparison logic
-        comp_start = time.time()
-        new: bool = True
-        while True:
-            # Get the corresponding row in the 'files' table
-            match_: Optional[TupleFilesRow] = cur.fetchone()
-            if match_ is None:
-                break
-            else:
-                match: FilesRow = FilesRow(match_)
-
-            if (size_new == match.size) and (
-                abs((mdtime_new - match.mtime).total_seconds()) <= TIME_TOL
-            ):
-                # File exists with same size and modification time within tolerance
-                new = False
-                break
-        if new:
+        # Check if file exists in database
+        if file_path not in archived_files:
+            # File not in database - it's new
             newfiles.append(file_path)
-        comparison_time += time.time() - comp_start
+        else:
+            # File exists in database - check if it changed
+            archived_size, archived_mtime = archived_files[file_path]
+
+            if not (
+                (size_new == archived_size)
+                and (abs((mdtime_new - archived_mtime).total_seconds()) <= TIME_TOL)
+            ):
+                # File has changed
+                newfiles.append(file_path)
 
         files_checked += 1
+
         # Progress logging every 1000 files
         if files_checked % 1000 == 0:
-            elapsed_so_far = time.time() - check_start
+            elapsed_so_far = time.time() - comparison_start
             rate = files_checked / elapsed_so_far if elapsed_so_far > 0 else 0
             logger.info(
-                f"PERFORMANCE: Checked {files_checked}/{len(files)} files "
+                f"PERFORMANCE: Compared {files_checked}/{len(files)} files "
                 f"({rate:.1f} files/sec, {elapsed_so_far:.1f}s elapsed)"
             )
 
+    comparison_elapsed = time.time() - comparison_start
     check_elapsed = time.time() - check_start
+
     logger.info("=" * 80)
-    logger.info("PERFORMANCE: Database comparison completed")
+    logger.info("PERFORMANCE: Database comparison completed (OPTIMIZED)")
     logger.info(f"PERFORMANCE: Total comparison time: {check_elapsed:.2f} seconds")
     logger.info(f"PERFORMANCE: Files checked: {files_checked}")
     logger.info(f"PERFORMANCE: New files to archive: {len(newfiles)}")
@@ -296,14 +296,15 @@ def update_database(  # noqa: C901
     logger.info("-" * 80)
     logger.info("PERFORMANCE: Time breakdown:")
     logger.info(
-        f"  - stat operations: {stat_time:.2f}s ({stat_time / check_elapsed * 100:.1f}%)"
+        f"  - database load: {db_load_elapsed:.2f}s ({db_load_elapsed / check_elapsed * 100:.1f}%)"
     )
     logger.info(
-        f"  - database queries: {db_query_time:.2f}s ({db_query_time / check_elapsed * 100:.1f}%)"
+        f"  - comparison (in-memory): {comparison_elapsed:.2f}s ({comparison_elapsed / check_elapsed * 100:.1f}%)"
     )
-    logger.info(
-        f"  - comparison logic: {comparison_time:.2f}s ({comparison_time / check_elapsed * 100:.1f}%)"
-    )
+    logger.info("-" * 80)
+    logger.info("PERFORMANCE: Optimization impact:")
+    logger.info(f"  - stat operations eliminated: {files_checked} (100%)")
+    logger.info("  - All stats performed during initial filesystem walk")
     logger.info("=" * 80)
 
     # Anything to do?
