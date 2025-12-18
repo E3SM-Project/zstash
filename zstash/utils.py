@@ -74,7 +74,8 @@ def run_command(command: str, error_str: str):
         raise RuntimeError(error_str)
 
 
-def get_files_to_archive_with_stats(
+# C901 'get_files_to_archive_with_stats' is too complex (19)
+def get_files_to_archive_with_stats(  # noqa: C901
     cache: str, include: str, exclude: str
 ) -> Dict[str, Tuple[int, datetime]]:
     """
@@ -88,13 +89,13 @@ def get_files_to_archive_with_stats(
     """
     # PERFORMANCE: Start timing file gathering
     gather_total_start = time.time()
-    logger.info("-" * 80)
-    logger.info(
+    logger.debug("-" * 80)
+    logger.debug(
         "PERFORMANCE (get_files_to_archive_with_stats): Starting file discovery with stats"
     )
 
     # List of files with their stats
-    logger.info("Gathering list of files to archive (with stats)")
+    logger.debug("Gathering list of files to archive (with stats)")
 
     # PERFORMANCE: Time the os.scandir operation
     walk_start = time.time()
@@ -158,14 +159,20 @@ def get_files_to_archive_with_stats(
         if not has_contents and path != ".":
             empty_dir_count += 1
             normalized_path = os.path.normpath(path)
-            # Empty directory - use size 0 and current time
-            file_stats[normalized_path] = (0, datetime.utcnow())
+            # Get actual mtime for empty directory
+            try:
+                stat_info = os.lstat(path)
+                mtime = datetime.utcfromtimestamp(stat_info.st_mtime)
+                file_stats[normalized_path] = (0, mtime)
+            except (OSError, PermissionError):
+                # Fallback if we can't stat the directory
+                file_stats[normalized_path] = (0, datetime.utcnow())
 
         # Progress logging every 1000 directories
         if dir_count % 1000 == 0:
             elapsed = time.time() - walk_start
             rate = dir_count / elapsed if elapsed > 0 else 0
-            logger.info(
+            logger.debug(
                 f"PERFORMANCE (scandir): Scanned {dir_count} directories, "
                 f"{file_count} files ({rate:.1f} dirs/sec, {elapsed:.1f}s elapsed)"
             )
@@ -174,12 +181,12 @@ def get_files_to_archive_with_stats(
     scan_directory(".")
 
     walk_elapsed = time.time() - walk_start
-    logger.info("PERFORMANCE (scandir): Completed filesystem walk with stats")
-    logger.info(f"  - Directories scanned: {dir_count}")
-    logger.info(f"  - Files found: {file_count}")
-    logger.info(f"  - Empty directories: {empty_dir_count}")
-    logger.info(f"  - Time: {walk_elapsed:.2f} seconds")
-    logger.info(
+    logger.debug("PERFORMANCE (scandir): Completed filesystem walk with stats")
+    logger.debug(f"  - Directories scanned: {dir_count}")
+    logger.debug(f"  - Files found: {file_count}")
+    logger.debug(f"  - Empty directories: {empty_dir_count}")
+    logger.debug(f"  - Time: {walk_elapsed:.2f} seconds")
+    logger.debug(
         f"  - Rate: {dir_count / walk_elapsed:.1f} dirs/sec, {file_count / walk_elapsed:.1f} files/sec"
     )
 
@@ -195,10 +202,10 @@ def get_files_to_archive_with_stats(
         # Keep only files that passed the filter
         file_stats = {path: file_stats[path] for path in filtered_list}
         include_elapsed = time.time() - include_start
-        logger.info(
+        logger.debug(
             f"PERFORMANCE (include filter): Applied include pattern '{include}': {include_elapsed:.2f} seconds"
         )
-        logger.info(
+        logger.debug(
             f"  - Files after include: {len(file_stats)} (filtered out {initial_file_count - len(file_stats)})"
         )
         initial_file_count = len(file_stats)
@@ -212,10 +219,10 @@ def get_files_to_archive_with_stats(
         # Keep only files that passed the filter
         file_stats = {path: file_stats[path] for path in filtered_list}
         exclude_elapsed = time.time() - exclude_start
-        logger.info(
+        logger.debug(
             f"PERFORMANCE (exclude filter): Applied exclude pattern '{exclude}': {exclude_elapsed:.2f} seconds"
         )
-        logger.info(
+        logger.debug(
             f"  - Files after exclude: {len(file_stats)} (filtered out {initial_file_count - len(file_stats)})"
         )
 
@@ -226,37 +233,37 @@ def get_files_to_archive_with_stats(
     sorted_paths = sorted(file_stats.keys())
     file_stats = OrderedDict((path, file_stats[path]) for path in sorted_paths)
     sort_elapsed = time.time() - sort_start
-    logger.info(
+    logger.debug(
         f"PERFORMANCE (sort): Sorted {len(file_stats)} entries: {sort_elapsed:.2f} seconds"
     )
 
     gather_total_elapsed = time.time() - gather_total_start
-    logger.info("-" * 80)
-    logger.info(
+    logger.debug("-" * 80)
+    logger.debug(
         f"PERFORMANCE (get_files_to_archive_with_stats): TOTAL TIME: {gather_total_elapsed:.2f} seconds"
     )
-    logger.info(
+    logger.debug(
         f"PERFORMANCE (get_files_to_archive_with_stats): Final file count: {len(file_stats)}"
     )
 
     # Breakdown percentages
     if gather_total_elapsed > 0:
-        logger.info("PERFORMANCE (get_files_to_archive_with_stats): Time breakdown:")
-        logger.info(
+        logger.debug("PERFORMANCE (get_files_to_archive_with_stats): Time breakdown:")
+        logger.debug(
             f"  - Filesystem walk with stats: {walk_elapsed:.2f}s ({walk_elapsed / gather_total_elapsed * 100:.1f}%)"
         )
         if include is not None:
-            logger.info(
+            logger.debug(
                 f"  - Include filtering: {include_elapsed:.2f}s ({include_elapsed / gather_total_elapsed * 100:.1f}%)"
             )
         if exclude is not None:
-            logger.info(
+            logger.debug(
                 f"  - Exclude filtering: {exclude_elapsed:.2f}s ({exclude_elapsed / gather_total_elapsed * 100:.1f}%)"
             )
-        logger.info(
+        logger.debug(
             f"  - Sorting: {sort_elapsed:.2f}s ({sort_elapsed / gather_total_elapsed * 100:.1f}%)"
         )
-    logger.info("-" * 80)
+    logger.debug("-" * 80)
 
     return file_stats
 

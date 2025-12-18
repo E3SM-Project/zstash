@@ -144,9 +144,9 @@ def update_database(  # noqa: C901
 
     # PERFORMANCE: Start overall timing
     overall_start = time.time()
-    logger.info("=" * 80)
-    logger.info("PERFORMANCE PROFILING: Starting update_database")
-    logger.info("=" * 80)
+    logger.debug("=" * 80)
+    logger.debug("PERFORMANCE PROFILING: Starting update_database")
+    logger.debug("=" * 80)
 
     # Open database
     db_start = time.time()
@@ -176,7 +176,7 @@ def update_database(  # noqa: C901
 
     update_config(cur)
     db_elapsed = time.time() - db_start
-    logger.info(
+    logger.debug(
         f"PERFORMANCE: Database open and config update: {db_elapsed:.2f} seconds"
     )
 
@@ -207,22 +207,22 @@ def update_database(  # noqa: C901
 
     # PERFORMANCE: Time file gathering WITH STATS (OPTIMIZATION)
     gather_start = time.time()
-    logger.info("PERFORMANCE: Starting file gathering with stats (OPTIMIZED)...")
+    logger.debug("PERFORMANCE: Starting file gathering with stats (OPTIMIZED)...")
     file_stats: Dict[str, Tuple[int, datetime]] = get_files_to_archive_with_stats(
         cache, args.include, args.exclude
     )
     files: List[str] = list(file_stats.keys())
     gather_elapsed = time.time() - gather_start
-    logger.info(f"PERFORMANCE: File gathering completed: {gather_elapsed:.2f} seconds")
-    logger.info(f"PERFORMANCE: Total files found: {len(files)}")
+    logger.debug(f"PERFORMANCE: File gathering completed: {gather_elapsed:.2f} seconds")
+    logger.debug(f"PERFORMANCE: Total files found: {len(files)}")
 
     # PERFORMANCE: Time database checking - OPTIMIZED VERSION
     check_start = time.time()
-    logger.info("PERFORMANCE: Starting database comparison (OPTIMIZED - NO STATS)...")
+    logger.debug("PERFORMANCE: Starting database comparison (OPTIMIZED - NO STATS)...")
 
     # OPTIMIZATION: Load all archived files into memory once
     db_load_start = time.time()
-    logger.info("PERFORMANCE: Loading database into memory...")
+    logger.debug("PERFORMANCE: Loading database into memory...")
 
     # Dictionary mapping file path -> (size, mtime) for O(1) lookup
     archived_files: Dict[str, Tuple[int, datetime]] = {}
@@ -244,8 +244,8 @@ def update_database(  # noqa: C901
             archived_files[file_path] = (size, mtime)
 
     db_load_elapsed = time.time() - db_load_start
-    logger.info(f"PERFORMANCE: Database loaded: {db_load_elapsed:.2f} seconds")
-    logger.info(f"PERFORMANCE: Archived files in database: {len(archived_files)}")
+    logger.debug(f"PERFORMANCE: Database loaded: {db_load_elapsed:.2f} seconds")
+    logger.debug(f"PERFORMANCE: Archived files in database: {len(archived_files)}")
 
     # OPTIMIZATION: Compare using pre-collected stats - NO os.lstat() calls!
     comparison_start = time.time()
@@ -277,7 +277,7 @@ def update_database(  # noqa: C901
         if files_checked % 1000 == 0:
             elapsed_so_far = time.time() - comparison_start
             rate = files_checked / elapsed_so_far if elapsed_so_far > 0 else 0
-            logger.info(
+            logger.debug(
                 f"PERFORMANCE: Compared {files_checked}/{len(files)} files "
                 f"({rate:.1f} files/sec, {elapsed_so_far:.1f}s elapsed)"
             )
@@ -285,27 +285,27 @@ def update_database(  # noqa: C901
     comparison_elapsed = time.time() - comparison_start
     check_elapsed = time.time() - check_start
 
-    logger.info("=" * 80)
-    logger.info("PERFORMANCE: Database comparison completed (OPTIMIZED)")
-    logger.info(f"PERFORMANCE: Total comparison time: {check_elapsed:.2f} seconds")
-    logger.info(f"PERFORMANCE: Files checked: {files_checked}")
-    logger.info(f"PERFORMANCE: New files to archive: {len(newfiles)}")
-    logger.info(
+    logger.debug("=" * 80)
+    logger.debug("PERFORMANCE: Database comparison completed (OPTIMIZED)")
+    logger.debug(f"PERFORMANCE: Total comparison time: {check_elapsed:.2f} seconds")
+    logger.debug(f"PERFORMANCE: Files checked: {files_checked}")
+    logger.debug(f"PERFORMANCE: New files to archive: {len(newfiles)}")
+    logger.debug(
         f"PERFORMANCE: Average rate: {files_checked / check_elapsed:.1f} files/sec"
     )
-    logger.info("-" * 80)
-    logger.info("PERFORMANCE: Time breakdown:")
-    logger.info(
+    logger.debug("-" * 80)
+    logger.debug("PERFORMANCE: Time breakdown:")
+    logger.debug(
         f"  - database load: {db_load_elapsed:.2f}s ({db_load_elapsed / check_elapsed * 100:.1f}%)"
     )
-    logger.info(
+    logger.debug(
         f"  - comparison (in-memory): {comparison_elapsed:.2f}s ({comparison_elapsed / check_elapsed * 100:.1f}%)"
     )
-    logger.info("-" * 80)
-    logger.info("PERFORMANCE: Optimization impact:")
-    logger.info(f"  - stat operations eliminated: {files_checked} (100%)")
-    logger.info("  - All stats performed during initial filesystem walk")
-    logger.info("=" * 80)
+    logger.debug("-" * 80)
+    logger.debug("PERFORMANCE: Optimization impact:")
+    logger.debug(f"  - stat operations eliminated: {files_checked} (100%)")
+    logger.debug("  - All stats performed during initial filesystem walk")
+    logger.debug("=" * 80)
 
     # Anything to do?
     if len(newfiles) == 0:
@@ -315,7 +315,9 @@ def update_database(  # noqa: C901
         con.close()
 
         overall_elapsed = time.time() - overall_start
-        logger.info(f"PERFORMANCE: Total execution time: {overall_elapsed:.2f} seconds")
+        logger.debug(
+            f"PERFORMANCE: Total execution time: {overall_elapsed:.2f} seconds"
+        )
         return None
 
     # --dry-run option
@@ -328,14 +330,14 @@ def update_database(  # noqa: C901
         con.close()
 
         overall_elapsed = time.time() - overall_start
-        logger.info(
+        logger.debug(
             f"PERFORMANCE: Total execution time (dry-run): {overall_elapsed:.2f} seconds"
         )
         return None
 
     # PERFORMANCE: Time tar archive preparation
     tar_prep_start = time.time()
-    logger.info("PERFORMANCE: Finding last used tar archive...")
+    logger.debug("PERFORMANCE: Finding last used tar archive...")
 
     # Find last used tar archive
     itar: int = -1
@@ -346,11 +348,13 @@ def update_database(  # noqa: C901
         itar = max(itar, int(tfile_string[0:6], 16))
 
     tar_prep_elapsed = time.time() - tar_prep_start
-    logger.info(f"PERFORMANCE: Tar archive preparation: {tar_prep_elapsed:.2f} seconds")
+    logger.debug(
+        f"PERFORMANCE: Tar archive preparation: {tar_prep_elapsed:.2f} seconds"
+    )
 
     # PERFORMANCE: Time file addition
     add_files_start = time.time()
-    logger.info("PERFORMANCE: Starting add_files operation...")
+    logger.debug("PERFORMANCE: Starting add_files operation...")
 
     failures: List[str]
     if args.follow_symlinks:
@@ -386,7 +390,7 @@ def update_database(  # noqa: C901
         )
 
     add_files_elapsed = time.time() - add_files_start
-    logger.info(
+    logger.debug(
         f"PERFORMANCE: add_files operation completed: {add_files_elapsed:.2f} seconds"
     )
 
@@ -395,24 +399,24 @@ def update_database(  # noqa: C901
     con.close()
 
     overall_elapsed = time.time() - overall_start
-    logger.info("=" * 80)
-    logger.info("PERFORMANCE: Update complete - Summary:")
-    logger.info(
+    logger.debug("=" * 80)
+    logger.debug("PERFORMANCE: Update complete - Summary:")
+    logger.debug(
         f"  - Database open/config: {db_elapsed:.2f}s ({db_elapsed / overall_elapsed * 100:.1f}%)"
     )
-    logger.info(
+    logger.debug(
         f"  - File gathering: {gather_elapsed:.2f}s ({gather_elapsed / overall_elapsed * 100:.1f}%)"
     )
-    logger.info(
+    logger.debug(
         f"  - Database comparison: {check_elapsed:.2f}s ({check_elapsed / overall_elapsed * 100:.1f}%)"
     )
-    logger.info(
+    logger.debug(
         f"  - Tar preparation: {tar_prep_elapsed:.2f}s ({tar_prep_elapsed / overall_elapsed * 100:.1f}%)"
     )
-    logger.info(
+    logger.debug(
         f"  - Add files: {add_files_elapsed:.2f}s ({add_files_elapsed / overall_elapsed * 100:.1f}%)"
     )
-    logger.info(f"  - TOTAL TIME: {overall_elapsed:.2f} seconds")
-    logger.info("=" * 80)
+    logger.debug(f"  - TOTAL TIME: {overall_elapsed:.2f} seconds")
+    logger.debug("=" * 80)
 
     return failures
