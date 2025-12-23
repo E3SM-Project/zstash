@@ -6,6 +6,7 @@ import os.path
 import sqlite3
 import sys
 import time
+import tracemalloc
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
@@ -16,192 +17,6 @@ from .settings import DEFAULT_CACHE, TIME_TOL, config, get_db_filename, logger
 from .utils import get_files_to_archive_with_stats, update_config
 
 
-# Classes #####################################################################
-class UpdatePerformanceLogger:
-    """
-    Performance logger for tracking and reporting timing metrics
-    during the update_database operation.
-    """
-
-    def __init__(self):
-        self.overall_start: float = 0
-        self.db_start: float = 0
-        self.db_elapsed: float = 0
-        self.gather_start: float = 0
-        self.gather_elapsed: float = 0
-        self.check_start: float = 0
-        self.check_elapsed: float = 0
-        self.db_load_start: float = 0
-        self.db_load_elapsed: float = 0
-        self.comparison_start: float = 0
-        self.comparison_elapsed: float = 0
-        self.tar_prep_start: float = 0
-        self.tar_prep_elapsed: float = 0
-        self.add_files_start: float = 0
-        self.add_files_elapsed: float = 0
-
-    def start_overall(self):
-        """Start timing the overall operation."""
-        self.overall_start = time.time()
-        logger.debug("=" * 80)
-        logger.debug("PERFORMANCE PROFILING: Starting update_database")
-        logger.debug("=" * 80)
-
-    def start_database_open(self):
-        """Start timing database opening."""
-        self.db_start = time.time()
-        logger.debug("Opening index database")
-
-    def end_database_open(self):
-        """End timing database opening and config update."""
-        self.db_elapsed = time.time() - self.db_start
-        logger.debug(
-            f"PERFORMANCE: Database open and config update: {self.db_elapsed:.2f} seconds"
-        )
-
-    def start_file_gathering(self):
-        """Start timing file gathering operation."""
-        self.gather_start = time.time()
-        logger.debug("PERFORMANCE: Starting file gathering with stats (OPTIMIZED)...")
-
-    def end_file_gathering(self, file_count: int):
-        """End timing file gathering operation."""
-        self.gather_elapsed = time.time() - self.gather_start
-        logger.debug(
-            f"PERFORMANCE: File gathering completed: {self.gather_elapsed:.2f} seconds"
-        )
-        logger.debug(f"PERFORMANCE: Total files found: {file_count}")
-
-    def start_database_check(self):
-        """Start timing database comparison."""
-        self.check_start = time.time()
-        logger.debug(
-            "PERFORMANCE: Starting database comparison (OPTIMIZED - NO STATS)..."
-        )
-
-    def start_database_load(self):
-        """Start timing database loading into memory."""
-        self.db_load_start = time.time()
-        logger.debug("PERFORMANCE: Loading database into memory...")
-
-    def end_database_load(self, archived_count: int):
-        """End timing database loading."""
-        self.db_load_elapsed = time.time() - self.db_load_start
-        logger.debug(
-            f"PERFORMANCE: Database loaded: {self.db_load_elapsed:.2f} seconds"
-        )
-        logger.debug(f"PERFORMANCE: Archived files in database: {archived_count}")
-
-    def start_comparison(self):
-        """Start timing the comparison operation."""
-        self.comparison_start = time.time()
-
-    def log_comparison_progress(
-        self, files_checked: int, total_files: int, interval: int = 1000
-    ):
-        """Log comparison progress at regular intervals."""
-        if files_checked % interval == 0:
-            elapsed_so_far = time.time() - self.comparison_start
-            rate = files_checked / elapsed_so_far if elapsed_so_far > 0 else 0
-            logger.debug(
-                f"PERFORMANCE: Compared {files_checked}/{total_files} files "
-                f"({rate:.1f} files/sec, {elapsed_so_far:.1f}s elapsed)"
-            )
-
-    def end_database_check(self, files_checked: int, new_files_count: int):
-        """End timing database comparison and log detailed metrics."""
-        self.comparison_elapsed = time.time() - self.comparison_start
-        self.check_elapsed = time.time() - self.check_start
-
-        logger.debug("=" * 80)
-        logger.debug("PERFORMANCE: Database comparison completed (OPTIMIZED)")
-        logger.debug(
-            f"PERFORMANCE: Total comparison time: {self.check_elapsed:.2f} seconds"
-        )
-        logger.debug(f"PERFORMANCE: Files checked: {files_checked}")
-        logger.debug(f"PERFORMANCE: New files to archive: {new_files_count}")
-        logger.debug(
-            f"PERFORMANCE: Average rate: {files_checked / self.check_elapsed:.1f} files/sec"
-        )
-        logger.debug("-" * 80)
-        logger.debug("PERFORMANCE: Time breakdown:")
-        logger.debug(
-            f"  - database load: {self.db_load_elapsed:.2f}s "
-            f"({self.db_load_elapsed / self.check_elapsed * 100:.1f}%)"
-        )
-        logger.debug(
-            f"  - comparison (in-memory): {self.comparison_elapsed:.2f}s "
-            f"({self.comparison_elapsed / self.check_elapsed * 100:.1f}%)"
-        )
-        logger.debug("-" * 80)
-        logger.debug("PERFORMANCE: Optimization impact:")
-        logger.debug(f"  - stat operations eliminated: {files_checked} (100%)")
-        logger.debug("  - All stats performed during initial filesystem walk")
-        logger.debug("=" * 80)
-
-    def start_tar_preparation(self):
-        """Start timing tar archive preparation."""
-        self.tar_prep_start = time.time()
-        logger.debug("PERFORMANCE: Finding last used tar archive...")
-
-    def end_tar_preparation(self):
-        """End timing tar archive preparation."""
-        self.tar_prep_elapsed = time.time() - self.tar_prep_start
-        logger.debug(
-            f"PERFORMANCE: Tar archive preparation: {self.tar_prep_elapsed:.2f} seconds"
-        )
-
-    def start_add_files(self):
-        """Start timing add_files operation."""
-        self.add_files_start = time.time()
-        logger.debug("PERFORMANCE: Starting add_files operation...")
-
-    def end_add_files(self):
-        """End timing add_files operation."""
-        self.add_files_elapsed = time.time() - self.add_files_start
-        logger.debug(
-            f"PERFORMANCE: add_files operation completed: {self.add_files_elapsed:.2f} seconds"
-        )
-
-    def log_overall_summary(self):
-        """Log the complete performance summary."""
-        overall_elapsed = time.time() - self.overall_start
-
-        logger.debug("=" * 80)
-        logger.debug("PERFORMANCE: Update complete - Summary:")
-        logger.debug(
-            f"  - Database open/config: {self.db_elapsed:.2f}s "
-            f"({self.db_elapsed / overall_elapsed * 100:.1f}%)"
-        )
-        logger.debug(
-            f"  - File gathering: {self.gather_elapsed:.2f}s "
-            f"({self.gather_elapsed / overall_elapsed * 100:.1f}%)"
-        )
-        logger.debug(
-            f"  - Database comparison: {self.check_elapsed:.2f}s "
-            f"({self.check_elapsed / overall_elapsed * 100:.1f}%)"
-        )
-        logger.debug(
-            f"  - Tar preparation: {self.tar_prep_elapsed:.2f}s "
-            f"({self.tar_prep_elapsed / overall_elapsed * 100:.1f}%)"
-        )
-        logger.debug(
-            f"  - Add files: {self.add_files_elapsed:.2f}s "
-            f"({self.add_files_elapsed / overall_elapsed * 100:.1f}%)"
-        )
-        logger.debug(f"  - TOTAL TIME: {overall_elapsed:.2f} seconds")
-        logger.debug("=" * 80)
-
-    def log_early_exit(self, reason: str = ""):
-        """Log performance for early exits (no updates, dry-run)."""
-        overall_elapsed = time.time() - self.overall_start
-        suffix = f" ({reason})" if reason else ""
-        logger.debug(
-            f"PERFORMANCE: Total execution time{suffix}: {overall_elapsed:.2f} seconds"
-        )
-
-
-# Functions #####################################################################
 def update():
 
     args: argparse.Namespace
@@ -327,13 +142,8 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
 def update_database(  # noqa: C901
     args: argparse.Namespace, cache: str
 ) -> Optional[List[str]]:
-
-    # Initialize performance logger
-    perf = UpdatePerformanceLogger()
-    perf.start_overall()
-
     # Open database
-    perf.start_database_open()
+    logger.debug("Opening index database")
     if not os.path.exists(get_db_filename(cache)):
         # The database file doesn't exist in the cache.
         # We need to retrieve it from HPSS
@@ -358,7 +168,6 @@ def update_database(  # noqa: C901
     cur: sqlite3.Cursor = con.cursor()
 
     update_config(cur)
-    perf.end_database_open()
 
     if config.maxsize is not None:
         maxsize = config.maxsize
@@ -385,19 +194,27 @@ def update_database(  # noqa: C901
     logger.debug("Max size  : {}".format(maxsize))
     logger.debug("Keep local tar files  : {}".format(keep))
 
-    # Gather files to archive
-    perf.start_file_gathering()
+    file_gathering_start = time.time()
+    tracemalloc.start()
+
     file_stats: Dict[str, Tuple[int, datetime]] = get_files_to_archive_with_stats(
         cache, args.include, args.exclude
     )
+
+    file_gathering_elapsed = time.time() - file_gathering_start
+    logger.debug(
+        f"TIME PROFILE -- FILE GATHERING: {file_gathering_elapsed:.2f} seconds"
+    )
+    memory_current, memory_peak = tracemalloc.get_traced_memory()
+    logger.debug(
+        f"MEMORY PROFILE -- FILE GATHERING: current={memory_current / 10**6:.2f} MB, peak={memory_peak / 10**6:.2f} MB"
+    )
+    tracemalloc.stop()
+
     files: List[str] = list(file_stats.keys())
-    perf.end_file_gathering(len(files))
 
-    # Database checking - OPTIMIZED VERSION
-    perf.start_database_check()
-
-    # Load all archived files into memory once
-    perf.start_database_load()
+    database_comparison_start = time.time()
+    tracemalloc.start()
 
     # Dictionary mapping file path -> (size, mtime) for O(1) lookup
     archived_files: Dict[str, Tuple[int, datetime]] = {}
@@ -418,10 +235,6 @@ def update_database(  # noqa: C901
         else:
             archived_files[file_path] = (size, mtime)
 
-    perf.end_database_load(len(archived_files))
-
-    # Compare using pre-collected stats - NO os.lstat() calls!
-    perf.start_comparison()
     newfiles: List[str] = []
     files_checked = 0
 
@@ -446,10 +259,15 @@ def update_database(  # noqa: C901
 
         files_checked += 1
 
-        # Progress logging every 1000 files
-        perf.log_comparison_progress(files_checked, len(files))
-
-    perf.end_database_check(files_checked, len(newfiles))
+    database_comparison_elapsed = time.time() - database_comparison_start
+    logger.debug(
+        f"TIME PROFILE -- DATABASE COMPARISON: {database_comparison_elapsed:.2f} seconds"
+    )
+    memory_current, memory_peak = tracemalloc.get_traced_memory()
+    logger.debug(
+        f"MEMORY PROFILE -- DATABASE COMPARISON: current={memory_current / 10**6:.2f} MB, peak={memory_peak / 10**6:.2f} MB"
+    )
+    tracemalloc.stop()
 
     # Anything to do?
     if len(newfiles) == 0:
@@ -457,8 +275,6 @@ def update_database(  # noqa: C901
         # Close database
         con.commit()
         con.close()
-
-        perf.log_early_exit()
         return None
 
     # --dry-run option
@@ -469,12 +285,9 @@ def update_database(  # noqa: C901
         # Close database
         con.commit()
         con.close()
-
-        perf.log_early_exit("dry-run")
         return None
 
     # Find last used tar archive
-    perf.start_tar_preparation()
     itar: int = -1
     cur.execute("select distinct tar from files")
     tfiles: List[Tuple[str]] = cur.fetchall()
@@ -482,10 +295,9 @@ def update_database(  # noqa: C901
         tfile_string: str = tfile[0]
         itar = max(itar, int(tfile_string[0:6], 16))
 
-    perf.end_tar_preparation()
-
     # Add files
-    perf.start_add_files()
+    add_files_start = time.time()
+    tracemalloc.start()
 
     failures: List[str]
     if args.follow_symlinks:
@@ -520,12 +332,16 @@ def update_database(  # noqa: C901
             overwrite_duplicate_tars=args.overwrite_duplicate_tars,
         )
 
-    perf.end_add_files()
+    add_files_elapsed = time.time() - add_files_start
+    logger.debug(f"TIME PROFILE -- ADD FILES: {add_files_elapsed:.2f} seconds")
+    memory_current, memory_peak = tracemalloc.get_traced_memory()
+    logger.debug(
+        f"MEMORY PROFILE -- ADD FILES: current={memory_current / 10**6:.2f} MB, peak={memory_peak / 10**6:.2f} MB"
+    )
+    tracemalloc.stop()
 
     # Close database
     con.commit()
     con.close()
-
-    perf.log_overall_summary()
 
     return failures
