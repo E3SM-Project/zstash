@@ -6,6 +6,8 @@ import os.path
 import sqlite3
 import stat
 import sys
+import time
+import tracemalloc
 from datetime import datetime
 from typing import List, Optional, Tuple
 
@@ -201,7 +203,23 @@ def update_database(  # noqa: C901
     logger.debug("Max size  : {}".format(maxsize))
     logger.debug("Keep local tar files  : {}".format(keep))
 
+    file_gathering_start = time.time()
+    tracemalloc.start()
+
     files: List[str] = get_files_to_archive(cache, args.include, args.exclude)
+
+    file_gathering_elapsed = time.time() - file_gathering_start
+    logger.debug(
+        f"TIME PROFILE -- FILE GATHERING: {file_gathering_elapsed:.2f} seconds"
+    )
+    memory_current, memory_peak = tracemalloc.get_traced_memory()
+    logger.debug(
+        f"MEMORY PROFILE -- FILE GATHERING: current={memory_current / 10**6:.2f} MB, peak={memory_peak / 10**6:.2f} MB"
+    )
+    tracemalloc.stop()
+
+    database_comparison_start = time.time()
+    tracemalloc.start()
 
     # Eliminate files that are already archived and up to date
     newfiles: List[str] = []
@@ -236,6 +254,16 @@ def update_database(  # noqa: C901
         if new:
             newfiles.append(file_path)
 
+    database_comparison_elapsed = time.time() - database_comparison_start
+    logger.debug(
+        f"TIME PROFILE -- DATABASE COMPARISON: {database_comparison_elapsed:.2f} seconds"
+    )
+    memory_current, memory_peak = tracemalloc.get_traced_memory()
+    logger.debug(
+        f"MEMORY PROFILE -- DATABASE COMPARISON: current={memory_current / 10**6:.2f} MB, peak={memory_peak / 10**6:.2f} MB"
+    )
+    tracemalloc.stop()
+
     # Anything to do?
     if len(newfiles) == 0:
         logger.info("Nothing to update")
@@ -261,6 +289,10 @@ def update_database(  # noqa: C901
     for tfile in tfiles:
         tfile_string: str = tfile[0]
         itar = max(itar, int(tfile_string[0:6], 16))
+
+    # Add files
+    add_files_start = time.time()
+    tracemalloc.start()
 
     failures: List[str]
     if args.follow_symlinks:
@@ -294,6 +326,14 @@ def update_database(  # noqa: C901
             error_on_duplicate_tar=args.error_on_duplicate_tar,
             overwrite_duplicate_tars=args.overwrite_duplicate_tars,
         )
+
+    add_files_elapsed = time.time() - add_files_start
+    logger.debug(f"TIME PROFILE -- ADD FILES: {add_files_elapsed:.2f} seconds")
+    memory_current, memory_peak = tracemalloc.get_traced_memory()
+    logger.debug(
+        f"MEMORY PROFILE -- ADD FILES: current={memory_current / 10**6:.2f} MB, peak={memory_peak / 10**6:.2f} MB"
+    )
+    tracemalloc.stop()
 
     # Close database
     con.commit()
