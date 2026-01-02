@@ -11,6 +11,7 @@ from .settings import get_db_filename, logger
 from .transfer_tracking import (
     GlobusTransferCollection,
     HPSSTransferCollection,
+    delete_current_files,
     delete_transferred_files,
 )
 from .utils import run_command, ts_utc
@@ -141,7 +142,11 @@ def hpss_transfer(  # noqa: C901
 
         if transfer_type == "put":
             if (not keep) and (not is_index):
-                if (scheme != "globus") or (globus_status == "SUCCEEDED"):
+                if scheme != "globus":
+                    # For direct HPSS, delete immediately since transfer is synchronous
+                    # Delete the file that was just transferred
+                    delete_current_files(htc)
+                elif globus_status == "SUCCEEDED":
                     # Note: This is intended to fulfill the default removal of successfully-transfered
                     # tar files when keep=False, irrespective of non-blocking status
                     delete_transferred_files(htc)

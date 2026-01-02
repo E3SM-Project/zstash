@@ -54,4 +54,15 @@ def delete_transferred_files(htc: HPSSTransferCollection):
             logger.debug(f"{ts_utc()}: {src_path} already deleted or doesn't exist")
     htc.prev_transfers = htc.curr_transfers
     htc.curr_transfers = []
-    logger.info(f"{ts_utc()}: prev_transfers has been set to {htc.prev_transfers}")
+    logger.debug(f"{ts_utc()}: prev_transfers has been set to {htc.prev_transfers}")
+
+
+def delete_current_files(htc: HPSSTransferCollection):
+    logger.debug(f"{ts_utc()}: deleting current files {htc.curr_transfers}")
+    for src_path in htc.curr_transfers:
+        if os.path.exists(src_path):
+            os.remove(src_path)
+        else:
+            logger.debug(f"{ts_utc()}: {src_path} already deleted or doesn't exist")
+    htc.curr_transfers = []  # Clear the list after deletion
+    logger.debug(f"{ts_utc()}: curr_transfers cleared after deletion")
