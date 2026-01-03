@@ -2,12 +2,13 @@ from __future__ import absolute_import, print_function
 
 import os.path
 import subprocess
-from typing import List
+from typing import List, Optional
 
 from six.moves.urllib.parse import urlparse
 
 from .globus import globus_transfer
 from .settings import get_db_filename, logger
+from .transfer_tracking import GlobusConfig, TransferBatch, TransferManager
 from .utils import run_command, ts_utc
 
 prev_transfers: List[str] = list()
@@ -22,16 +23,10 @@ def hpss_transfer(
     keep: bool = False,
     non_blocking: bool = False,
     is_index: bool = False,
+    transfer_manager: Optional[TransferManager] = None,
 ):
-    global prev_transfers
-    global curr_transfers
-
-    logger.info(
-        f"{ts_utc()}: in hpss_transfer, prev_transfers is starting as {prev_transfers}"
-    )
-    # logger.debug(
-    #     f"{ts_utc()}: in hpss_transfer, curr_transfers is starting as {curr_transfers}"
-    # )
+    if not transfer_manager:
+        transfer_manager = TransferManager()
 
     if hpss == "none":
         logger.info("{}: HPSS is unavailable".format(transfer_type))
@@ -85,7 +80,8 @@ def hpss_transfer(
         endpoint = url.netloc
         url_path = url.path
 
-        curr_transfers.append(file_path)
+        # Append to curr_transfers:
+        transfer_manager.batches[-1].file_paths.append(file_path)
         # logger.debug(
         #     f"{ts_utc()}: curr_transfers has been appended to, is now {curr_transfers}"
         # )
@@ -104,16 +100,21 @@ def hpss_transfer(
             # For `get`, this directory is where the file we get from HPSS will go.
             os.chdir(path)
 
+        globus_status: str = "UNKNOWN"
         if scheme == "globus":
-            globus_status = "UNKNOWN"
+            if not transfer_manager.globus_config:
+                raise RuntimeError("Scheme is 'globus' but no GlobusConfig provided")
             # Transfer file using the Globus Transfer Service
             logger.info(f"{ts_utc()}: DIVING: hpss calls globus_transfer(name={name})")
-            globus_status = globus_transfer(
-                endpoint, url_path, name, transfer_type, non_blocking
+            globus_transfer(
+                transfer_manager, endpoint, url_path, name, transfer_type, non_blocking
             )
-            logger.info(
-                f"{ts_utc()}: SURFACE hpss globus_transfer(name={name}) returns {globus_status}"
-            )
+            mrt: Optional[TransferBatch] = transfer_manager.get_most_recent_transfer()
+            if mrt and mrt.task_status:
+                globus_status = mrt.task_status
+                logger.info(
+                    f"{ts_utc()}: SURFACE hpss globus_transfer(name={name}) returns {globus_status}"
+                )
             # NOTE: Here, the status could be "EXHAUSTED_TIMEOUT_RETRIES", meaning a very long transfer
             # or perhaps transfer is hanging. We should decide whether to ignore it, or cancel it, but
             # we'd need the task_id to issue a cancellation.  Perhaps we should have globus_transfer
@@ -129,20 +130,10 @@ def hpss_transfer(
             os.chdir(cwd)
 
         if transfer_type == "put":
-            if not keep:
-                if (scheme != "globus") or (globus_status == "SUCCEEDED"):
-                    # Note: This is intended to fulfill the default removal of successfully-transfered
-                    # tar files when keep=False, irrespective of non-blocking status
-                    logger.debug(
-                        f"{ts_utc()}: deleting transfered files {prev_transfers}"
-                    )
-                    for src_path in prev_transfers:
-                        os.remove(src_path)
-                    prev_transfers = curr_transfers
-                    curr_transfers = list()
-                    logger.info(
-                        f"{ts_utc()}: prev_transfers has been set to {prev_transfers}"
-                    )
+            if (not keep) and (not is_index):
+                # We never delete if `--keep` is set.
+                # We also never delete `index.db`.
+                transfer_manager.delete_successfully_transferred_files()
 
 
 def hpss_put(
@@ -152,18 +143,34 @@ def hpss_put(
     keep: bool = True,
     non_blocking: bool = False,
     is_index=False,
+    transfer_manager: Optional[TransferManager] = None,
 ):
     """
     Put a file to the HPSS archive.
     """
-    hpss_transfer(hpss, file_path, "put", cache, keep, non_blocking, is_index)
+    hpss_transfer(
+        hpss,
+        file_path,
+        "put",
+        cache,
+        keep,
+        non_blocking,
+        is_index,
+        transfer_manager,
+    )
 
 
 def hpss_get(hpss: str, file_path: str, cache: str):
     """
     Get a file from the HPSS archive.
     """
-    hpss_transfer(hpss, file_path, "get", cache, False)
+    url = urlparse(hpss)
+    transfer_manager: TransferManager = TransferManager()
+    if url.scheme == "globus":
+        transfer_manager.globus_config = GlobusConfig()
+    hpss_transfer(
+        hpss, file_path, "get", cache, False, transfer_manager=transfer_manager
+    )
 
 
 def hpss_chgrp(hpss: str, group: str, recurse: bool = False):
