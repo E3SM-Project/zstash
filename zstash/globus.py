@@ -168,13 +168,12 @@ def globus_transfer(  # noqa: C901
 
         # Create new transfer record with the task info
         new_transfer = TransferBatch()
-        new_transfer.file_paths = []  # TODO: is this right?
+        new_transfer.file_paths = (
+            mrt.file_paths if mrt else []
+        )  # Copy from the batch being submitted
         new_transfer.task_id = task_id
         new_transfer.task_status = "UNKNOWN"
         new_transfer.is_globus = True
-        new_transfer.transfer_data = (
-            None  # This batch was submitted # TODO: is this right?
-        )
         transfer_manager.batches.append(new_transfer)
 
         # Nullify the submitted transfer data structure so that a new one will be created on next call.

@@ -4,6 +4,9 @@ from typing import List, Optional
 from globus_sdk import TransferClient, TransferData
 from globus_sdk.services.transfer.response.iterable import IterableTransferResponse
 
+from .settings import logger
+from .utils import ts_utc
+
 
 class GlobusConfig:
     """Globus connection configuration"""
@@ -44,13 +47,32 @@ class TransferManager:
         return self.batches[-1] if self.batches else None
 
     def delete_successfully_transferred_files(self):
+        """Check transfer status and delete files from successful transfers"""
         new_batch_list: List[TransferBatch] = []
         for batch in self.batches:
+            # Check if this is a Globus transfer that needs status update
+            if batch.is_globus and batch.task_id and (batch.task_status != "SUCCEEDED"):
+                if self.globus_config and self.globus_config.transfer_client:
+                    # Non-blocking status check
+                    logger.debug(
+                        f"{ts_utc()}: Checking status of task_id={batch.task_id}"
+                    )
+                    task = self.globus_config.transfer_client.get_task(batch.task_id)
+                    batch.task_status = task["status"]
+                    logger.debug(
+                        f"{ts_utc()}: task_id={batch.task_id} status={batch.task_status}"
+                    )
+
+            # Now delete if successful
             if (not batch.is_globus) or (batch.task_status == "SUCCEEDED"):
                 # The files were transferred successfully.
                 # So, we can delete them.
+                logger.info(
+                    f"{ts_utc()}: Deleting {len(batch.file_paths)} files from successful transfer"
+                )
                 batch.delete_files()
             else:
+                # Keep tracking this batch - not yet successful
                 new_batch_list.append(batch)
         # We don't need to keep tracking batches that have been both:
         # 1. transferred successfully

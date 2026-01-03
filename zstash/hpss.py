@@ -28,6 +28,19 @@ def hpss_transfer(
     if not transfer_manager:
         transfer_manager = TransferManager()
 
+    url = urlparse(hpss)
+    scheme = url.scheme
+
+    # Create a new batch if needed (before we start adding files)
+    if not transfer_manager.batches or transfer_manager.batches[-1].task_id:
+        # Either no batches exist, or the last batch was already submitted
+        new_batch = TransferBatch()
+        new_batch.is_globus = scheme == "globus"
+        transfer_manager.batches.append(new_batch)
+        logger.debug(
+            f"{ts_utc()}: Created new TransferBatch, total batches: {len(transfer_manager.batches)}"
+        )
+
     if hpss == "none":
         logger.info("{}: HPSS is unavailable".format(transfer_type))
         if transfer_type == "put" and file_path != get_db_filename(cache):
@@ -70,22 +83,18 @@ def hpss_transfer(
         else:
             raise ValueError("Invalid transfer_type={}".format(transfer_type))
         logger.info("Transferring file {} HPSS: {}".format(transfer_word, file_path))
-        scheme: str
-        endpoint: str
+
+        endpoint: str = url.netloc
+        url_path = url.path
         path: str
         name: str
-
-        url = urlparse(hpss)
-        scheme = url.scheme
-        endpoint = url.netloc
-        url_path = url.path
-
-        # Append to curr_transfers:
-        transfer_manager.batches[-1].file_paths.append(file_path)
-        # logger.debug(
-        #     f"{ts_utc()}: curr_transfers has been appended to, is now {curr_transfers}"
-        # )
         path, name = os.path.split(file_path)
+
+        # Add this file to the current batch
+        transfer_manager.batches[-1].file_paths.append(file_path)
+        logger.debug(
+            f"{ts_utc()}: Added {file_path} to current batch, batch now has {len(transfer_manager.batches[-1].file_paths)} files"
+        )
 
         # Need to be in local directory for `hsi` to work
         cwd = os.getcwd()
