@@ -12,9 +12,9 @@ class GlobusConfig:
     """Globus connection configuration"""
 
     def __init__(self):
-        self.remote_endpoint: str
-        self.local_endpoint: str
-        self.transfer_client: TransferClient
+        self.remote_endpoint: Optional[str] = None
+        self.local_endpoint: Optional[str] = None
+        self.transfer_client: Optional[TransferClient] = None
         self.archive_directory_listing: Optional[IterableTransferResponse] = None
 
 
@@ -48,10 +48,18 @@ class TransferManager:
 
     def delete_successfully_transferred_files(self):
         """Check transfer status and delete files from successful transfers"""
-        new_batch_list: List[TransferBatch] = []
+        logger.info(
+            f"{ts_utc()}: Checking for successfully transferred files to delete"
+        )
         for batch in self.batches:
+            # Skip if already processed
+            if not batch.file_paths:
+                logger.debug(f"{ts_utc()}: batch was already processed, skipping")
+                continue
+
             # Check if this is a Globus transfer that needs status update
             if batch.is_globus and batch.task_id and (batch.task_status != "SUCCEEDED"):
+                logger.debug(f"{ts_utc()}: batch is globus AND is not yet successful")
                 if self.globus_config and self.globus_config.transfer_client:
                     # Non-blocking status check
                     logger.debug(
@@ -62,19 +70,17 @@ class TransferManager:
                     logger.debug(
                         f"{ts_utc()}: task_id={batch.task_id} status={batch.task_status}"
                     )
+                else:
+                    logger.debug(
+                        f"{ts_utc()}: globus_config is not set up with a transfer client"
+                    )
 
             # Now delete if successful
             if (not batch.is_globus) or (batch.task_status == "SUCCEEDED"):
-                # The files were transferred successfully.
-                # So, we can delete them.
+                # The files were transferred successfully, so delete them
                 logger.info(
                     f"{ts_utc()}: Deleting {len(batch.file_paths)} files from successful transfer"
                 )
                 batch.delete_files()
-            else:
-                # Keep tracking this batch - not yet successful
-                new_batch_list.append(batch)
-        # We don't need to keep tracking batches that have been both:
-        # 1. transferred successfully
-        # 2. been deleted
-        self.batches = new_batch_list
+                logger.debug("Deletion completed")
+                batch.file_paths = []  # Mark as processed
