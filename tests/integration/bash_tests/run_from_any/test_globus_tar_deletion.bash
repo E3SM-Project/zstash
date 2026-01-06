@@ -137,7 +137,8 @@ test_globus_tar_deletion()
         keep_flag=""
     fi
 
-    zstash create ${blocking_flag} ${keep_flag} --hpss=${globus_path}/${case_name} --maxsize 128 zstash_demo 2>&1 | tee ${case_name}.log
+    # Use -v so debug logs show up.
+    zstash create ${blocking_flag} ${keep_flag} --hpss=${globus_path}/${case_name} --maxsize 128 -v zstash_demo 2>&1 | tee ${case_name}.log
     if [ $? != 0 ]; then
         echo "${case_name} failed. Check ${case_name}_create.log for details. Cannot continue."
         return 1

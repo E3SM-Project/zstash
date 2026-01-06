@@ -91,10 +91,11 @@ def hpss_transfer(
         path, name = os.path.split(file_path)
 
         # Add this file to the current batch
-        transfer_manager.batches[-1].file_paths.append(file_path)
-        logger.debug(
-            f"{ts_utc()}: Added {file_path} to current batch, batch now has {len(transfer_manager.batches[-1].file_paths)} files"
-        )
+        if (not keep) and (not is_index):  # Never track index.db for deletion
+            transfer_manager.batches[-1].file_paths.append(file_path)
+            logger.debug(
+                f"{ts_utc()}: Added {file_path} to current batch, batch now has {len(transfer_manager.batches[-1].file_paths)} files"
+            )
 
         # Need to be in local directory for `hsi` to work
         cwd = os.getcwd()
@@ -112,7 +113,7 @@ def hpss_transfer(
         globus_status: str = "UNKNOWN"
         if scheme == "globus":
             if not transfer_manager.globus_config:
-                raise RuntimeError("Scheme is 'globus' but no GlobusConfig provided")
+                transfer_manager.globus_config = GlobusConfig()
             # Transfer file using the Globus Transfer Service
             logger.info(f"{ts_utc()}: DIVING: hpss calls globus_transfer(name={name})")
             globus_transfer(
@@ -139,9 +140,8 @@ def hpss_transfer(
             os.chdir(cwd)
 
         if transfer_type == "put":
-            if (not keep) and (not is_index):
+            if not keep:
                 # We never delete if `--keep` is set.
-                # We also never delete `index.db`.
                 transfer_manager.delete_successfully_transferred_files()
 
 

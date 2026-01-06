@@ -168,7 +168,8 @@ def add_files(
                 cache,
                 keep,
                 non_blocking,
-                transfer_manager,
+                is_index=False,
+                transfer_manager=transfer_manager,
             )
             logger.info(
                 f"{ts_utc()}: SURFACE (add_files): Called hpss_put to dispatch archive file {tfname}"
