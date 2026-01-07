@@ -66,6 +66,119 @@ under ``<local path>/zstash``.
 **After you run** ``zstash create`` **it's highly recommended that you
 run** ``zstash check``, **detailed in the section below. This will allow you to check that your archival completed successfully. Do not delete any data until you've run** ``zstash check``.
 
+Restarting After Interruption
+------------------------------
+
+If ``zstash create`` is interrupted (due to timeout, authentication failure, network issues, etc.), you have two options for resuming. **They behave differently:**
+
+**Recommended: Use** ``zstash update``
+
+Using ``zstash update`` is the efficient way to resume an interrupted archive: ::
+
+  $ cd source_dir
+  $ zstash update --hpss=globus://nersc/~/my_archive
+
+This will:
+
+* Open the existing ``index.db`` database
+* Compare local files against the database
+* Archive only files that are new or modified since the interruption
+* Preserve existing tar files (does not recreate them)
+* Continue tar numbering from where it left off
+
+**Alternative: Re-run** ``zstash create`` **(works but wasteful)**
+
+Re-running the original ``zstash create`` command will also work: ::
+
+  $ zstash create --hpss=globus://nersc/~/my_archive source_dir
+
+However, this approach is less efficient because it:
+
+* Deletes the existing ``index.db`` database
+* Creates a fresh database from scratch
+* Re-scans all files in the source directory
+* **Recreates all tar files** (even for files already archived)
+* Overwrites existing tar files with identical content
+
+The end result is the same archive, but ``create`` does unnecessary work by recreating tars that were already complete.
+
+**Why the difference?**
+
+When ``zstash create`` runs, it:
+
+1. Creates a new database (deleting any existing one)
+2. Scans all files
+3. Creates tar archives
+4. Transfers everything to HPSS
+
+If interrupted during step 4 (HPSS transfer), the local cache has complete tar files but HPSS may be incomplete. Re-running ``create`` starts over from step 1, recreating work already done in steps 1-3.
+
+In contrast, ``zstash update``:
+
+1. Opens the existing database
+2. Compares files against database
+3. Creates tar archives only for new/changed files
+4. Transfers only new archives to HPSS
+
+This avoids recreating tars for files already in the database.
+
+**Specific scenario: Globus authentication timeout**
+
+If you see: ::
+
+  ERROR: Exception: Failed to get an auth_code from Globus Auth.
+
+This means tar creation completed but HPSS transfer failed due to authentication timeout. In this case:
+
+* Local cache has complete ``index.db`` and all tar files
+* HPSS has partial or no files
+* **Use** ``zstash update`` **to efficiently transfer missing files**
+* Or re-run ``create`` (works but recreates all tars unnecessarily)
+
+**Performance comparison:**
+
+Example with 100 GB of data split into 5 tar files:
+
+* **Using** ``update`` **after interruption**: Only transfers missing tars to HPSS (~minutes)
+* **Re-running** ``create`` **after interruption**: Recreates all 5 tars, then transfers (~hours)
+
+The time difference grows with archive size.
+
+**Example of interrupted and resumed archive:** ::
+
+  # Initial attempt - completes local archival but fails during HPSS transfer
+  $ zstash create --hpss=globus://nersc/~/my_archive source_dir
+  INFO: Creating new tar archive 000000.tar
+  INFO: Creating new tar archive 000001.tar  
+  INFO: Creating new tar archive 000002.tar
+  INFO: Transferring file to HPSS: zstash/000000.tar
+  ERROR: Exception: Failed to get an auth_code from Globus Auth.
+  # Local cache now has: index.db, 000000.tar, 000001.tar, 000002.tar
+  # HPSS may have: 000000.tar only (or nothing)
+  
+  # Efficient resume with update
+  $ cd source_dir
+  $ zstash update --hpss=globus://nersc/~/my_archive
+  INFO: Nothing to update  # No new/changed files
+  INFO: Transferring file to HPSS: zstash/000001.tar  # Transfers missing tars
+  INFO: Transferring file to HPSS: zstash/000002.tar
+  # Does NOT recreate tars, only transfers missing ones
+  
+  # Alternative: re-run create (works but wasteful)
+  $ zstash create --hpss=globus://nersc/~/my_archive source_dir
+  INFO: Creating index database
+  INFO: Creating new tar archive 000000.tar  # Recreates tar unnecessarily
+  INFO: Creating new tar archive 000001.tar  # Recreates tar unnecessarily
+  INFO: Creating new tar archive 000002.tar  # Recreates tar unnecessarily
+  INFO: Transferring file to HPSS: zstash/000000.tar
+  # Recreates all tars even though they were already complete
+
+**Summary:**
+
+* ✅ **Best practice**: Use ``zstash update`` to resume interrupted archives
+* ⚠️ **Acceptable but inefficient**: Re-run ``zstash create`` (recreates all tars)
+* Both produce the same final archive, but ``update`` is significantly faster
+
 What Happens If: Create Scenarios
 ----------------------------------
 
@@ -185,6 +298,9 @@ If you want to store zstash archive on these two remote HPSS file systems, you c
 
 .. note::
     Globus authentication is required once per endpoint. After the first authentication, tokens are saved locally and reused for subsequent operations.
+
+.. note::
+    If authentication times out during ``zstash create`` (you didn't paste the authentication code in time), use ``zstash update`` to efficiently resume. This will transfer only the missing files to HPSS without recreating tar files. See "Restarting After Interruption" above for details. Re-running ``zstash create`` also works but will wastefully recreate all tar archives.
 
 Check
 =====
