@@ -243,6 +243,199 @@ class TestGetFilesToArchiveWithStats:
         assert len(result) == 1
         assert any("data.txt" in path for path in result.keys())
 
+    def test_empty_directory_sorting_position(self, tmp_path):
+        """Test that empty directories sort correctly relative to files."""
+        # Replicate the structure from the bug report:
+        # copied_build/cmake-bld/CMakeFiles/
+        #   - CMakeRuleHashes.txt (file)
+        #   - CMakeTmp (empty directory)
+        #   - Makefile.cmake (file)
+
+        cmake_files = tmp_path / "copied_build" / "cmake-bld" / "CMakeFiles"
+        cmake_files.mkdir(parents=True)
+
+        # Create files before and after the empty directory alphabetically
+        (cmake_files / "CMakeRuleHashes.txt").write_text("content")
+        (cmake_files / "Makefile.cmake").write_text("content")
+
+        # Create empty directory
+        cmake_tmp = cmake_files / "CMakeTmp"
+        cmake_tmp.mkdir()
+
+        os.chdir(tmp_path)
+        result = get_files_to_archive_with_stats("cache", None, None)
+
+        # Get the list of paths
+        paths = list(result.keys())
+
+        # Find indices
+        rule_hashes_idx = next(
+            i for i, p in enumerate(paths) if "CMakeRuleHashes.txt" in p
+        )
+        cmake_tmp_idx = next(i for i, p in enumerate(paths) if p.endswith("CMakeTmp"))
+        makefile_idx = next(i for i, p in enumerate(paths) if "Makefile.cmake" in p)
+
+        # Empty directory should sort AFTER files in the parent directory
+        # because when comparing tuples:
+        # ("copied_build/cmake-bld/CMakeFiles", "CMakeRuleHashes.txt") vs
+        # ("copied_build/cmake-bld/CMakeFiles/CMakeTmp", "")
+        # The first element "copied_build/.../CMakeFiles" < "copied_build/.../CMakeFiles/CMakeTmp"
+        # So parent directory files come first, then subdirectories
+        assert (
+            cmake_tmp_idx > rule_hashes_idx
+        ), f"Empty dir CMakeTmp at {cmake_tmp_idx} should come after CMakeRuleHashes.txt at {rule_hashes_idx}"
+        assert (
+            cmake_tmp_idx > makefile_idx
+        ), f"Empty dir CMakeTmp at {cmake_tmp_idx} should come after Makefile.cmake at {makefile_idx}"
+
+        # Verify the empty directory has size 0
+        cmake_tmp_path = paths[cmake_tmp_idx]
+        assert result[cmake_tmp_path][0] == 0, "Empty directory should have size 0"
+
+    def test_empty_directory_vs_file_sorting(self, tmp_path):
+        """Test sorting behavior between empty directories and files with similar names."""
+        # Create a directory structure where an empty directory and a file
+        # have names that would sort differently depending on implementation
+
+        parent = tmp_path / "parent"
+        parent.mkdir()
+
+        # Create file that starts with "A"
+        (parent / "Afile.txt").write_text("content")
+
+        # Create empty directory that starts with "B"
+        empty_dir = parent / "Bdir"
+        empty_dir.mkdir()
+
+        # Create file that starts with "C"
+        (parent / "Cfile.txt").write_text("content")
+
+        os.chdir(tmp_path)
+        result = get_files_to_archive_with_stats("cache", None, None)
+
+        paths = list(result.keys())
+
+        # Find the empty directory
+        empty_dir_path = next(p for p in paths if p.endswith("Bdir"))
+
+        # Verify it's marked as size 0
+        assert result[empty_dir_path][0] == 0
+
+        # The empty dir should sort as ("parent/Bdir", "")
+        # Files should sort as ("parent", "Afile.txt"), ("parent", "Cfile.txt")
+        # When comparing: "parent" < "parent/Bdir" (prefix comes first)
+        # So files in parent/ should come before parent/Bdir empty directory
+
+        afile_idx = next(i for i, p in enumerate(paths) if "Afile.txt" in p)
+        bdir_idx = next(i for i, p in enumerate(paths) if p.endswith("Bdir"))
+        cfile_idx = next(i for i, p in enumerate(paths) if "Cfile.txt" in p)
+
+        # Files in parent/ should come before parent/Bdir empty directory
+        assert afile_idx < bdir_idx, "Afile.txt should come before empty dir Bdir"
+        assert cfile_idx < bdir_idx, "Cfile.txt should come before empty dir Bdir"
+
+    def test_multiple_empty_directories_sorting(self, tmp_path):
+        """Test that multiple empty directories sort correctly."""
+        # Create multiple empty directories at same level
+        (tmp_path / "empty_a").mkdir()
+        (tmp_path / "empty_b").mkdir()
+        (tmp_path / "empty_c").mkdir()
+
+        # Also create a file
+        (tmp_path / "file.txt").write_text("content")
+
+        os.chdir(tmp_path)
+        result = get_files_to_archive_with_stats("cache", None, None)
+
+        paths = list(result.keys())
+
+        # Find all empty directories
+        empty_dirs = [p for p in paths if result[p][0] == 0 and p != "."]
+
+        # All empty directories should be size 0
+        assert all(result[p][0] == 0 for p in empty_dirs)
+
+        # They should be sorted alphabetically by their full path
+        empty_dir_names = [os.path.basename(p) for p in empty_dirs]
+        assert empty_dir_names == sorted(
+            empty_dir_names
+        ), "Empty directories should be sorted alphabetically"
+
+    def test_root_level_empty_directory_vs_file_ordering(self, tmp_path):
+        """Test exact sorting behavior that caused the bug - root level files vs empty dirs."""
+        # Replicate the exact structure from the failing test
+        (tmp_path / "file0.txt").write_text("content")
+        (tmp_path / "file0_hard.txt").write_text("content")
+        (tmp_path / "file0_soft.txt").write_text("content")
+        (tmp_path / "file_empty.txt").write_text("")
+
+        dir1 = tmp_path / "dir"
+        dir1.mkdir()
+        (dir1 / "file1.txt").write_text("content")
+
+        empty_dir = tmp_path / "empty_dir"
+        empty_dir.mkdir()
+
+        (tmp_path / "file0_soft_bad.txt").write_text("content")
+
+        os.chdir(tmp_path)
+        result = get_files_to_archive_with_stats("cache", None, None)
+
+        paths = list(result.keys())
+
+        # Print for debugging
+        print("\nPaths in order:")
+        for i, p in enumerate(paths):
+            print(f"  {i}: {p} (size={result[p][0]})")
+
+        # The critical assertion: verify the exact order matches original os.walk() behavior
+        empty_dir_idx = next(i for i, p in enumerate(paths) if p.endswith("empty_dir"))
+        file0_idx = next(i for i, p in enumerate(paths) if p.endswith("file0.txt"))
+        file_empty_idx = next(
+            i for i, p in enumerate(paths) if p.endswith("file_empty.txt")
+        )
+
+        # Based on original tuple sorting: (".", "filename") vs (".", "empty_dir")
+        # All root-level items sort together, alphabetically by filename
+        # So file_empty.txt should come BEFORE empty_dir alphabetically
+        assert (
+            file0_idx < empty_dir_idx
+        ), f"file0.txt at {file0_idx} should come before empty_dir at {empty_dir_idx}"
+        assert (
+            file_empty_idx < empty_dir_idx
+        ), f"file_empty.txt at {file_empty_idx} should come before empty_dir at {empty_dir_idx}"
+
+    def test_hard_and_soft_link_ordering(self, tmp_path):
+        """Test that hard links and soft links sort correctly with regular files."""
+        target = tmp_path / "file0.txt"
+        target.write_text("content")
+
+        # Create hard link
+        hard_link = tmp_path / "file0_hard.txt"
+        os.link(target, hard_link)
+
+        # Create soft link
+        soft_link = tmp_path / "file0_soft.txt"
+        soft_link.symlink_to(target)
+
+        # Create another file
+        (tmp_path / "file_empty.txt").write_text("")
+
+        os.chdir(tmp_path)
+        result = get_files_to_archive_with_stats("cache", None, None)
+
+        paths = list(result.keys())
+        print("\nLink test - Paths in order:")
+        for i, p in enumerate(paths):
+            print(f"  {i}: {p} (size={result[p][0]})")
+
+        # Should be alphabetically sorted
+        # Expected order: file0.txt, file0_hard.txt, file0_soft.txt, file_empty.txt
+        assert paths[0].endswith("file0.txt")
+        assert paths[1].endswith("file0_hard.txt")
+        assert paths[2].endswith("file0_soft.txt")
+        assert paths[3].endswith("file_empty.txt")
+
 
 class TestUpdateDatabaseOptimization:
     """Tests for the optimized database comparison logic."""

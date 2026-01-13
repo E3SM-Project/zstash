@@ -28,9 +28,6 @@ class DirectoryScanner:
         """Recursively scan directory using os.scandir() for efficiency."""
         try:
             entries = list(os.scandir(path))
-            # Sort entries to match os.walk's deterministic order.
-            # This ensures consistent ordering across runs and filesystems.
-            entries.sort(key=lambda e: e.name)
         except PermissionError:
             logger.warning(f"Permission denied: {path}")
             return
@@ -205,7 +202,8 @@ def get_files_to_archive_with_stats(
     for path in file_stats.keys():
         size, mtime = file_stats[path]
         # Empty directories (size 0) should use full path as directory, empty string as filename
-        if size == 0 and not os.path.isfile(path):
+        # Note: broken symlinks are caught by not os.path.isfile() but not by os.path.isdir(). We want the latter.
+        if size == 0 and os.path.isdir(path):
             directory = path
             filename = ""
         else:
