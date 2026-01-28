@@ -637,12 +637,6 @@ def _extractFiles_impl(  # noqa: C901
 
                 # Set current tar for this worker BEFORE any logging happens
                 multiprocess_worker.set_curr_tar(files_row.tar)
-                import sys
-
-                sys.stderr.write(
-                    f"DEBUG: Set curr_tar to {multiprocess_worker.print_queue.curr_tar}\n"
-                )
-                sys.stderr.flush()
 
             # Use args.hpss directly - it's always set correctly
             if args.hpss is not None:
