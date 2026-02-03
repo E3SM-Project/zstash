@@ -304,49 +304,29 @@ def multiprocess_extract(
 ) -> List[FilesRow]:
     """
     Extract the files from the matches in parallel.
-
-    A single unit of work is a tar and all of
-    the files in it to extract.
     """
-    # A dict of tar -> size of files in it.
-    # This is because we're trying to balance the load between
-    # the processes.
     tar_to_size_unsorted: DefaultDict[str, float] = collections.defaultdict(float)
-    db_row: FilesRow
-    tar: str
-    size: int
     for db_row in matches:
-        tar, size = db_row.tar, db_row.size
-        tar_to_size_unsorted[tar] += size
-    # Sort by the size.
+        tar_to_size_unsorted[db_row.tar] += db_row.size
+
     tar_to_size: collections.OrderedDict[str, float] = collections.OrderedDict(
         sorted(tar_to_size_unsorted.items(), key=lambda x: x[1])
     )
 
-    # We don't want to instantiate more processes than we need to.
-    # So, if the number of tars is less than the number of workers,
-    # set the number of workers to the number of tars.
     num_workers = min(num_workers, len(tar_to_size))
 
-    # For worker i, workers_to_tars[i] is a set of tars that worker i will work on.
-    # Assign tars in round-robin fashion to maintain proper ordering
+    # Round-robin assignment for predictable ordering
     workers_to_tars: List[set] = [set() for _ in range(num_workers)]
     for idx, tar in enumerate(sorted(tar_to_size.keys())):
-        worker_idx = idx % num_workers
-        workers_to_tars[worker_idx].add(tar)
+        workers_to_tars[idx % num_workers].add(tar)
 
-    # For worker i, workers_to_matches[i] is a list of
-    # matches from the database for it to process.
     workers_to_matches: List[List[FilesRow]] = [[] for _ in range(num_workers)]
     for db_row in matches:
-        tar = db_row.tar
-        workers_idx: int
         for workers_idx in range(len(workers_to_tars)):
-            if tar in workers_to_tars[workers_idx]:
-                # This worker gets this db_row.
+            if db_row.tar in workers_to_tars[workers_idx]:
                 workers_to_matches[workers_idx].append(db_row)
 
-    # Sort each worker's matches by tar to ensure they process in order
+    # Ensure each worker processes tars in order
     for worker_matches in workers_to_matches:
         worker_matches.sort(key=lambda t: t.tar)
 
@@ -356,9 +336,9 @@ def multiprocess_extract(
         tar_ordering, manager=manager
     )
 
-    # The return value for extractFiles will be added here.
     failure_queue: multiprocessing.Queue[FilesRow] = multiprocessing.Queue()
     processes: List[multiprocessing.Process] = []
+
     for matches in workers_to_matches:
         tars_for_this_worker: List[str] = list(set(match.tar for match in matches))
         worker: parallel.ExtractWorker = parallel.ExtractWorker(
@@ -366,51 +346,21 @@ def multiprocess_extract(
         )
         process: multiprocessing.Process = multiprocessing.Process(
             target=extractFiles,
-            args=(matches, keep_files, keep_tars, cache, args, worker),
+            args=(matches, keep_files, keep_tars, cache, args, worker, None),
             daemon=True,
         )
         process.start()
         processes.append(process)
 
-    # While the processes are running, we need to empty the queue.
-    # Otherwise, it causes hanging.
-    # No need to join() each of the processes when doing this,
-    # because we'll be in this loop until completion.
     failures: List[FilesRow] = []
-    max_wait_time = 180  # 3 minute timeout for tests
-    start_time = time.time()
-    last_log_time = start_time
-
     while any(p.is_alive() for p in processes):
-        elapsed = time.time() - start_time
-        if elapsed > max_wait_time:
-            logger.error(
-                f"Timeout after {elapsed:.1f}s waiting for worker processes. Terminating..."
-            )
-            for p in processes:
-                if p.is_alive():
-                    logger.error(f"Terminating process {p.pid}")
-                    p.terminate()
-            break
-
-        # Log progress every 30 seconds
-        if time.time() - last_log_time > 30:
-            alive_count = sum(1 for p in processes if p.is_alive())
-            logger.debug(
-                f"Still waiting for {alive_count} worker processes after {elapsed:.1f}s"
-            )
-            last_log_time = time.time()
-
         while not failure_queue.empty():
             failures.append(failure_queue.get())
+        time.sleep(0.01)
 
-        time.sleep(0.1)  # Larger sleep to reduce CPU usage
-
-    # Collect any remaining failures
     while not failure_queue.empty():
         failures.append(failure_queue.get())
 
-    # Sort the failures, since they can come in at any order.
     failures.sort(key=lambda t: (t.name, t.tar, t.offset))
     return failures
 
@@ -421,61 +371,46 @@ def check_sizes_match(cur, tfname, error_on_duplicate_tar):
         actual_size: int = os.path.getsize(tfname)
         name_only: str = os.path.split(tfname)[1]
 
-        # Get ALL entries for this tar name
         cur.execute(
             "SELECT size FROM tars WHERE name = ? ORDER by id DESC", (name_only,)
         )
         results = cur.fetchall()
 
         if not results:
-            # Cannot access size information; assume the sizes match.
             logger.error(f"No database entries found for {name_only}")
             return True
 
-        # Check for multiple entries
         if len(results) > 1:
-            # Extract just the size values
             sizes: List[int] = [row[0] for row in results]
             error_str: str = (
                 f"Database corruption detected! Found {len(results)} database entries for {name_only}, with sizes {sizes}"
             )
 
             if error_on_duplicate_tar:
-                # Tested by database_corruption.bash Case 5
                 logger.error(error_str)
                 raise RuntimeError(error_str)
             logger.warning(error_str)
 
-            # We ordered the results by id DESC,
-            # so the first entry is the most recent.
             most_recent_size: int = sizes[0]
             if actual_size == most_recent_size:
-                # Tested by database_corruption.bash Case 7
-                # If the actual size matches the most recent size,
-                # then we can assume that the tar is valid.
                 logger.info(
                     f"{name_only}: The most recent database entry has the same size as the actual file size: {actual_size}."
                 )
                 return True
             unique_sizes: Set[int] = set(sizes)
             if actual_size in unique_sizes:
-                # Tested by database_corruption.bash Case 8
                 logger.info(
                     f"{name_only}: A database entry matches the actual file size, {actual_size}, but it is not the most recent entry."
                 )
             else:
-                # Tested by database_corruption.bash Case 6
                 logger.info(
                     f"{name_only}: No database entry matches the actual file size: {actual_size}."
                 )
             return False
         else:
-            # Tested by database_corruption.bash Cases 1,2,4
-            # Single entry - normal case
             logger.info(f"{name_only}: Found a single database entry.")
             expected_size = results[0][0]
 
-        # Now check if actual size matches expected size
         if expected_size != actual_size:
             error_msg = (
                 f"{name_only}: Size mismatch! "
@@ -485,16 +420,13 @@ def check_sizes_match(cur, tfname, error_on_duplicate_tar):
             logger.error(error_msg)
             return False
         else:
-            # Sizes match
             logger.info(f"{name_only}: Size check passed ({actual_size} bytes)")
             return True
     else:
-        # Cannot access size information; assume the sizes match.
         logger.debug("Cannot access tar size information; assuming sizes match")
         return True
 
 
-# FIXME: C901 'extractFiles' is too complex (33)
 def extractFiles(  # noqa: C901
     files: List[FilesRow],
     keep_files: bool,
@@ -505,52 +437,10 @@ def extractFiles(  # noqa: C901
     cur: Optional[sqlite3.Cursor] = None,
 ) -> List[FilesRow]:
     """
-    Given a list of database rows, extract the files from the
-    tar archives to the current location on disk.
-
-    If keep_files is False, the files are not extracted.
-    This is used for when checking if the files in an HPSS
-    repository are valid.
-
-    If keep_tars is True, the tar archives that are downloaded are kept,
-    even after the program has terminated. Otherwise, they are deleted.
-
-    If running in parallel, then multiprocess_worker is the Worker
-    that called this function.
-    We need a reference to it so we can signal it to print
-    the contents of what's in its print queue.
+    Given a list of database rows, extract the files from the tar archives.
 
     If cur is None (when running in parallel), a new database connection
     will be opened for this worker process.
-    """
-    try:
-        result = _extractFiles_impl(
-            files, keep_files, keep_tars, cache, args, multiprocess_worker, cur
-        )
-        return result
-    except Exception as e:
-        if multiprocess_worker:
-            # Make sure we report failures even if there's an exception
-            sys.stderr.write(f"ERROR: Worker encountered fatal error: {e}\n")
-            sys.stderr.flush()
-            traceback.print_exc(file=sys.stderr)
-            for f in files:
-                multiprocess_worker.failure_queue.put(f)
-        raise
-
-
-# FIXME: C901 '_extractFiles_impl' is too complex (42)
-def _extractFiles_impl(  # noqa: C901
-    files: List[FilesRow],
-    keep_files: bool,
-    keep_tars: Optional[bool],
-    cache: str,
-    args: argparse.Namespace,
-    multiprocess_worker: Optional[parallel.ExtractWorker] = None,
-    cur: Optional[sqlite3.Cursor] = None,
-) -> List[FilesRow]:
-    """
-    Implementation of extractFiles - actual extraction logic.
     """
     # Open database connection if not provided (parallel case)
     if cur is None:
@@ -567,60 +457,38 @@ def _extractFiles_impl(  # noqa: C901
     newtar: bool = True
     nfiles: int = len(files)
 
-    # Track if we've set up logging yet
-    logging_setup: bool = False
+    # Set up logging redirection for multiprocessing
+    if multiprocess_worker:
+        sh = logging.StreamHandler(multiprocess_worker.print_queue)
+        sh.setLevel(logging.DEBUG)
+        formatter: logging.Formatter = logging.Formatter("%(levelname)s: %(message)s")
+        sh.setFormatter(formatter)
+        logger.addHandler(sh)
+        logger.propagate = False
 
     for i in range(nfiles):
         files_row: FilesRow = files[i]
 
-        # Open new tar archive
         if newtar:
             newtar = False
             tfname = os.path.join(cache, files_row.tar)
 
-            # CRITICAL: Wait for our turn BEFORE doing anything with this tar
+            # Wait for turn before processing this tar
             if multiprocess_worker:
-                try:
-                    multiprocess_worker.print_monitor.wait_turn(
-                        multiprocess_worker, files_row.tar, indef_wait=True
-                    )
-                except TimeoutError as e:
-                    logger.error(
-                        f"Timeout waiting for turn to process {files_row.tar}: {e}"
-                    )
-                    # Mark all remaining files from this tar as failed
-                    for j in range(i, nfiles):
-                        if files[j].tar == files_row.tar:
-                            failures.append(files[j])
-                    # Skip to next tar
-                    newtar = True
-                    continue
-
-                # NOW set up logging (only once)
-                if not logging_setup:
-                    sh = logging.StreamHandler(multiprocess_worker.print_queue)
-                    sh.setLevel(logging.DEBUG)
-                    formatter: logging.Formatter = logging.Formatter(
-                        "%(levelname)s: %(message)s"
-                    )
-                    sh.setFormatter(formatter)
-                    logger.addHandler(sh)
-                    logger.propagate = False
-                    logging_setup = True
-
-                # Set current tar for this worker
+                multiprocess_worker.print_monitor.wait_turn(
+                    multiprocess_worker, files_row.tar
+                )
                 multiprocess_worker.set_curr_tar(files_row.tar)
 
-            # Use args.hpss directly - it's always set correctly
+            # Use args.hpss directly
             if args.hpss is not None:
                 hpss: str = args.hpss
             else:
                 raise TypeError("Invalid args.hpss={}".format(args.hpss))
 
             tries: int = args.retries + 1
-            # Set to True to test the `--retries` option with a forced failure.
-            # Then run `python -m unittest tests.test_extract.TestExtract.testExtractRetries`
             test_retry: bool = False
+
             while tries > 0:
                 tries -= 1
                 do_retrieve: bool
@@ -644,12 +512,10 @@ def _extractFiles_impl(  # noqa: C901
                             raise RuntimeError(
                                 f"{tfname} size does not match expected size."
                             )
-                    # `hpss_get` successful or not needed: no more tries needed
                     break
                 except RuntimeError as e:
                     if tries > 0:
                         logger.info(f"Retrying HPSS get: {tries} tries remaining.")
-                        # Run the try-except block again
                         continue
                     else:
                         raise e
@@ -662,30 +528,23 @@ def _extractFiles_impl(  # noqa: C901
         logger.info(cmd + " %s" % (files_row.name))
 
         if keep_files and not should_extract_file(files_row):
-            # If we were going to extract, but aren't
-            # because a matching file is on disk
             msg: str = "Not extracting {}, because it"
             msg += " already exists on disk with the same"
             msg += " size and modification date."
             logger.info(msg.format(files_row.name))
 
-        # True if we should actually extract the file from the tar
         extract_this_file: bool = keep_files and should_extract_file(files_row)
 
         try:
-            # Seek file position
             if tar.fileobj is not None:
                 fileobj = tar.fileobj
             else:
                 raise TypeError("Invalid tar.fileobj={}".format(tar.fileobj))
             fileobj.seek(files_row.offset)
 
-            # Get next member
             tarinfo: tarfile.TarInfo = tar.tarinfo.fromtarfile(tar)
 
             if tarinfo.isfile():
-                # fileobj to extract
-                # error: Name 'tarfile.ExFileObject' is not defined
                 extracted_file: Optional[tarfile.ExFileObject] = tar.extractfile(tarinfo)  # type: ignore
                 if extracted_file:
                     fin: tarfile.ExFileObject = extracted_file
@@ -698,11 +557,8 @@ def _extractFiles_impl(  # noqa: C901
                     path, name = os.path.split(fname)
                     if path != "" and extract_this_file:
                         if not os.path.isdir(path):
-                            # The path doesn't exist, so create it.
                             os.makedirs(path)
                     if extract_this_file:
-                        # If we're keeping the files,
-                        # then have an output file
                         fout: _io.BufferedWriter = open(fname, "wb")
 
                     hash_md5: _hashlib.HASH = hashlib.md5()
@@ -721,37 +577,26 @@ def _extractFiles_impl(  # noqa: C901
 
                 md5: str = hash_md5.hexdigest()
                 if extract_this_file:
-                    # numeric_owner is a required arg in Python 3.
-                    # If True, "only the numbers for user/group names
-                    # are used and not the names".
                     tar.chown(tarinfo, fname, numeric_owner=False)
                     tar.chmod(tarinfo, fname)
                     tar.utime(tarinfo, fname)
-                    # Verify size
                     if os.path.getsize(fname) != files_row.size:
                         logger.error("size mismatch for: {}".format(fname))
 
-                # Verify md5 checksum
                 files_row_md5: Optional[str] = files_row.md5
                 if md5 != files_row_md5:
                     logger.error("md5 mismatch for: {}".format(fname))
                     logger.error("md5 of extracted file: {}".format(md5))
                     logger.error("md5 of original file:  {}".format(files_row_md5))
-
                     failures.append(files_row)
                 else:
                     logger.debug("Valid md5: {} {}".format(md5, fname))
 
             elif extract_this_file:
-                # Python 3.11 and earlier don't support the filter parameter at all
                 if sys.version_info >= (3, 12):
                     tar.extract(tarinfo, filter="tar")
                 else:
                     tar.extract(tarinfo)
-                # Note: tar.extract() will not restore time stamps of symbolic
-                # links. Could not find a Python-way to restore it either, so
-                # relying here on 'touch'. This is not the prettiest solution.
-                # Maybe a better one can be implemented later.
                 if tarinfo.issym():
                     tmp1 = tarinfo.mtime
                     tmp2: datetime = datetime.fromtimestamp(tmp1)
@@ -759,33 +604,21 @@ def _extractFiles_impl(  # noqa: C901
                     os.system("touch -h -t %s %s" % (tmp3, tarinfo.name))
 
         except Exception:
-            # Catch all exceptions here.
             traceback.print_exc()
             logger.error("Retrieving {}".format(files_row.name))
             failures.append(files_row)
 
         # Close current archive?
         if i == nfiles - 1 or files[i].tar != files[i + 1].tar:
-            # We're either on the last file or the tar is distinct from the tar of the next file.
-
-            # Close current archive file
             logger.debug("Closing tar archive {}".format(tfname))
             tar.close()
 
             if multiprocess_worker:
-                # Mark that all output for this tar is queued
                 multiprocess_worker.done_enqueuing_output_for_tar(files_row.tar)
+                multiprocess_worker.print_all_contents()
 
-                # Now print everything and advance to next tar
-                try:
-                    multiprocess_worker.print_all_contents()
-                except (TimeoutError, Exception) as e:
-                    logger.debug(f"Error printing contents for {files_row.tar}: {e}")
-
-            # Open new archive next time
             newtar = True
 
-            # Delete this tar if the corresponding command-line arg was used.
             if not keep_tars:
                 if tfname is not None:
                     os.remove(tfname)
@@ -798,9 +631,9 @@ def _extractFiles_impl(  # noqa: C901
         con.close()
 
     if multiprocess_worker:
-        # Add failures to the queue
         for f in failures:
             multiprocess_worker.failure_queue.put(f)
+
     return failures
 
 
@@ -815,15 +648,11 @@ def should_extract_file(db_row: FilesRow) -> bool:
     file_name, size_db, mod_time_db = db_row.name, db_row.size, db_row.mtime
 
     if not os.path.exists(file_name):
-        # The file doesn't exist locally.
-        # We must get files that are not on disk.
         return True
 
     size_disk: int = os.path.getsize(file_name)
     mod_time_disk: datetime = datetime.utcfromtimestamp(os.path.getmtime(file_name))
 
-    # Only extract when the times and sizes are not the same (within tolerance)
-    # We have a TIME_TOL because mod_time_disk doesn't have the microseconds.
     return not (
         (size_disk == size_db)
         and (abs(mod_time_disk - mod_time_db).total_seconds() < TIME_TOL)
