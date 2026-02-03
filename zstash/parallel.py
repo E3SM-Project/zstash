@@ -20,9 +20,13 @@ class NotYourTurnError(Exception):
 class PrintMonitor(object):
     """
     Used to synchronize the printing of the output between workers.
+    Depending on the current_tar, the worker processing the work
+    for that tar will print it's output.
     """
 
     def __init__(self, tars_to_print: List[str], manager=None, *args, **kwargs):
+        # A list of tars to print.
+        # Ex: ['000000.tar', '000008.tar', '00001a.tar']
         if not tars_to_print:
             msg: str = "You must pass in a list of tars, which dictates"
             msg += " the order of which to print the results."
@@ -87,15 +91,18 @@ class ExtractWorker(object):
     It redirects all of the output of the logging module to a queue.
     Then with a PrintMonitor, it prints to the
     terminal in the order defined by the PrintMonitor.
+
+    This worker is called during `zstash extract`.
     """
 
     def __init__(
         self,
         print_monitor: PrintMonitor,
         tars_to_work_on: List[str],
+        # TODO: failure_queue has type `multiprocessing.Queue[FilesRow]`
         failure_queue,
         *args,
-        **kwargs,
+        **kwargs
     ):
         """
         print_monitor is used to determine if it's this worker's turn to print.
@@ -103,10 +110,14 @@ class ExtractWorker(object):
         Any failures are added to the failure_queue, to return any failed values.
         """
         self.print_monitor: PrintMonitor = print_monitor
+        # Every call to print() in the original function will
+        # be piped to this queue instead of the screen.
         self.print_queue: PrintQueue = PrintQueue()
+        # A tar is mapped to True when all of its output is in the queue.
         self.is_output_done_enqueuing: Dict[str, bool] = {
             tar: False for tar in tars_to_work_on
         }
+        # After extractFiles is done, all of the failures will be added to this queue.
         self.failure_queue: multiprocessing.Queue[FilesRow] = failure_queue
 
     def set_curr_tar(self, tar: str):
@@ -119,6 +130,7 @@ class ExtractWorker(object):
         """
         All of the output for extracting this tar is in the print queue.
         """
+        msg: str
         if tar not in self.is_output_done_enqueuing:
             msg = "This tar {} isn't assigned to this worker."
             raise RuntimeError(msg.format(tar))
@@ -136,6 +148,7 @@ class ExtractWorker(object):
         try:
             self.print_all_contents(indef_wait=False)
         except NotYourTurnError:
+            # It's not our turn, so try again the next time this function is called.
             pass
 
     def has_to_print(self) -> bool:
@@ -147,13 +160,16 @@ class ExtractWorker(object):
     def print_all_contents(self, *args, **kwargs):
         """
         Block until all of the contents of self.print_queue are printed.
+
+        If it's not our turn and the passed in timeout to print_monitor.wait_turn
+        is over, a NotYourTurnError exception is raised.
         """
         while self.has_to_print():
+            # Try to print the first element in the queue.
             tar_to_print: str = self.print_queue[0].tar
-
             self.print_monitor.wait_turn(self, tar_to_print, *args, **kwargs)
 
-            # Print all applicable values in the print_queue
+            # Print all applicable values in the print_queue.
             while self.print_queue and (self.print_queue[0].tar == tar_to_print):
                 msg: str = self.print_queue.popleft().msg
                 print(msg, end="", flush=True)
@@ -178,6 +194,8 @@ class PrintQueue(collections.deque):
             self.append(TarAndMsg(self.curr_tar, msg))
 
     def flush(self):
+        # Not needed, but it's called by some internal Python code.
+        # So we need to provide a function like this.
         pass
 
 
