@@ -52,20 +52,19 @@ class PrintMonitor(object):
     def wait_turn(
         self, worker, workers_curr_tar: str, indef_wait: bool = True, *args, **kwargs
     ):
-        import sys
 
         # Find the index of the worker's tar in the ordered list
         try:
             tar_index = self._tars_list.index(workers_curr_tar)
         except ValueError:
-            sys.stderr.write(f"DEBUG: Tar {workers_curr_tar} not in list!\n")
-            sys.stderr.flush()
+            # sys.stderr.write(f"DEBUG: Tar {workers_curr_tar} not in list!\n")
+            # sys.stderr.flush()
             return
 
-        sys.stderr.write(
-            f"DEBUG: Worker waiting for tar {workers_curr_tar} (index {tar_index}), current index is {self._current_tar_index.value}\n"
-        )
-        sys.stderr.flush()
+        # sys.stderr.write(
+        #        f"DEBUG: Worker waiting for tar {workers_curr_tar} (index {tar_index}), current index is {self._current_tar_index.value}\n"
+        #    )
+        # sys.stderr.flush()
 
         max_wait_time = 180.0
         start_time = time.time()
@@ -73,10 +72,10 @@ class PrintMonitor(object):
 
         while True:
             if self._current_tar_index.value == tar_index:
-                sys.stderr.write(
-                    f"DEBUG: Worker got turn for tar {workers_curr_tar}!\n"
-                )
-                sys.stderr.flush()
+                # sys.stderr.write(
+                #     f"DEBUG: Worker got turn for tar {workers_curr_tar}!\n"
+                # )
+                # sys.stderr.flush()
                 return
 
             if attempted and not indef_wait:
