@@ -346,7 +346,7 @@ def multiprocess_extract(
         # Add this worker back to the heap, with the new amount of work.
         worker_tuple: Tuple[float, int] = (workers_work + tar_to_size[tar], worker_idx)
         # FIXME: error: Cannot infer type argument 1 of "heappush"
-        heapq.heappush(work_to_workers, worker_tuple)  # type: ignore
+        heapq.heappush(work_to_workers, worker_tuple)
 
     workers_to_matches: List[List[FilesRow]] = [[] for _ in range(num_workers)]
     workers_idx: int
