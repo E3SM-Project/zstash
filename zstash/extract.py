@@ -3,6 +3,7 @@ from __future__ import absolute_import, print_function
 import argparse
 import collections
 import hashlib
+import heapq
 import logging
 import multiprocessing
 import os.path
@@ -327,11 +328,25 @@ def multiprocess_extract(
 
     # For worker i, workers_to_tars[i] is a set of tars
     # that worker i will work on.
-    # Round-robin assignment for predictable ordering
     workers_to_tars: List[set] = [set() for _ in range(num_workers)]
+    # A min heap, of (work, worker_idx) tuples, work is the size of data
+    # that worker_idx needs to work on.
+    # We can efficiently get the worker with the least amount of work.
+    work_to_workers: List[Tuple[float, int]] = [(0.0, i) for i in range(num_workers)]
+    heapq.heapify(work_to_workers)
+
+    # Using a greedy approach, populate workers_to_tars.
     tar: str
-    for idx, tar in enumerate(sorted(tar_to_size.keys())):
-        workers_to_tars[idx % num_workers].add(tar)
+    for tar in tar_to_size:
+        # The worker with the least work should get the current largest amount of work.
+        workers_work: float
+        worker_idx: int
+        workers_work, worker_idx = heapq.heappop(work_to_workers)
+        workers_to_tars[worker_idx].add(tar)
+        # Add this worker back to the heap, with the new amount of work.
+        worker_tuple: Tuple[float, int] = (workers_work + tar_to_size[tar], worker_idx)
+        # FIXME: error: Cannot infer type argument 1 of "heappush"
+        heapq.heappush(work_to_workers, worker_tuple)  # type: ignore
 
     workers_to_matches: List[List[FilesRow]] = [[] for _ in range(num_workers)]
     workers_idx: int
