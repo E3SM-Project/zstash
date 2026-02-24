@@ -64,7 +64,6 @@ setup.cfg        # pre-commit (e.g., flake8, isort, mypy) configuration
 - Comments should explain *why*, not *what*.
 - Use Python type annotations in virtually all cases. 
 - Error handling: for `None` checks on values that must be non-`None`, use `TypeError` with descriptive messages.
-- 
 
 All checks are enforced via `pre-commit` — **every commit must pass
 `pre-commit run --all-files`**.
@@ -106,10 +105,10 @@ When to add tests:
 - A bug is found
 
 When to modify tests:
-- Modifing features or internal functions.
+- Modifying features or internal functions.
 
 When NOT to modify tests:
-- Making non-functionality code changes. For example, changes to support new versions of Python should not change behavior and thus tests should not be changed (even if implementation changes are required).
+- Making non-functional code changes. For example, changes to support new versions of Python should not change behavior and thus tests should not be changed (even if implementation changes are required).
 
 ## Git Workflow
 
