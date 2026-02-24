@@ -49,6 +49,18 @@ class PrintMonitor(object):
             ctypes.c_char_p, self._tars_to_print.get()
         )
 
+    def __getstate__(self):
+        # _manager (a started SyncManager) is not picklable; exclude it.
+        # _current_tar (ValueProxy) communicates directly with the manager's
+        # server process and remains functional in worker processes without it.
+        state = self.__dict__.copy()
+        del state["_manager"]
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._manager = None
+
     def wait_turn(
         # TODO: worker has type `ExtractWorker`
         self,
