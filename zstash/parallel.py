@@ -1,8 +1,9 @@
 from __future__ import print_function
 
 import collections
-import ctypes
 import multiprocessing
+import multiprocessing.managers
+import time
 from typing import Dict, List, Optional
 
 from .settings import FilesRow
@@ -24,7 +25,13 @@ class PrintMonitor(object):
     for that tar will print it's output.
     """
 
-    def __init__(self, tars_to_print: List[str], *args, **kwargs):
+    def __init__(
+        self,
+        tars_to_print: List[str],
+        manager: multiprocessing.managers.SyncManager,
+        *args,
+        **kwargs
+    ):
         # A list of tars to print.
         # Ex: ['000000.tar', '000008.tar', '00001a.tar']
         if not tars_to_print:
@@ -32,36 +39,17 @@ class PrintMonitor(object):
             msg += " the order of which to print the results."
             raise RuntimeError(msg)
 
-        # The variables below are modified/accessed by different processes,
-        # so they need to be in shared memory.
-        self._cv: multiprocessing.synchronize.Condition = multiprocessing.Condition()
+        # Plain list: picklable, used to look up tar ordering.
+        self._tars_list: List[str] = tars_to_print
 
-        self._tars_to_print: multiprocessing.Queue[str] = multiprocessing.Queue()
-        tar: str
-        for tar in tars_to_print:
-            # Add the tar to the queue to be printed.
-            self._tars_to_print.put(tar)
-
-        # We need a manager to instantiate the Value instead of multiprocessing.Value.
-        # If we didn't use a manager, it seems to get some junk value.
-        self._manager: Optional[multiprocessing.managers.SyncManager] = (
-            multiprocessing.Manager()
+        # Use manager-based objects so they work across spawn/forkserver
+        # contexts (Python 3.14+). Unlike multiprocessing.Condition or
+        # multiprocessing.Queue, manager proxies communicate via sockets
+        # and are picklable/usable in any child process start method.
+        self._current_tar_index: multiprocessing.managers.ValueProxy = manager.Value(
+            "i", 0
         )
-        self._current_tar: multiprocessing.managers.ValueProxy = self._manager.Value(
-            ctypes.c_char_p, self._tars_to_print.get()
-        )
-
-    def __getstate__(self):
-        # _manager (a started SyncManager) is not picklable; exclude it.
-        # _current_tar (ValueProxy) communicates directly with the manager's
-        # server process and remains functional in worker processes without it.
-        state = self.__dict__.copy()
-        del state["_manager"]
-        return state
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        self._manager = None
+        self._lock: multiprocessing.managers.AcquirerProxy = manager.Lock()
 
     def wait_turn(
         # TODO: worker has type `ExtractWorker`
@@ -76,22 +64,22 @@ class PrintMonitor(object):
         While a worker's current tar isn't the one
         needed to be printed, wait.
 
-        A timeout is passed into self._cv.wait(), and if the
-        turn isn't given within that, a NotYourTurnError is raised.
-
         If indef_wait is True, indefinitely wait until it's
         the worker's turn.
         """
-        with self._cv:
-            attempted: bool = False
-            while self._current_tar.value != workers_curr_tar:
-                if attempted and not indef_wait:
-                    # It's not this worker's turn.
-                    raise NotYourTurnError()
+        try:
+            tar_index: int = self._tars_list.index(workers_curr_tar)
+        except ValueError:
+            return
 
-                attempted = True
-                # Wait 0.001 to see if it's the worker's turn.
-                self._cv.wait(0.001)
+        attempted: bool = False
+        while True:
+            if self._current_tar_index.value == tar_index:
+                return
+            if attempted and not indef_wait:
+                raise NotYourTurnError()
+            attempted = True
+            time.sleep(0.001)
 
     def done_dequeuing_output_for_tar(
         # TODO: worker has type `ExtractWorker`
@@ -104,17 +92,16 @@ class PrintMonitor(object):
         """
         A worker has finished printing the output for workers_curr_tar
         from the print queue.
-        If possible, update self._current_tar.
-        If there aren't anymore tars to print, set self._current_tar to None.
+        Advance to the next tar in the sequence.
         """
-        # It must be the worker's turn before this can happen.
-        self.wait_turn(worker, workers_curr_tar, *args, **kwargs)
+        try:
+            tar_index: int = self._tars_list.index(workers_curr_tar)
+        except ValueError:
+            return
 
-        with self._cv:
-            self._current_tar.value = (
-                self._tars_to_print.get() if not self._tars_to_print.empty() else ""
-            )
-            self._cv.notify_all()
+        with self._lock:
+            if self._current_tar_index.value == tar_index:
+                self._current_tar_index.value += 1
 
 
 class ExtractWorker(object):

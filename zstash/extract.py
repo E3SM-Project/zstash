@@ -281,14 +281,6 @@ def extract_database(
     failures: List[FilesRow]
     if args.workers > 1:
         logger.debug("Running zstash {} with multiprocessing".format(cmd))
-        # Pre-download all needed tars in the main process before spawning
-        # workers. Spawned/forkserver workers don't inherit the parent's HPSS
-        # session (e.g., hsi credentials), so HPSS transfers must happen here.
-        if config.hpss is not None and config.hpss != "none":
-            for tar_name in sorted(set(m.tar for m in matches)):
-                tfname = os.path.join(cache, tar_name)
-                if not os.path.exists(tfname):
-                    hpss_get(config.hpss, tfname, cache)
         failures = multiprocess_extract(
             args.workers, matches, keep_files, keep, cache, args
         )
@@ -369,7 +361,8 @@ def multiprocess_extract(
                 workers_to_matches[workers_idx].append(db_row)
 
     tar_ordering: List[str] = sorted([tar for tar in tar_to_size])
-    monitor: parallel.PrintMonitor = parallel.PrintMonitor(tar_ordering)
+    manager: multiprocessing.managers.SyncManager = multiprocessing.Manager()
+    monitor: parallel.PrintMonitor = parallel.PrintMonitor(tar_ordering, manager)
 
     # The return value for extractFiles will be added here.
     failure_queue: multiprocessing.Queue[FilesRow] = multiprocessing.Queue()
@@ -395,6 +388,8 @@ def multiprocess_extract(
     while any(p.is_alive() for p in processes):
         while not failure_queue.empty():
             failures.append(failure_queue.get())
+
+    manager.shutdown()
 
     # Sort the failures, since they can come in at any order.
     failures.sort(key=lambda t: (t.name, t.tar, t.offset))
