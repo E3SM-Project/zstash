@@ -44,7 +44,9 @@ class PrintMonitor(object):
 
         # We need a manager to instantiate the Value instead of multiprocessing.Value.
         # If we didn't use a manager, it seems to get some junk value.
-        self._manager: multiprocessing.managers.SyncManager = multiprocessing.Manager()
+        self._manager: Optional[multiprocessing.managers.SyncManager] = (
+            multiprocessing.Manager()
+        )
         self._current_tar: multiprocessing.managers.ValueProxy = self._manager.Value(
             ctypes.c_char_p, self._tars_to_print.get()
         )
