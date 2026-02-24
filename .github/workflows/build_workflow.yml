@@ -72,11 +72,6 @@ jobs:
           conda list
           # Ensure we have the right Python version
           python --version
-          # Fix pip issues for Python 3.12+
-          if [[ "${{ matrix.python-version }}" == "3.12" ]] || [[ "${{ matrix.python-version }}" == "3.13" ]] || [[ "${{ matrix.python-version }}" == "3.14" ]]; then
-            python -m ensurepip --upgrade || true
-            python -m pip install --upgrade --force-reinstall pip setuptools wheel
-          fi
 
       - name: Install `zstash` Package
         run: |
