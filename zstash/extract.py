@@ -281,6 +281,14 @@ def extract_database(
     failures: List[FilesRow]
     if args.workers > 1:
         logger.debug("Running zstash {} with multiprocessing".format(cmd))
+        # Pre-download all needed tars in the main process before spawning
+        # workers. Spawned/forkserver workers don't inherit the parent's HPSS
+        # session (e.g., hsi credentials), so HPSS transfers must happen here.
+        if config.hpss is not None and config.hpss != "none":
+            for tar_name in sorted(set(m.tar for m in matches)):
+                tfname = os.path.join(cache, tar_name)
+                if not os.path.exists(tfname):
+                    hpss_get(config.hpss, tfname, cache)
         failures = multiprocess_extract(
             args.workers, matches, keep_files, keep, cache, args
         )
