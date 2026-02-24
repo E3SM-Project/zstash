@@ -281,6 +281,7 @@ def extract_database(
     failures: List[FilesRow]
     if args.workers > 1:
         logger.debug("Running zstash {} with multiprocessing".format(cmd))
+        _prefetch_tars_for_parallel(matches, cache, cur, args)
         failures = multiprocess_extract(
             args.workers, matches, keep_files, keep, cache, args
         )
@@ -292,6 +293,32 @@ def extract_database(
     con.close()
 
     return failures
+
+
+def _prefetch_tars_for_parallel(
+    matches: List[FilesRow],
+    cache: str,
+    cur: sqlite3.Cursor,
+    args: argparse.Namespace,
+) -> None:
+    """
+    Pre-download all tars needed by parallel workers.
+
+    Spawned/forkserver worker processes (Python 3.14+) do not inherit the
+    parent's HPSS session credentials (e.g., Kerberos TGT). Calling hsi
+    from a worker subprocess hangs waiting for authentication. Download all
+    needed tars in the main process (which has HPSS auth) so workers find
+    tars already in local cache and skip hpss_get entirely.
+    """
+    if config.hpss is None or config.hpss == "none":
+        return
+    hpss: str = config.hpss
+    for tar_name in sorted(set(m.tar for m in matches)):
+        tfname: str = os.path.join(cache, tar_name)
+        if not os.path.exists(tfname) or not check_sizes_match(
+            cur, tfname, args.error_on_duplicate_tar
+        ):
+            hpss_get(hpss, tfname, cache)
 
 
 def multiprocess_extract(
