@@ -282,7 +282,7 @@ def extract_database(
     if args.workers > 1:
         logger.debug("Running zstash {} with multiprocessing".format(cmd))
         failures = multiprocess_extract(
-            args.workers, matches, keep_files, keep, cache, cur, args
+            args.workers, matches, keep_files, keep, cache, args
         )
     else:
         failures = extractFiles(matches, keep_files, keep, cache, cur, args)
@@ -300,7 +300,6 @@ def multiprocess_extract(
     keep_files: bool,
     keep_tars: Optional[bool],
     cache: str,
-    cur: sqlite3.Cursor,
     args: argparse.Namespace,
 ) -> List[FilesRow]:
     """
@@ -374,7 +373,7 @@ def multiprocess_extract(
         )
         process: multiprocessing.Process = multiprocessing.Process(
             target=extractFiles,
-            args=(matches, keep_files, keep_tars, cache, cur, args, worker),
+            args=(matches, keep_files, keep_tars, cache, None, args, worker),
             daemon=True,
         )
         process.start()
@@ -479,7 +478,7 @@ def extractFiles(  # noqa: C901
     keep_files: bool,
     keep_tars: Optional[bool],
     cache: str,
-    cur: sqlite3.Cursor,
+    cur: Optional[sqlite3.Cursor],
     args: argparse.Namespace,
     multiprocess_worker: Optional[parallel.ExtractWorker] = None,
 ) -> List[FilesRow]:
@@ -503,6 +502,12 @@ def extractFiles(  # noqa: C901
     tfname: str
     newtar: bool = True
     nfiles: int = len(files)
+    worker_con: Optional[sqlite3.Connection] = None
+    if cur is None:
+        worker_con = sqlite3.connect(
+            get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES
+        )
+        cur = worker_con.cursor()
     if multiprocess_worker:
         # All messages to the logger will now be sent to
         # this queue, instead of sys.stdout.
@@ -659,7 +664,10 @@ def extractFiles(  # noqa: C901
                     logger.debug("Valid md5: {} {}".format(md5, fname))
 
             elif extract_this_file:
-                tar.extract(tarinfo)
+                if sys.version_info >= (3, 12):
+                    tar.extract(tarinfo, filter="fully_trusted")
+                else:
+                    tar.extract(tarinfo)
                 # Note: tar.extract() will not restore time stamps of symbolic
                 # links. Could not find a Python-way to restore it either, so
                 # relying here on 'touch'. This is not the prettiest solution.
@@ -709,6 +717,8 @@ def extractFiles(  # noqa: C901
         # that calls this extractFiles() function will return the failures as a list.
         for f in failures:
             multiprocess_worker.failure_queue.put(f)
+    if worker_con is not None:
+        worker_con.close()
     return failures
 
 
