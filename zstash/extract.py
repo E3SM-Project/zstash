@@ -508,6 +508,10 @@ def extractFiles(  # noqa: C901
             get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES
         )
         cur = worker_con.cursor()
+        # In a spawned worker process, the module-level config is re-initialized
+        # to defaults. Restore config.hpss from args so extractFiles can proceed.
+        if config.hpss is None and args.hpss is not None:
+            config.hpss = args.hpss
     if multiprocess_worker:
         # All messages to the logger will now be sent to
         # this queue, instead of sys.stdout.
