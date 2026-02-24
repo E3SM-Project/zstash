@@ -4,7 +4,7 @@ import collections
 import multiprocessing
 import multiprocessing.managers
 import time
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .settings import FilesRow
 
@@ -49,7 +49,7 @@ class PrintMonitor(object):
         self._current_tar_index: multiprocessing.managers.ValueProxy = manager.Value(
             "i", 0
         )
-        self._lock: multiprocessing.managers.AcquirerProxy = manager.Lock()
+        self._lock: Any = manager.Lock()
 
     def wait_turn(
         # TODO: worker has type `ExtractWorker`
