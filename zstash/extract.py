@@ -7,6 +7,7 @@ import heapq
 import logging
 import multiprocessing
 import os.path
+import queue
 import re
 import sqlite3
 import sys
@@ -389,12 +390,21 @@ def multiprocess_extract(
     # because we'll be in this loop until completion.
     failures: List[FilesRow] = []
     while any(p.is_alive() for p in processes):
-        while not failure_queue.empty():
-            failures.append(failure_queue.get())
+        try:
+            while True:
+                failures.append(failure_queue.get_nowait())
+        except queue.Empty:
+            pass
         time.sleep(0.01)
 
-    while not failure_queue.empty():
-        failures.append(failure_queue.get())
+    # Drain any remaining failures after all processes have exited.
+    try:
+        while True:
+            failures.append(failure_queue.get_nowait())
+    except queue.Empty:
+        pass
+
+    manager.shutdown()
 
     # Sort the failures, since they can come in at any order.
     failures.sort(key=lambda t: (t.name, t.tar, t.offset))
@@ -547,18 +557,16 @@ def extractFiles(  # noqa: C901
             # let the process know.
             # This is to synchronize the print statements.
 
-            # Wait for turn before processing this tar
             if multiprocess_worker:
-                multiprocess_worker.print_monitor.wait_turn(
-                    multiprocess_worker, files_row.tar
-                )
                 multiprocess_worker.set_curr_tar(files_row.tar)
 
-            # Use args.hpss directly
+            # Use args.hpss, falling back to config.hpss when not provided
             if args.hpss is not None:
                 hpss: str = args.hpss
+            elif config.hpss is not None:
+                hpss = config.hpss
             else:
-                raise TypeError("Invalid args.hpss={}".format(args.hpss))
+                raise TypeError("Invalid config.hpss={}".format(config.hpss))
 
             tries: int = args.retries + 1
             # Set to True to test the `--retries` option with a forced failure.
@@ -735,9 +743,9 @@ def extractFiles(  # noqa: C901
         cur.close()
         con.close()
 
-        # Add the failures to the queue.
-        # When running with multiprocessing, the function multiprocess_extract()
-        # that calls this extractFiles() function will return the failures as a list.
+    # Add the failures to the queue.
+    # When running with multiprocessing, the function multiprocess_extract()
+    # that calls this extractFiles() function will return the failures as a list.
     if multiprocess_worker:
         for f in failures:
             multiprocess_worker.failure_queue.put(f)
