@@ -184,14 +184,47 @@ class ExtractWorker(object):
         If it's not our turn and the passed in timeout to print_monitor.wait_turn
         is over, a NotYourTurnError exception is raised.
         """
+        # First, process done-enqueued tars in sorted (tar-ordering) order and
+        # advance the counter for each.  This is necessary when print_contents()
+        # already drained a tar's queue messages while is_output_done_enqueuing
+        # was still False — in that case the queue is empty by the time
+        # done_enqueuing_output_for_tar is called, so the counter would otherwise
+        # never advance and other workers would wait forever.
+        for tar in sorted(
+            t for t, done in self.is_output_done_enqueuing.items() if done
+        ):
+            try:
+                tar_index: int = self.print_monitor._tars_list.index(tar)
+            except ValueError:
+                continue
+            # Skip tars whose counter has already been advanced.
+            if self.print_monitor._current_tar_index.value > tar_index:
+                continue
+            try:
+                self.print_monitor.wait_turn(self, tar, *args, **kwargs)
+            except NotYourTurnError:
+                # Not our turn and indef_wait=False — stop processing.
+                break
+            # Drain any buffered messages for this tar.
+            while self.print_queue and (self.print_queue[0].tar == tar):
+                msg: str = self.print_queue.popleft().msg
+                print(msg, end="", flush=True)
+            self.print_monitor.done_dequeuing_output_for_tar(self, tar)
+
+        # Then drain any remaining messages in the queue (e.g. messages for
+        # the tar currently being processed whose done_enqueuing has not yet
+        # been called, or messages that arrived between the for-loop iterations).
         while self.has_to_print():
             # Try to print the first element in the queue.
             tar_to_print: str = self.print_queue[0].tar
-            self.print_monitor.wait_turn(self, tar_to_print, *args, **kwargs)
+            try:
+                self.print_monitor.wait_turn(self, tar_to_print, *args, **kwargs)
+            except NotYourTurnError:
+                break
 
             # Print all applicable values in the print_queue.
             while self.print_queue and (self.print_queue[0].tar == tar_to_print):
-                msg: str = self.print_queue.popleft().msg
+                msg = self.print_queue.popleft().msg
                 print(msg, end="", flush=True)
 
             # If True, then all of the output for extracting tar_to_print was in the queue.
