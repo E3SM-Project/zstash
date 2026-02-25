@@ -38,6 +38,11 @@ class PrintMonitor(object):
         # Store the ordered list of tars
         self._tars_list: List[str] = tars_to_print
 
+        # Precomputed mapping from tar name to its position in the ordered list.
+        self._tar_to_index: Dict[str, int] = {
+            tar: i for i, tar in enumerate(tars_to_print)
+        }
+
         # Use a simple counter to track which tar we're on
         self._current_tar_index: multiprocessing.managers.ValueProxy = manager.Value(
             "i", 0
@@ -52,10 +57,9 @@ class PrintMonitor(object):
         """
         Wait until it's this worker's turn to process workers_curr_tar.
         """
-        try:
-            tar_index = self._tars_list.index(workers_curr_tar)
-        except ValueError:
-            return
+        if workers_curr_tar not in self._tar_to_index:
+            raise RuntimeError("Tar {} not in ordered list".format(workers_curr_tar))
+        tar_index = self._tar_to_index[workers_curr_tar]
 
         attempted = False
         while True:
@@ -75,10 +79,9 @@ class PrintMonitor(object):
         A worker has finished printing output for workers_curr_tar.
         Advance to the next tar in the sequence.
         """
-        try:
-            tar_index = self._tars_list.index(workers_curr_tar)
-        except ValueError:
-            return
+        if workers_curr_tar not in self._tar_to_index:
+            raise RuntimeError("Tar {} not in ordered list".format(workers_curr_tar))
+        tar_index = self._tar_to_index[workers_curr_tar]
 
         with self._lock:
             if self._current_tar_index.value == tar_index:
