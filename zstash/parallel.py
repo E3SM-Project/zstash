@@ -1,8 +1,8 @@
 from __future__ import print_function
 
 import collections
-import ctypes
 import multiprocessing
+import time
 from typing import Dict, List, Optional
 
 from .settings import FilesRow
@@ -24,7 +24,7 @@ class PrintMonitor(object):
     for that tar will print it's output.
     """
 
-    def __init__(self, tars_to_print: List[str], *args, **kwargs):
+    def __init__(self, tars_to_print: List[str], manager=None, *args, **kwargs):
         # A list of tars to print.
         # Ex: ['000000.tar', '000008.tar', '00001a.tar']
         if not tars_to_print:
@@ -32,75 +32,60 @@ class PrintMonitor(object):
             msg += " the order of which to print the results."
             raise RuntimeError(msg)
 
-        # The variables below are modified/accessed by different processes,
-        # so they need to be in shared memory.
-        self._cv: multiprocessing.synchronize.Condition = multiprocessing.Condition()
+        if manager is None:
+            raise ValueError("manager must be provided to PrintMonitor")
 
-        self._tars_to_print: multiprocessing.Queue[str] = multiprocessing.Queue()
-        tar: str
-        for tar in tars_to_print:
-            # Add the tar to the queue to be printed.
-            self._tars_to_print.put(tar)
+        # Store the ordered list of tars
+        self._tars_list: List[str] = tars_to_print
 
-        # We need a manager to instantiate the Value instead of multiprocessing.Value.
-        # If we didn't use a manager, it seems to get some junk value.
-        self._manager: multiprocessing.managers.SyncManager = multiprocessing.Manager()
-        self._current_tar: multiprocessing.managers.ValueProxy = self._manager.Value(
-            ctypes.c_char_p, self._tars_to_print.get()
+        # Precomputed mapping from tar name to its position in the ordered list.
+        self._tar_to_index: Dict[str, int] = {
+            tar: i for i, tar in enumerate(tars_to_print)
+        }
+
+        # Use a simple counter to track which tar we're on
+        self._current_tar_index: multiprocessing.managers.ValueProxy = manager.Value(
+            "i", 0
         )
 
+        # Lock for updating the counter
+        self._lock: multiprocessing.synchronize.Lock = manager.Lock()
+
     def wait_turn(
-        # TODO: worker has type `ExtractWorker`
-        self,
-        worker,
-        workers_curr_tar: str,
-        indef_wait: bool = True,
-        *args,
-        **kwargs
+        self, worker, workers_curr_tar: str, indef_wait: bool = True, *args, **kwargs
     ):
         """
-        While a worker's current tar isn't the one
-        needed to be printed, wait.
-
-        A timeout is passed into self._cv.wait(), and if the
-        turn isn't given within that, a NotYourTurnError is raised.
-
-        If indef_wait is True, indefinitely wait until it's
-        the worker's turn.
+        Wait until it's this worker's turn to process workers_curr_tar.
         """
-        with self._cv:
-            attempted: bool = False
-            while self._current_tar.value != workers_curr_tar:
-                if attempted and not indef_wait:
-                    # It's not this worker's turn.
-                    raise NotYourTurnError()
+        if workers_curr_tar not in self._tar_to_index:
+            raise RuntimeError("Tar {} not in ordered list".format(workers_curr_tar))
+        tar_index = self._tar_to_index[workers_curr_tar]
 
-                attempted = True
-                # Wait 0.001 to see if it's the worker's turn.
-                self._cv.wait(0.001)
+        attempted = False
+        while True:
+            if self._current_tar_index.value == tar_index:
+                return
 
-    def done_dequeuing_output_for_tar(
-        # TODO: worker has type `ExtractWorker`
-        self,
-        worker,
-        workers_curr_tar: str,
-        *args,
-        **kwargs
+            if attempted and not indef_wait:
+                raise NotYourTurnError()
+
+            attempted = True
+            time.sleep(0.01)
+
+    def done_enqueuing_output_for_tar(
+        self, worker, workers_curr_tar: str, *args, **kwargs
     ):
         """
-        A worker has finished printing the output for workers_curr_tar
-        from the print queue.
-        If possible, update self._current_tar.
-        If there aren't anymore tars to print, set self._current_tar to None.
+        A worker has finished printing output for workers_curr_tar.
+        Advance to the next tar in the sequence.
         """
-        # It must be the worker's turn before this can happen.
-        self.wait_turn(worker, workers_curr_tar, *args, **kwargs)
+        if workers_curr_tar not in self._tar_to_index:
+            raise RuntimeError("Tar {} not in ordered list".format(workers_curr_tar))
+        tar_index = self._tar_to_index[workers_curr_tar]
 
-        with self._cv:
-            self._current_tar.value = (
-                self._tars_to_print.get() if not self._tars_to_print.empty() else ""
-            )
-            self._cv.notify_all()
+        with self._lock:
+            if self._current_tar_index.value == tar_index:
+                self._current_tar_index.value += 1
 
 
 class ExtractWorker(object):
@@ -164,7 +149,6 @@ class ExtractWorker(object):
         Try to print the contents from self.print_queue.
         """
         try:
-            # We only wait for 0.001 seconds.
             self.print_all_contents(indef_wait=False)
         except NotYourTurnError:
             # It's not our turn, so try again the next time this function is called.
@@ -193,11 +177,9 @@ class ExtractWorker(object):
                 msg: str = self.print_queue.popleft().msg
                 print(msg, end="", flush=True)
 
-            # If True, then all of the output for extracting tar_to_print was in the queue.
-            # Since we just finished printing all of it, we can move onto the next one.
+            # If all output for this tar is done, advance the monitor
             if self.is_output_done_enqueuing[tar_to_print]:
-                # Let all of the other workers know that this worker is done.
-                self.print_monitor.done_dequeuing_output_for_tar(self, tar_to_print)
+                self.print_monitor.done_enqueuing_output_for_tar(self, tar_to_print)
 
 
 class PrintQueue(collections.deque):
