@@ -22,6 +22,9 @@ dependencies:
   # =======================
   - pytest
   - pytest-cov
+  - matplotlib-base
+  - pandas
+  - numpy
   # Documentation
   # =================
   # If versions are updated, also update in `.github/workflows/workflow.yml`

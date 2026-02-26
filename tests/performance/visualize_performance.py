@@ -37,6 +37,7 @@ Figure 2 – Baseline comparison (current branch vs main):
 """
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -580,7 +581,7 @@ def main():
     )
     parser.add_argument(
         "--output",
-        default="/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance.png",
+        default="/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance/performance.png",
         help="Save figure to this path. "
         "Defaults to the NERSC web server output directory. "
         "Pass --output '' to display interactively instead.",
@@ -680,6 +681,8 @@ def main():
             out_path.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(out_path, dpi=args.dpi, bbox_inches="tight")
             print(f"{label} saved to: {out_path}")
+            web_permissions = 0o755
+            os.chmod(out_path_str, web_permissions)
             web_path = str(out_path).replace(
                 "/global/cfs/cdirs/e3sm/www/",
                 "https://portal.nersc.gov/cfs/e3sm/",
