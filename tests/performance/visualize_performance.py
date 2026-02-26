@@ -3,8 +3,9 @@
 visualize_performance.py  –  Plot zstash performance profiling results.
 
 Usage:
-    python visualize_performance.py results.csv
-    python visualize_performance.py results.csv --output perf_report.png
+    python visualize_performance.py
+
+Edit the constants at the top of this file to point at the CSV(s) to plot.
 
 The CSV is produced by performance_profile.sh and has columns:
     test_label, create_subdir, update_subdir, hpss_label, operation, elapsed_seconds
@@ -21,6 +22,8 @@ Figure 1 – Performance overview:
   Layout: 2×2 grid of subplots, one per operation.
   Within each subplot:
     - X-axis groups  = directory processed (create_subdir or update_subdir)
+                       for create/update; or (create_subdir, update_subdir)
+                       archive config for extract_seq/extract_par.
     - Bars           = HPSS mode (none / hpss / globus), colour-coded
     - Each test config contributes one bar per (directory, hpss_mode) cell;
       if multiple configs share the same directory for an operation, their
@@ -47,21 +50,23 @@ import numpy as np
 import pandas as pd
 
 # ---------------------------------------------------------------------------
-# Baseline config  ← EDIT THIS to point at the main-branch profiling run
+# ← EDIT THESE for each new run
 # ---------------------------------------------------------------------------
 
 # The results to show in Fig. 1
 RESULTS_CSV = (
+    "/pscratch/sd/f/forsyth/zstash_performance/performance_20260226_pr424/results.csv"
+)
+
+# The results to compare against in Fig. 2.
+# Set to None to skip Fig. 2.
+BASELINE_RESULTS_CSV = (
     "/pscratch/sd/f/forsyth/zstash_performance/performance_20260225/results.csv"
 )
 
-# The results to compare against in Fig. 2
-# Set to None to skip Fig. 2.
-BASELINE_RESULTS_CSV = None
-
+# Output path for the saved figures.
 # Set to None to display interactively instead of saving.
-OUTPUT_PATH = "/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance/performance.png"
-
+OUTPUT_PATH = "/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance/performance_pr424_vs_main.png"
 
 # ---------------------------------------------------------------------------
 # Config
@@ -331,10 +336,9 @@ def plot_extract_comparison(ax, df: pd.DataFrame):
     """
     configs = _extract_configs(df)
     n_configs = len(configs)
-    n_hpss = len(HPSS_ORDER)
     ops = ["extract_seq", "extract_par"]
     hatches = {"extract_seq": "", "extract_par": "////"}
-    n_bars = n_hpss * len(ops)
+    n_bars = len(HPSS_ORDER) * len(ops)
 
     group_width = n_bars * BAR_WIDTH + 0.15  # total width per config group
     x_base = np.arange(n_configs) * group_width
@@ -445,12 +449,12 @@ def plot_comparison_operation(
             x_left = x_base[d_idx] + pair_offset  # current bar
             x_right = x_base[d_idx] + pair_offset + pair_width  # baseline bar
 
-            def mean_for(df):
+            def mean_for(df, _op=operation, _h=hpss, _d=d):
                 v = (
                     df[
-                        (df["operation"] == operation)
-                        & (df["hpss_label"] == hpss)
-                        & (df[dir_col] == d)
+                        (df["operation"] == _op)
+                        & (df["hpss_label"] == _h)
+                        & (df[dir_col] == _d)
                     ]["elapsed_seconds"]
                     .dropna()
                     .values
@@ -616,53 +620,47 @@ def plot_comparison_extract(
     ax,
     df_cur: pd.DataFrame,
     df_bas: pd.DataFrame,
-    dirs: list[str],
 ):
     """
-    Seq vs par extract comparison with current/baseline pairing.
+    Seq vs par extract comparison with current/baseline pairing, grouped by
+    the combined (create_subdir, update_subdir) archive config.
 
     Bar order within each HPSS × op cell (innermost grouping):
-        [current/seq] [baseline/seq] [current/par] [baseline/par]
-
-    The seq pair and par pair are visually separated by a slightly larger
-    intra-group gap, making it clear which two bars belong together.
+        [current/seq] [baseline/seq] ‹op_gap› [current/par] [baseline/par]
     """
-    dir_col = "create_subdir"
-    n_dirs = len(dirs)
+    configs = _extract_configs(df_cur)
+    n_configs = len(configs)
     ops = ["extract_seq", "extract_par"]
-    # Solid = current, hatched = baseline (matches the other Fig. 2 subplots)
     op_hatches = {"extract_seq": "", "extract_par": "xxxx"}
 
-    pair_width = BAR_WIDTH  # width of each individual bar
+    pair_width = BAR_WIDTH
     inner_gap = BAR_WIDTH * 0.15  # gap between current/baseline within a pair
     op_gap = BAR_WIDTH * 0.55  # larger gap between seq-pair and par-pair
     hpss_gap = BAR_WIDTH * 0.30  # gap between HPSS groups
 
-    # Width of one HPSS group: seq-pair + op_gap + par-pair
-    # Each pair = 2 * pair_width + inner_gap
     pair_span = 2 * pair_width + inner_gap
     hpss_group_span = 2 * pair_span + op_gap
 
     group_span = len(HPSS_ORDER) * (hpss_group_span + hpss_gap) + 0.3
-    x_base = np.arange(n_dirs) * group_span
+    x_base = np.arange(n_configs) * group_span
 
-    for d_idx, d in enumerate(dirs):
+    for c_idx, (create_sub, update_sub) in enumerate(configs):
         for h_idx, hpss in enumerate(HPSS_ORDER):
             color = HPSS_COLORS[hpss]
-            hpss_origin = x_base[d_idx] + h_idx * (hpss_group_span + hpss_gap)
+            hpss_origin = x_base[c_idx] + h_idx * (hpss_group_span + hpss_gap)
             for op_idx, op in enumerate(ops):
                 hatch = op_hatches[op]
                 op_origin = hpss_origin + op_idx * (pair_span + op_gap)
+                x_cur = op_origin
+                x_bas = op_origin + pair_width + inner_gap
 
-                x_cur = op_origin  # current branch bar
-                x_bas = op_origin + pair_width + inner_gap  # baseline bar
-
-                def mean_for(df, _op=op, _hpss=hpss, _d=d):
+                def mean_for(df, _op=op, _h=hpss, _cs=create_sub, _us=update_sub):
                     v = (
                         df[
                             (df["operation"] == _op)
-                            & (df["hpss_label"] == _hpss)
-                            & (df[dir_col] == _d)
+                            & (df["hpss_label"] == _h)
+                            & (df["create_subdir"] == _cs)
+                            & (df["update_subdir"] == _us)
                         ]["elapsed_seconds"]
                         .dropna()
                         .values
@@ -672,7 +670,6 @@ def plot_comparison_extract(
                 cur_mean = mean_for(df_cur)
                 bas_mean = mean_for(df_bas)
 
-                # Current bar (solid, full alpha)
                 ax.bar(
                     x_cur,
                     cur_mean,
@@ -682,7 +679,6 @@ def plot_comparison_extract(
                     alpha=0.85,
                     zorder=2,
                 )
-                # Baseline bar (hatched overlay, lighter alpha)
                 ax.bar(
                     x_bas,
                     bas_mean,
@@ -697,7 +693,6 @@ def plot_comparison_extract(
                 if bas_mean > 0 and cur_mean > 0:
                     ratio = cur_mean / bas_mean
                     top = max(cur_mean, bas_mean)
-                    rat_color = _ratio_color(ratio)
                     arrow = (
                         "▲"
                         if ratio >= RATIO_REGRESSION
@@ -711,26 +706,27 @@ def plot_comparison_extract(
                         va="bottom",
                         fontsize=5.5,
                         fontweight="bold",
-                        color=rat_color,
+                        color=_ratio_color(ratio),
                         zorder=4,
                     )
 
-    # Tick at centre of each directory's full group
     group_total_bar_span = len(HPSS_ORDER) * (hpss_group_span + hpss_gap) - hpss_gap
     x_ticks = x_base + group_total_bar_span / 2
     ax.set_xticks(x_ticks)
-    ax.set_xticklabels([d + "/" for d in dirs], fontsize=9)
+    ax.set_xticklabels([_extract_tick_label(c, u) for c, u in configs], fontsize=7.5)
     ax.set_ylabel("Wall-clock time (s)", fontsize=8)
-    ax.set_xlabel("Directory (archive source)", fontsize=8, labelpad=14)
+    ax.set_xlabel(
+        "Archive contents (create subdir → update subdir)", fontsize=8, labelpad=14
+    )
     ax.set_title(
-        "Extract: Sequential vs Parallel — current vs baseline",
+        "Extract: Sequential vs Parallel — current vs baseline\n"
+        "Each group = archive built from create subdir + update subdir",
         fontsize=10,
         fontweight="bold",
         pad=6,
     )
     ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
     ax.set_axisbelow(True)
-    _add_dir_annotation(ax, dirs, list(x_ticks))
 
     # Legend: colour=hpss, hatch=seq/par, alpha=current/baseline
     hpss_patches = [
@@ -807,7 +803,7 @@ def build_comparison_figure(
         loc="upper right",
     )
 
-    plot_comparison_extract(ax_cmp, df_cur, df_bas, all_dirs)
+    plot_comparison_extract(ax_cmp, df_cur, df_bas)
     return fig
 
 
@@ -872,7 +868,7 @@ def main():
     # Draw the four single-operation subplots
     # -----------------------------------------------------------------------
     legend_handles = None
-    for op in ["create", "update", "extract_seq", "extract_par"]:
+    for op in OP_ORDER:
         ax = axes[op]
         if op in OP_DIR_COL:
             df_op = df[df["operation"] == op]
@@ -907,7 +903,7 @@ def main():
             print("Skipping baseline comparison figure.", file=sys.stderr)
         else:
             df_bas = load_data(str(bas_path))
-            # Derive a short label from the baseline CSV path for titles
+            # Derive a short label from the CSV path for titles,
             # e.g. ".../performance_20260101/results.csv" → "performance_20260101"
             bas_label = bas_path.parent.name
             cur_label = Path(RESULTS_CSV).parent.name
@@ -924,8 +920,7 @@ def main():
             out_path.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(out_path, dpi=args.dpi, bbox_inches="tight")
             print(f"{label} saved to: {out_path}")
-            web_permissions = 0o755
-            os.chmod(out_path_str, web_permissions)
+            os.chmod(out_path_str, 0o755)
             web_path = str(out_path).replace(
                 "/global/cfs/cdirs/e3sm/www/",
                 "https://portal.nersc.gov/cfs/e3sm/",
