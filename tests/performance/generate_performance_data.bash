@@ -405,4 +405,4 @@ for test_idx in 0 1 2 3 4 5; do
 done
 
 print_success "All tests completed. Results saved to: ${results_csv}"
-print_info "Now run: python visualize_performance.py ${results_csv}"
+print_info "Now edit IO paths and run: python visualize_performance.py"
