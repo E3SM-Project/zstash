@@ -3,8 +3,6 @@
 This file provides guidance for AI coding agents working on the
 [zstash](https://github.com/E3SM-Project/zstash) repository.
 
-Below this point, it should be identical to `.github/copilot-instructions.md`.
-
 ## Project overview
 
 **zstash** is an HPSS long-term archiving tool for E3SM (Energy Exascale Earth
