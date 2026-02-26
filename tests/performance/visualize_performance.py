@@ -50,10 +50,18 @@ import pandas as pd
 # Baseline config  ← EDIT THIS to point at the main-branch profiling run
 # ---------------------------------------------------------------------------
 
-# Set to the results.csv of the baseline (main branch) run, e.g.:
-#   /global/cfs/cdirs/e3sm/forsyth/zstash_performance/performance_20260101/results.csv
-# Set to None to skip the baseline comparison figure.
+# The results to show in Fig. 1
+RESULTS_CSV = (
+    "/pscratch/sd/f/forsyth/zstash_performance/performance_20260225/results.csv"
+)
+
+# The results to compare against in Fig. 2
+# Set to None to skip Fig. 2.
 BASELINE_RESULTS_CSV = None
+
+# Set to None to display interactively instead of saving.
+OUTPUT_PATH = "/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance/performance.png"
+
 
 # ---------------------------------------------------------------------------
 # Config
@@ -817,21 +825,11 @@ def main():
         description="Visualise zstash performance results."
     )
     parser.add_argument(
-        "csv", help="Path to results.csv produced by performance_profile.sh"
-    )
-    parser.add_argument(
-        "--output",
-        default="/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance/performance.png",
-        help="Save figure to this path. "
-        "Defaults to the NERSC web server output directory. "
-        "Pass --output '' to display interactively instead.",
-    )
-    parser.add_argument(
         "--dpi", type=int, default=150, help="Output DPI (default: 150)"
     )
     args = parser.parse_args()
 
-    df = load_data(args.csv)
+    df = load_data(RESULTS_CSV)
 
     if df.empty:
         print("ERROR: CSV is empty or could not be parsed.", file=sys.stderr)
@@ -912,7 +910,7 @@ def main():
             # Derive a short label from the baseline CSV path for titles
             # e.g. ".../performance_20260101/results.csv" → "performance_20260101"
             bas_label = bas_path.parent.name
-            cur_label = Path(args.csv).parent.name
+            cur_label = Path(RESULTS_CSV).parent.name
             fig_cmp = build_comparison_figure(
                 df, df_bas, all_dirs, cur_label, bas_label
             )
@@ -936,12 +934,10 @@ def main():
         else:
             plt.show()
 
-    if args.output:
-        save_or_show(fig, args.output, "Figure 1 (overview)")
+    if OUTPUT_PATH:
+        save_or_show(fig, OUTPUT_PATH, "Figure 1 (overview)")
         if fig_cmp is not None:
-            # Derive comparison output path by inserting "_vs_baseline" before
-            # the extension, e.g. zstash_performance.png → zstash_performance_vs_baseline.png
-            p = Path(args.output)
+            p = Path(OUTPUT_PATH)
             cmp_output = str(p.with_stem(p.stem + "_vs_baseline"))
             save_or_show(fig_cmp, cmp_output, "Figure 2 (baseline comparison)")
     else:
