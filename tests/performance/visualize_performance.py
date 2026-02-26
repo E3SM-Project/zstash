@@ -71,12 +71,12 @@ OP_TITLES = {
     "extract_par": "zstash extract  (parallel, 2 workers)",
 }
 
-# Map an operation to the column that holds the "relevant directory"
+# Map an operation to the column that holds the "relevant directory".
+# Extract is intentionally absent: it operates on the combined create+update
+# archive, so both subdirs are needed and it is handled separately.
 OP_DIR_COL = {
     "create": "create_subdir",
     "update": "update_subdir",
-    "extract_seq": "create_subdir",  # extraction exercises the create archive
-    "extract_par": "create_subdir",
 }
 
 BAR_WIDTH = 0.22
@@ -107,17 +107,25 @@ def dir_sort_key(name: str) -> int:
     return order.get(name.lower(), 99)
 
 
-def _add_dir_annotation(ax, dirs):
-    """Add a small file-count hint below each directory group label."""
+def _add_dir_annotation(ax, dirs, x_positions):
+    """
+    Add a small file-count hint below each directory group label.
+
+    Parameters
+    ----------
+    ax          : the Axes to annotate
+    dirs        : list of directory names in display order
+    x_positions : list of x-axis data coordinates for each dir group centre.
+                  These are passed in explicitly so the function works for both
+                  Fig. 1 (groups at 0, 1, 2, …) and Fig. 2 (wider group_span).
+    """
     hints = {
         "build": "many small files\n(~7k files, 1.2 GiB)",
         "run": "mixed\n(~111 files, 11 GiB)",
         "init": "few large files\n(14 files, 6.9 GiB)",
     }
-    for idx, d in enumerate(dirs):
+    for x_centre, d in zip(x_positions, dirs):
         if d in hints:
-            # position in data coords: centre of the dir group
-            x_centre = idx
             ax.annotate(
                 hints[d],
                 xy=(x_centre, 0),
@@ -186,7 +194,8 @@ def plot_operation(ax, df_op: pd.DataFrame, operation: str, dirs: list[str]):
     ax.set_xlabel("Directory processed", fontsize=8, labelpad=14)
     ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
     ax.set_axisbelow(True)
-    _add_dir_annotation(ax, dirs)
+    # Fig. 1: group centres are at integer positions 0, 1, 2, …
+    _add_dir_annotation(ax, dirs, list(x_base))
 
     # Value labels on bars
     for rect in ax.patches:
@@ -203,55 +212,163 @@ def plot_operation(ax, df_op: pd.DataFrame, operation: str, dirs: list[str]):
             )
 
 
-def plot_extract_comparison(ax, df: pd.DataFrame, dirs: list[str]):
+def _extract_configs(df: pd.DataFrame) -> list[tuple[str, str]]:
     """
-    Extra subplot: sequential vs parallel extract, grouped by (directory, hpss).
+    Return the sorted list of (create_subdir, update_subdir) pairs that
+    actually appear in the extract rows of *df*.  These represent the
+    combined archives that were extracted from.
+    """
+    mask = df["operation"].isin(["extract_seq", "extract_par"])
+    pairs = (
+        df[mask][["create_subdir", "update_subdir"]]
+        .drop_duplicates()
+        .apply(tuple, axis=1)
+        .tolist()
+    )
+    # Sort by create_subdir first, then update_subdir
+    return sorted(pairs, key=lambda p: (dir_sort_key(p[0]), dir_sort_key(p[1])))
+
+
+def _extract_tick_label(create_sub: str, update_sub: str) -> str:
+    """Short two-line tick label for a (create, update) archive config."""
+    return f"create: {create_sub}/\nupdate: {update_sub}/"
+
+
+def _plot_extract_single_op(ax, df: pd.DataFrame, operation: str):
+    """
+    Draw grouped bars for one extract operation (extract_seq or extract_par).
+    X-axis groups are the combined (create_subdir, update_subdir) archive
+    configs, since extract operates on the archive built by both operations.
+    """
+    configs = _extract_configs(df)
+    n_configs = len(configs)
+    n_hpss = len(HPSS_ORDER)
+
+    x_base = np.arange(n_configs, dtype=float)
+    offsets = np.linspace(-(n_hpss - 1) / 2, (n_hpss - 1) / 2, n_hpss) * BAR_WIDTH
+
+    for h_idx, hpss in enumerate(HPSS_ORDER):
+        means, all_vals, xs = [], [], []
+        for c_idx, (create_sub, update_sub) in enumerate(configs):
+            vals = (
+                df[
+                    (df["operation"] == operation)
+                    & (df["hpss_label"] == hpss)
+                    & (df["create_subdir"] == create_sub)
+                    & (df["update_subdir"] == update_sub)
+                ]["elapsed_seconds"]
+                .dropna()
+                .values
+            )
+            mean = vals.mean() if len(vals) > 0 else 0.0
+            means.append(mean)
+            all_vals.append(vals)
+            xs.append(x_base[c_idx] + offsets[h_idx])
+
+        color = HPSS_COLORS[hpss]
+        ax.bar(
+            xs,
+            means,
+            width=BAR_WIDTH,
+            color=color,
+            alpha=0.85,
+            label=HPSS_LABELS[hpss],
+            zorder=2,
+        )
+        for x_pos, vals in zip(xs, all_vals):
+            if len(vals) > 1:
+                jitter = np.random.uniform(
+                    -BAR_WIDTH * 0.25, BAR_WIDTH * 0.25, size=len(vals)
+                )
+                ax.scatter(
+                    x_pos + jitter,
+                    vals,
+                    color="white",
+                    edgecolors=color,
+                    s=DOT_SIZE,
+                    zorder=3,
+                    alpha=DOT_ALPHA,
+                    linewidths=1.2,
+                )
+
+    ax.set_title(OP_TITLES[operation], fontsize=10, fontweight="bold", pad=6)
+    ax.set_xticks(x_base)
+    ax.set_xticklabels([_extract_tick_label(c, u) for c, u in configs], fontsize=7)
+    ax.set_ylabel("Wall-clock time (s)", fontsize=8)
+    ax.set_xlabel("Archive contents (create → update)", fontsize=8, labelpad=6)
+    ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
+    ax.set_axisbelow(True)
+
+    for rect in ax.patches:
+        h = rect.get_height()
+        if h > 0:
+            ax.text(
+                rect.get_x() + rect.get_width() / 2,
+                h * 1.01,
+                f"{h:.0f}s",
+                ha="center",
+                va="bottom",
+                fontsize=6,
+                color="#333333",
+            )
+
+
+def plot_extract_comparison(ax, df: pd.DataFrame):
+    """
+    Extra subplot: sequential vs parallel extract, grouped by
+    (archive config, hpss).  Each archive config is the *combined*
+    create+update directory pair, since extract operates on the full
+    archive assembled by both operations.
     Uses a hatch pattern to distinguish seq/par within each hpss colour.
     """
-    dir_col = "create_subdir"
-    n_dirs = len(dirs)
+    configs = _extract_configs(df)
+    n_configs = len(configs)
     n_hpss = len(HPSS_ORDER)
     ops = ["extract_seq", "extract_par"]
     hatches = {"extract_seq": "", "extract_par": "////"}
     n_bars = n_hpss * len(ops)
 
-    group_width = n_bars * BAR_WIDTH + 0.15  # total width per dir group
-    x_base = np.arange(n_dirs) * group_width
-    bar_positions = []  # (x, height, color, hatch, label_shown)
+    group_width = n_bars * BAR_WIDTH + 0.15  # total width per config group
+    x_base = np.arange(n_configs) * group_width
 
-    for d_idx, d in enumerate(dirs):
+    for c_idx, (create_sub, update_sub) in enumerate(configs):
         for h_idx, hpss in enumerate(HPSS_ORDER):
             for op_idx, op in enumerate(ops):
                 df_cell = df[
                     (df["operation"] == op)
                     & (df["hpss_label"] == hpss)
-                    & (df[dir_col] == d)
+                    & (df["create_subdir"] == create_sub)
+                    & (df["update_subdir"] == update_sub)
                 ]
                 vals = df_cell["elapsed_seconds"].dropna().values
                 mean = vals.mean() if len(vals) > 0 else 0.0
-                bar_x = x_base[d_idx] + (h_idx * len(ops) + op_idx) * BAR_WIDTH
-                bar_positions.append(
-                    (bar_x, mean, HPSS_COLORS[hpss], hatches[op], hpss, op)
+                bar_x = x_base[c_idx] + (h_idx * len(ops) + op_idx) * BAR_WIDTH
+                ax.bar(
+                    bar_x,
+                    mean,
+                    width=BAR_WIDTH,
+                    color=HPSS_COLORS[hpss],
+                    hatch=hatches[op],
+                    alpha=0.85,
+                    zorder=2,
                 )
 
-    for bar_x, mean, color, hatch, hpss, op in bar_positions:
-        ax.bar(
-            bar_x, mean, width=BAR_WIDTH, color=color, hatch=hatch, alpha=0.85, zorder=2
-        )
-
-    ax.set_xticks(x_base + (n_bars / 2 - 0.5) * BAR_WIDTH)
-    ax.set_xticklabels([d + "/" for d in dirs], fontsize=9)
+    tick_positions = x_base + (n_bars / 2 - 0.5) * BAR_WIDTH
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels([_extract_tick_label(c, u) for c, u in configs], fontsize=7.5)
     ax.set_ylabel("Wall-clock time (s)", fontsize=8)
-    ax.set_xlabel("Directory (archive source)", fontsize=8, labelpad=14)
+    ax.set_xlabel(
+        "Archive contents (create subdir → update subdir)", fontsize=8, labelpad=14
+    )
     ax.set_title(
-        "Extract: Sequential vs Parallel (speed-up comparison)",
+        "Extract: Sequential vs Parallel (speed-up comparison)\n"
+        "Each group = archive built from create subdir + update subdir",
         fontsize=10,
         fontweight="bold",
         pad=6,
     )
     ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
     ax.set_axisbelow(True)
-    _add_dir_annotation(ax, dirs)
 
     # Custom legend: colour = hpss, hatch = seq/par
     hpss_patches = [
@@ -380,13 +497,111 @@ def plot_comparison_operation(
                 )
 
     ax.set_title(OP_TITLES[operation], fontsize=10, fontweight="bold", pad=6)
-    ax.set_xticks(x_base + (n_hpss * (2 * pair_width + gap) - gap) / 2)
+    # Tick at the centre of each directory's group of bars
+    group_centre_offset = (n_hpss * (2 * pair_width + gap) - gap) / 2
+    x_ticks = x_base + group_centre_offset
+    ax.set_xticks(x_ticks)
     ax.set_xticklabels([d + "/" for d in dirs], fontsize=9)
     ax.set_ylabel("Wall-clock time (s)", fontsize=8)
     ax.set_xlabel("Directory processed", fontsize=8, labelpad=14)
     ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
     ax.set_axisbelow(True)
-    _add_dir_annotation(ax, dirs)
+    # Pass actual tick x-positions so annotations align with tick labels
+    _add_dir_annotation(ax, dirs, list(x_ticks))
+
+
+def _plot_comparison_extract_single_op(
+    ax,
+    df_cur: pd.DataFrame,
+    df_bas: pd.DataFrame,
+    operation: str,
+):
+    """
+    Fig. 2 version of a single extract-op subplot (extract_seq or extract_par).
+    X-axis = combined (create, update) archive config; bars = current vs baseline
+    paired within each HPSS group.
+    """
+    configs = _extract_configs(df_cur)
+    n_configs = len(configs)
+    n_hpss = len(HPSS_ORDER)
+
+    pair_width = BAR_WIDTH
+    gap = BAR_WIDTH * 0.3
+    group_span = n_hpss * (2 * pair_width + gap) + 0.2
+    x_base = np.arange(n_configs) * group_span
+
+    for h_idx, hpss in enumerate(HPSS_ORDER):
+        color = HPSS_COLORS[hpss]
+        pair_offset = h_idx * (2 * pair_width + gap)
+        for c_idx, (create_sub, update_sub) in enumerate(configs):
+            x_left = x_base[c_idx] + pair_offset
+            x_right = x_left + pair_width
+
+            def mean_for(df, _op=operation, _h=hpss, _cs=create_sub, _us=update_sub):
+                v = (
+                    df[
+                        (df["operation"] == _op)
+                        & (df["hpss_label"] == _h)
+                        & (df["create_subdir"] == _cs)
+                        & (df["update_subdir"] == _us)
+                    ]["elapsed_seconds"]
+                    .dropna()
+                    .values
+                )
+                return v.mean() if len(v) > 0 else 0.0
+
+            cur_mean = mean_for(df_cur)
+            bas_mean = mean_for(df_bas)
+
+            ax.bar(
+                x_left,
+                cur_mean,
+                width=pair_width,
+                color=color,
+                alpha=0.85,
+                zorder=2,
+                label=HPSS_LABELS[hpss] if c_idx == 0 else "",
+            )
+            ax.bar(
+                x_right,
+                bas_mean,
+                width=pair_width,
+                color=color,
+                alpha=0.40,
+                hatch="////",
+                zorder=2,
+                edgecolor=color,
+            )
+
+            if bas_mean > 0 and cur_mean > 0:
+                ratio = cur_mean / bas_mean
+                top = max(cur_mean, bas_mean)
+                arrow = (
+                    "▲"
+                    if ratio >= RATIO_REGRESSION
+                    else ("▼" if ratio <= RATIO_IMPROVEMENT else "")
+                )
+                ax.text(
+                    (x_left + x_right) / 2,
+                    top * 1.03,
+                    f"{arrow}{ratio:.2f}×",
+                    ha="center",
+                    va="bottom",
+                    fontsize=6.5,
+                    fontweight="bold",
+                    color=_ratio_color(ratio),
+                    zorder=4,
+                )
+
+    group_centre_offset = (n_hpss * (2 * pair_width + gap) - gap) / 2
+    x_ticks = x_base + group_centre_offset
+    ax.set_xticks(x_ticks)
+    ax.set_xticklabels([_extract_tick_label(c, u) for c, u in configs], fontsize=7)
+    ax.set_ylabel("Wall-clock time (s)", fontsize=8)
+    ax.set_xlabel("Archive contents (create → update)", fontsize=8, labelpad=6)
+    ax.set_title(OP_TITLES[operation], fontsize=10, fontweight="bold", pad=6)
+    ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
+    ax.set_axisbelow(True)
 
 
 def plot_comparison_extract(
@@ -395,32 +610,51 @@ def plot_comparison_extract(
     df_bas: pd.DataFrame,
     dirs: list[str],
 ):
-    """Seq vs par extract comparison with current/baseline pairing."""
+    """
+    Seq vs par extract comparison with current/baseline pairing.
+
+    Bar order within each HPSS × op cell (innermost grouping):
+        [current/seq] [baseline/seq] [current/par] [baseline/par]
+
+    The seq pair and par pair are visually separated by a slightly larger
+    intra-group gap, making it clear which two bars belong together.
+    """
     dir_col = "create_subdir"
     n_dirs = len(dirs)
     ops = ["extract_seq", "extract_par"]
+    # Solid = current, hatched = baseline (matches the other Fig. 2 subplots)
     op_hatches = {"extract_seq": "", "extract_par": "xxxx"}
 
-    pair_width = BAR_WIDTH
-    gap = BAR_WIDTH * 0.3
-    group_span = len(HPSS_ORDER) * len(ops) * (2 * pair_width + gap) + 0.3
+    pair_width = BAR_WIDTH  # width of each individual bar
+    inner_gap = BAR_WIDTH * 0.15  # gap between current/baseline within a pair
+    op_gap = BAR_WIDTH * 0.55  # larger gap between seq-pair and par-pair
+    hpss_gap = BAR_WIDTH * 0.30  # gap between HPSS groups
+
+    # Width of one HPSS group: seq-pair + op_gap + par-pair
+    # Each pair = 2 * pair_width + inner_gap
+    pair_span = 2 * pair_width + inner_gap
+    hpss_group_span = 2 * pair_span + op_gap
+
+    group_span = len(HPSS_ORDER) * (hpss_group_span + hpss_gap) + 0.3
     x_base = np.arange(n_dirs) * group_span
 
     for d_idx, d in enumerate(dirs):
-        slot = 0
         for h_idx, hpss in enumerate(HPSS_ORDER):
             color = HPSS_COLORS[hpss]
-            for op in ops:
-                x_left = x_base[d_idx] + slot * (2 * pair_width + gap)
-                x_right = x_left + pair_width
+            hpss_origin = x_base[d_idx] + h_idx * (hpss_group_span + hpss_gap)
+            for op_idx, op in enumerate(ops):
                 hatch = op_hatches[op]
+                op_origin = hpss_origin + op_idx * (pair_span + op_gap)
 
-                def mean_for(df):
+                x_cur = op_origin  # current branch bar
+                x_bas = op_origin + pair_width + inner_gap  # baseline bar
+
+                def mean_for(df, _op=op, _hpss=hpss, _d=d):
                     v = (
                         df[
-                            (df["operation"] == op)
-                            & (df["hpss_label"] == hpss)
-                            & (df[dir_col] == d)
+                            (df["operation"] == _op)
+                            & (df["hpss_label"] == _hpss)
+                            & (df[dir_col] == _d)
                         ]["elapsed_seconds"]
                         .dropna()
                         .values
@@ -430,8 +664,9 @@ def plot_comparison_extract(
                 cur_mean = mean_for(df_cur)
                 bas_mean = mean_for(df_bas)
 
+                # Current bar (solid, full alpha)
                 ax.bar(
-                    x_left,
+                    x_cur,
                     cur_mean,
                     width=pair_width,
                     color=color,
@@ -439,8 +674,9 @@ def plot_comparison_extract(
                     alpha=0.85,
                     zorder=2,
                 )
+                # Baseline bar (hatched overlay, lighter alpha)
                 ax.bar(
-                    x_right,
+                    x_bas,
                     bas_mean,
                     width=pair_width,
                     color=color,
@@ -460,7 +696,7 @@ def plot_comparison_extract(
                         else ("▼" if ratio <= RATIO_IMPROVEMENT else "")
                     )
                     ax.text(
-                        (x_left + x_right) / 2,
+                        (x_cur + x_bas) / 2 + pair_width / 2,
                         top * 1.03,
                         f"{arrow}{ratio:.2f}×",
                         ha="center",
@@ -470,9 +706,11 @@ def plot_comparison_extract(
                         color=rat_color,
                         zorder=4,
                     )
-                slot += 1
 
-    ax.set_xticks(x_base + group_span / 2 - (2 * pair_width + gap) / 2)
+    # Tick at centre of each directory's full group
+    group_total_bar_span = len(HPSS_ORDER) * (hpss_group_span + hpss_gap) - hpss_gap
+    x_ticks = x_base + group_total_bar_span / 2
+    ax.set_xticks(x_ticks)
     ax.set_xticklabels([d + "/" for d in dirs], fontsize=9)
     ax.set_ylabel("Wall-clock time (s)", fontsize=8)
     ax.set_xlabel("Directory (archive source)", fontsize=8, labelpad=14)
@@ -484,9 +722,9 @@ def plot_comparison_extract(
     )
     ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
     ax.set_axisbelow(True)
-    _add_dir_annotation(ax, dirs)
+    _add_dir_annotation(ax, dirs, list(x_ticks))
 
-    # Legend
+    # Legend: colour=hpss, hatch=seq/par, alpha=current/baseline
     hpss_patches = [
         mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in HPSS_ORDER
     ]
@@ -542,7 +780,10 @@ def build_comparison_figure(
     ax_cmp = fig.add_subplot(gs[2, :])
 
     for op in OP_ORDER:
-        plot_comparison_operation(axes[op], df_cur, df_bas, op, all_dirs)
+        if op in OP_DIR_COL:
+            plot_comparison_operation(axes[op], df_cur, df_bas, op, all_dirs)
+        else:
+            _plot_comparison_extract_single_op(axes[op], df_cur, df_bas, op)
 
     # Shared legend for solid=current, hatched=baseline
     cur_patch = mpatches.Patch(facecolor="grey", alpha=0.85, label="Current branch")
@@ -559,7 +800,6 @@ def build_comparison_figure(
     )
 
     plot_comparison_extract(ax_cmp, df_cur, df_bas, all_dirs)
-
     return fig
 
 
@@ -634,10 +874,15 @@ def main():
     # Draw the four single-operation subplots
     # -----------------------------------------------------------------------
     legend_handles = None
-    for op in OP_ORDER:
+    for op in ["create", "update", "extract_seq", "extract_par"]:
         ax = axes[op]
-        df_op = df[df["operation"] == op]
-        plot_operation(ax, df_op, op, all_dirs)
+        if op in OP_DIR_COL:
+            df_op = df[df["operation"] == op]
+            plot_operation(ax, df_op, op, all_dirs)
+        else:
+            # extract_seq / extract_par each get a dedicated single-op view
+            # that still uses the combined archive config as the x-axis.
+            _plot_extract_single_op(ax, df, op)
 
         if legend_handles is None:
             legend_handles = [
@@ -649,7 +894,7 @@ def main():
     # -----------------------------------------------------------------------
     # Draw the sequential vs parallel comparison subplot
     # -----------------------------------------------------------------------
-    plot_extract_comparison(ax_cmp, df, all_dirs)
+    plot_extract_comparison(ax_cmp, df)
 
     # -----------------------------------------------------------------------
     # Baseline comparison figure (Figure 2)
