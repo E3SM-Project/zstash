@@ -398,3 +398,5 @@ done
 
 print_success "All tests completed. Results saved to: ${results_csv}"
 print_info "Run: python visualize_performance.py ${results_csv}"
+print_info "Plot will be saved to the web server and accessible at:"
+print_info "  https://portal.nersc.gov/cfs/e3sm/forsyth/zstash_performance.png"
