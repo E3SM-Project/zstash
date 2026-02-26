@@ -43,7 +43,10 @@ class PrintMonitor(object):
             tar: i for i, tar in enumerate(tars_to_print)
         }
 
-        # Use a simple counter to track which tar we're on
+        # Use manager-backed primitives instead of bare multiprocessing primitives
+        # for Python 3.14 compatibility: Python 3.14 restricts sharing unpickled
+        # synchronization objects across processes (see bpo-38119 / gh-84582).
+        # A simple counter tracks which tar we're on.
         self._current_tar_index: multiprocessing.managers.ValueProxy = manager.Value(
             "i", 0
         )
@@ -70,6 +73,7 @@ class PrintMonitor(object):
                 raise NotYourTurnError()
 
             attempted = True
+            # Poll every 10 ms: lower CPU usage vs 1 ms at cost of ~10 ms latency.
             time.sleep(0.01)
 
     def done_enqueuing_output_for_tar(
@@ -86,6 +90,14 @@ class PrintMonitor(object):
         with self._lock:
             if self._current_tar_index.value == tar_index:
                 self._current_tar_index.value += 1
+            else:
+                raise RuntimeError(
+                    "Attempted to advance tar index for tar {} (expected index"
+                    " {}) but current index is {}. This indicates a programming"
+                    " error.".format(
+                        workers_curr_tar, tar_index, self._current_tar_index.value
+                    )
+                )
 
 
 class ExtractWorker(object):

@@ -6,7 +6,7 @@ dependencies:
   # =================
   - pip
   - python >=3.11,<3.15
-  - setuptools
+  - setuptools >=65.0.0
   - sqlite
   - six >=1.16.0
   - globus-sdk >=3.15.0,<4.0
