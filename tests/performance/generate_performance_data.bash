@@ -42,6 +42,10 @@ subdir2=init/
 
 
 # For `--hpss=...`
+# Which HPSS options to run. Comment out any you want to skip.
+# Options: "none"  "hpss"  "globus"
+HPSS_OPTIONS=("none" "hpss" "globus")
+
 dst_hpss_path=/home/f/forsyth/zstash_performance
 
 # For `--hpss=globus...`
@@ -293,7 +297,7 @@ record_result()
 
 validate_configuration "$dir_to_copy_from" "$subdir0" "$subdir1" "$subdir2"
 
-if [ "${fresh_globus}" == "true" ]; then
+if [ "${fresh_globus}" == "true" ] && [[ " ${HPSS_OPTIONS[*]} " == *" globus "* ]]; then
     refresh_globus
 fi
 
@@ -351,10 +355,14 @@ for test_idx in 0 1 2 3 4 5; do
     dst_globus_path="globus://${dst_endpoint_uuid}/${dst_endpoint_archive_dir}${unique_id}/test${test_label}/"
 
     # Iterate over the three HPSS modes
-    for hpss_entry in "none:none" "hpss:${dst_hpss_path}" "globus:${dst_globus_path}"; do
-        hpss_label="${hpss_entry%%:*}"
-        hpss_path="${hpss_entry#*:}"
+    declare -A hpss_path_map=(
+        ["none"]="none"
+        ["hpss"]="${dst_hpss_path}"
+        ["globus"]="${dst_globus_path}"
+    )
 
+    for hpss_label in "${HPSS_OPTIONS[@]}"; do
+        hpss_path="${hpss_path_map[$hpss_label]}"
         print_step "--- HPSS mode: ${hpss_label} (${hpss_path}) ---"
 
         # Each hpss mode gets its own subdirectories to avoid cross-contamination
