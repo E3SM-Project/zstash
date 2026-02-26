@@ -268,9 +268,10 @@ def main():
     )
     parser.add_argument(
         "--output",
-        default=None,
-        help="Save figure to this path (e.g. report.png). "
-        "If omitted, the figure is displayed interactively.",
+        default="/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance.png",
+        help="Save figure to this path. "
+        "Defaults to the NERSC web server output directory. "
+        "Pass --output '' to display interactively instead.",
     )
     parser.add_argument(
         "--dpi", type=int, default=150, help="Output DPI (default: 150)"
@@ -342,8 +343,14 @@ def main():
     # -----------------------------------------------------------------------
     if args.output:
         out_path = Path(args.output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(out_path, dpi=args.dpi, bbox_inches="tight")
         print(f"Figure saved to: {out_path}")
+        web_path = str(out_path).replace(
+            "/global/cfs/cdirs/e3sm/www/",
+            "https://portal.nersc.gov/cfs/e3sm/",
+        )
+        print(f"Accessible at:  {web_path}")
     else:
         plt.show()
 
