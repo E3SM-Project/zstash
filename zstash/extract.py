@@ -660,7 +660,9 @@ def extractFiles(  # noqa: C901
 
             elif extract_this_file:
                 if sys.version_info >= (3, 12):
-                    tar.extract(tarinfo, filter="tar")  # "data" is too restrictive, "fully_trusted" is too permissive.
+                    tar.extract(
+                        tarinfo, filter="tar"
+                    )  # "data" is too restrictive, "fully_trusted" is too permissive.
                 else:
                     tar.extract(tarinfo)
                 # Note: tar.extract() will not restore time stamps of symbolic
