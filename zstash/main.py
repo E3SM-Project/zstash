@@ -2,6 +2,7 @@
 from __future__ import absolute_import, print_function
 
 import argparse
+import multiprocessing
 import os
 import os.path
 import sys
@@ -26,6 +27,12 @@ def handler(signal_received, frame):
 
 # -----------------------------------------------------------------------------
 def main():
+
+    # Force the use of 'fork' for multiprocessing to ensure consistent behavior
+    # across Python versions (Python 3.14+ changed the default to 'spawn').
+    # 'fork' is only available on POSIX systems (Linux, macOS).
+    if sys.platform != "win32":
+        multiprocessing.set_start_method("fork", force=True)
 
     # Run the handler() function when SIGINT is received
     signal(SIGINT, handler)
