@@ -659,7 +659,10 @@ def extractFiles(  # noqa: C901
                     logger.debug("Valid md5: {} {}".format(md5, fname))
 
             elif extract_this_file:
-                tar.extract(tarinfo)
+                if sys.version_info >= (3, 12):
+                    tar.extract(tarinfo, filter="tar")  # "data" is too restrictive, "fully_trusted" is too permissive.
+                else:
+                    tar.extract(tarinfo)
                 # Note: tar.extract() will not restore time stamps of symbolic
                 # links. Could not find a Python-way to restore it either, so
                 # relying here on 'touch'. This is not the prettiest solution.
