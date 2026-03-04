@@ -11,15 +11,7 @@ from typing import Dict, List, Optional, Tuple
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_get, hpss_put
 from .hpss_utils import add_files
-from .settings import (
-    DEFAULT_CACHE,
-    TIME_TOL,
-    FilesRow,
-    TupleFilesRow,
-    config,
-    get_db_filename,
-    logger,
-)
+from .settings import DEFAULT_CACHE, TIME_TOL, config, get_db_filename, logger
 from .transfer_tracking import TransferManager
 from .utils import get_files_to_archive_with_stats, update_config
 
