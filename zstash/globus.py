@@ -5,6 +5,7 @@ from typing import List, Optional
 
 from globus_sdk import TransferAPIError, TransferClient
 from globus_sdk.response import GlobusHTTPResponse
+from globus_sdk.services.transfer.response.iterable import IterableTransferResponse
 from six.moves.urllib.parse import urlparse
 
 from .globus_utils import (
@@ -57,7 +58,7 @@ def globus_activate(
     return globus_config
 
 
-def file_exists(archive_directory_listing, name: str) -> bool:
+def file_exists(archive_directory_listing: IterableTransferResponse, name: str) -> bool:
     for entry in archive_directory_listing:
         if entry.get("name") == name:
             return True
