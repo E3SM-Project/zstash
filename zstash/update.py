@@ -45,7 +45,7 @@ def update():
         transfer_manager=transfer_manager,
     )
 
-    globus_finalize(transfer_manager, non_blocking=args.non_blocking)
+    globus_finalize(transfer_manager)
 
     # List failures
     if len(failures) > 0:
@@ -290,11 +290,11 @@ def update_database(  # noqa: C901
             overwrite_duplicate_tars=args.overwrite_duplicate_tars,
             transfer_manager=transfer_manager,
         )
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         if args.follow_symlinks:
             raise Exception("Archive update failed due to broken symlink.")
         else:
-            raise e
+            raise
 
     # Close database
     con.commit()

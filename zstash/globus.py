@@ -72,7 +72,7 @@ def globus_transfer(  # noqa: C901
     name: str,
     transfer_type: str,
     non_blocking: bool,
-):
+) -> str:
 
     logger.info(f"{ts_utc()}: Entered globus_transfer() for name = {name}")
     logger.debug(f"{ts_utc()}: non_blocking = {non_blocking}")
@@ -201,6 +201,7 @@ def globus_transfer(  # noqa: C901
                 wait_timeout=7200,
                 max_retries=5,
             )
+            task_status = new_mrt.task_status
         else:
             logger.info(
                 f"{ts_utc()}: NO BLOCKING (task_wait) for task_id {new_mrt.task_id}"
@@ -306,7 +307,7 @@ def globus_wait(transfer_client: TransferClient, task_id: str):
         sys.exit(1)
 
 
-def globus_finalize(transfer_manager: TransferManager, non_blocking: bool = False):
+def globus_finalize(transfer_manager: TransferManager):
 
     last_task_id = None
 

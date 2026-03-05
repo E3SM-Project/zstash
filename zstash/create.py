@@ -104,7 +104,7 @@ def create():
     )
 
     logger.debug(f"{ts_utc()}: calling globus_finalize()")
-    globus_finalize(transfer_manager, non_blocking=args.non_blocking)
+    globus_finalize(transfer_manager)
 
     if len(failures) > 0:
         # List the failures
@@ -291,11 +291,11 @@ create table files (
             force_database_corruption=args.for_developers_force_database_corruption,
             transfer_manager=transfer_manager,
         )
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         if args.follow_symlinks:
             raise Exception("Archive creation failed due to broken symlink.")
         else:
-            raise e
+            raise
 
     # Close database
     con.commit()

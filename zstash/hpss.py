@@ -11,9 +11,6 @@ from .settings import get_db_filename, logger
 from .transfer_tracking import GlobusConfig, TransferBatch, TransferManager
 from .utils import run_command, ts_utc
 
-prev_transfers: List[str] = list()
-curr_transfers: List[str] = list()
-
 
 def hpss_transfer(
     hpss: str,
