@@ -30,8 +30,10 @@ class TransferBatch:
 
     def delete_files(self):
         for src_path in self.file_paths:
-            if os.path.exists(src_path):
+            try:
                 os.remove(src_path)
+            except FileNotFoundError:
+                logger.warning(f"File already deleted: {src_path}")
 
 
 class TransferManager:
@@ -51,12 +53,10 @@ class TransferManager:
         logger.info(
             f"{ts_utc()}: Checking for successfully transferred files to delete"
         )
+        self.batches = [
+            batch for batch in self.batches if batch.file_paths
+        ]  # Clean up empty batches
         for batch in self.batches:
-            # Skip if already processed
-            if not batch.file_paths:
-                logger.debug(f"{ts_utc()}: batch was already processed, skipping")
-                continue
-
             # Check if this is a Globus transfer that needs status update
             if batch.is_globus and batch.task_id and (batch.task_status != "SUCCEEDED"):
                 logger.debug(f"{ts_utc()}: batch is globus AND is not yet successful")
