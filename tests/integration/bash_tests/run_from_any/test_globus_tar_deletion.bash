@@ -368,7 +368,7 @@ echo "Progressive deletion tests: verify files are deleted as transfers complete
 echo "WARNING: These tests create ~2GB of data and will take several minutes"
 
 # Run progressive deletion tests
-# Thes check that DURING the run,
+# These check that DURING the run,
 # files are deleted after successful transfers (non-keep only).
 # Blocking -- get files, transfer files, delete at src, start next transfer.
 # Non-blocking -- get files, transfer files, get next set of files, transfer those files, check if previous transfer is done (and if so, delete at src).
