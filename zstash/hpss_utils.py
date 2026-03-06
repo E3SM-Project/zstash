@@ -17,6 +17,193 @@ from .transfer_tracking import TransferManager
 from .utils import create_tars_table, tars_table_exists, ts_utc
 
 
+class TarWrapper(object):
+    def __init__(self, tar_num: int, cache: str, do_hash: bool, follow_symlinks: bool):
+        # Create a hex value at least 6 digits long
+        tname: str = "{0:0{1}x}".format(tar_num, 6)
+        # Create the tar file name by adding ".tar"
+        self.tfname: str = f"{tname}.tar"
+        logger.info(f"{ts_utc()}: Creating new tar archive {self.tfname}")
+        # Open that tar file in the cache
+        self.tarFileObject = HashIO(os.path.join(cache, self.tfname), "wb", do_hash)
+        # FIXME: error: Argument "fileobj" to "open" has incompatible type "HashIO"; expected "Optional[IO[bytes]]"
+        self.tar = tarfile.open(mode="w", fileobj=self.tarFileObject, dereference=follow_symlinks)  # type: ignore
+
+    def process_file(
+        self, current_file: str, archived: List[TupleFilesRowNoId], failures: List[str]
+    ) -> int:
+        logger.info(f"Archiving {current_file}")
+        tar_size: int = 0
+        try:
+            offset: int
+            size: int
+            mtime: datetime
+            md5: Optional[str]
+            offset, size, mtime, md5 = add_file_to_tar_archive(self.tar, current_file)
+            t: TupleFilesRowNoId = (
+                current_file,
+                size,
+                mtime,
+                md5,
+                self.tfname,
+                offset,
+            )
+            archived.append(t)
+            # Increase tarsize by the size of the current file.
+            # Use `tell()` to also include the tar's metadata in the size.
+            tar_size = self.tarFileObject.tell()
+        except Exception:
+            # Catch all exceptions here.
+            traceback.print_exc()
+            logger.error(f"Archiving {current_file}")
+            failures.append(current_file)
+        return tar_size
+
+    def process_tar(
+        self,
+        cache: str,
+        keep: bool,
+        non_blocking: bool,
+        transfer_manager: Optional[TransferManager],
+        skip_tars_md5: bool,
+        cur: sqlite3.Cursor,
+        con: sqlite3.Connection,
+        force_database_corruption: str,
+        error_on_duplicate_tar: bool,
+        overwrite_duplicate_tars: bool,
+        archived: List[TupleFilesRowNoId],
+    ):
+        logger.debug(f"{ts_utc()}: Closing tar archive {self.tfname}")
+        self.tar.close()
+
+        tarsize = self.tarFileObject.tell()
+        tar_md5: Optional[str] = self.tarFileObject.md5()
+        self.tarFileObject.close()
+        logger.info(f"{ts_utc()}: (add_files): Completed archive file {self.tfname}")
+
+        # Transfer tar to HPSS
+        if config.hpss is not None:
+            hpss: str = config.hpss
+        else:
+            raise TypeError("Invalid config.hpss={}".format(config.hpss))
+
+        logger.info(f"Contents of the cache prior to `hpss_put`: {os.listdir(cache)}")
+
+        logger.info(
+            f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {self.tfname} [keep, non_blocking] = [{keep}, {non_blocking}]"
+        )
+        hpss_put(
+            hpss,
+            os.path.join(cache, self.tfname),
+            cache,
+            keep,
+            non_blocking,
+            is_index=False,
+            transfer_manager=transfer_manager,
+        )
+        logger.info(
+            f"{ts_utc()}: SURFACE (add_files): Called hpss_put to dispatch archive file {self.tfname}"
+        )
+
+        if not skip_tars_md5:
+            tar_tuple: TupleTarsRowNoId = (self.tfname, tarsize, tar_md5)
+            logger.info("tar name={}, tar size={}, tar md5={}".format(*tar_tuple))
+            if not tars_table_exists(cur):
+                # Need to create tars table
+                create_tars_table(cur, con)
+
+            # For developers only! For debugging purposes only!
+            if force_database_corruption == "simulate_row_existing":
+                # Tested by database_corruption.bash Cases 3, 5
+                logger.info(
+                    f"TESTING/DEBUGGING ONLY: Simulating row existing for {self.tfname}."
+                )
+                cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
+            elif force_database_corruption == "simulate_row_existing_bad_size":
+                # Tested by database_corruption.bash CaseS 4, 7
+                logger.info(
+                    f"TESTING/DEBUGGING ONLY: Simulating row existing with bad size for {self.tfname}."
+                )
+                cur.execute(
+                    "INSERT INTO tars VALUES (NULL,?,?,?)",
+                    (self.tfname, tarsize + 1000, tar_md5),
+                )
+
+            # We're done adding files to the tar.
+            # And we've transferred it to HPSS.
+            # Now we can insert the tar into the database.
+            cur.execute("SELECT COUNT(*) FROM tars WHERE name = ?", (self.tfname,))
+            tar_count: int = cur.fetchone()[0]
+            if tar_count != 0:
+                error_str: str = (
+                    f"Database corruption detected! {self.tfname} is already in the database."
+                )
+                if error_on_duplicate_tar:
+                    # Tested by database_corruption.bash Case 3
+                    # Exists - error out
+                    logger.error(error_str)
+                    raise RuntimeError(error_str)
+                elif overwrite_duplicate_tars:
+                    # Tested by database_corruption.bash Case 4
+                    # Exists - update with new size and md5
+                    logger.warning(error_str)
+                    logger.warning(f"Updating existing tar {self.tfname} to proceed.")
+                    cur.execute(
+                        "UPDATE tars SET size = ?, md5 = ? WHERE name = ?",
+                        (tarsize, tar_md5, self.tfname),
+                    )
+                else:
+                    # Tested by database_corruption.bash Cases 5,7
+                    # Proceed as if we're in the typical case -- insert new
+                    logger.warning(error_str)
+                    logger.warning(f"Adding a new entry for {self.tfname}.")
+                    cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
+            elif force_database_corruption == "simulate_no_correct_size":
+                # Tested by database_corruption.bash Case 6
+                # For developers only! For debugging purposes only!
+                # Add this tar twice, with different sizes.
+                logger.info(
+                    f"TESTING/DEBUGGING ONLY: Simulating no correct size for {self.tfname}."
+                )
+                cur.execute(
+                    "INSERT INTO tars VALUES (NULL,?,?,?)",
+                    (self.tfname, tarsize + 1000, tar_md5),
+                )
+                cur.execute(
+                    "INSERT INTO tars VALUES (NULL,?,?,?)",
+                    (self.tfname, tarsize + 2000, tar_md5),
+                )
+            elif force_database_corruption == "simulate_bad_size_for_most_recent":
+                # Tested by database_corruption.bash Case 8
+                # For developers only! For debugging purposes only!
+                # Add this tar twice, second time with bad size.
+                logger.info(
+                    f"TESTING/DEBUGGING ONLY: Simulating bad size for most recent entry for {self.tfname}."
+                )
+                cur.execute(
+                    "INSERT INTO tars VALUES (NULL,?,?,?)",
+                    (self.tfname, tarsize, tar_md5),
+                )
+                cur.execute(
+                    "INSERT INTO tars VALUES (NULL,?,?,?)",
+                    (self.tfname, tarsize + 2000, tar_md5),
+                )
+            else:
+                # Tested by database_corruption.bash Cases 1,2
+                # Typical case
+                # Doesn't exist - insert new
+                logger.info(f"Adding {self.tfname} to the database.")
+                cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
+
+            con.commit()
+
+        # Update database with the individual files that have been archived
+        # Add a row to the "files" table,
+        # the last 6 columns matching the values of `archived`
+        cur.executemany("insert into files values (NULL,?,?,?,?,?,?)", archived)
+        con.commit()
+
+
 # Minimum output file object
 class HashIO(object):
     def __init__(self, name: str, mode: str, do_hash: bool):
@@ -54,248 +241,10 @@ class HashIO(object):
         self.closed = True
 
 
-def add_files(
-    cur: sqlite3.Cursor,
-    con: sqlite3.Connection,
-    itar: int,
-    files: List[str],
-    cache: str,
-    keep: bool,
-    follow_symlinks: bool,
-    skip_tars_md5: bool = False,
-    non_blocking: bool = False,
-    error_on_duplicate_tar: bool = False,
-    overwrite_duplicate_tars: bool = False,
-    force_database_corruption: str = "",
-    transfer_manager: Optional[TransferManager] = None,
-) -> List[str]:
-
-    # Now, perform the actual archiving
-    failures: List[str] = []
-    create_new_tar: bool = True
-    nfiles: int = len(files)
-    archived: List[TupleFilesRowNoId]
-    tarsize: int
-    tname: str
-    tfname: str
-    tarFileObject: HashIO
-    tar: tarfile.TarFile
-    for i in range(nfiles):
-
-        # New tar in the local cache
-        if create_new_tar:
-            create_new_tar = False
-            archived = []
-            tarsize = 0
-            itar += 1
-            # Create a hex value at least 6 digits long
-            tname = "{0:0{1}x}".format(itar, 6)
-            # Create the tar file name by adding ".tar"
-            tfname = "{}.tar".format(tname)
-            logger.info(f"{ts_utc()}: Creating new tar archive {tfname}")
-            # Open that tar file in the cache
-            do_hash: bool
-            if not skip_tars_md5:
-                # If we're not skipping tars, we want to calculate the hash of the tars.
-                do_hash = True
-            else:
-                do_hash = False
-            tarFileObject = HashIO(os.path.join(cache, tfname), "wb", do_hash)
-            # FIXME: error: Argument "fileobj" to "open" has incompatible type "HashIO"; expected "Optional[IO[bytes]]"
-            tar = tarfile.open(mode="w", fileobj=tarFileObject, dereference=follow_symlinks)  # type: ignore
-
-        # Add current file to tar archive
-        current_file: str = files[i]
-        logger.info("Archiving {}".format(current_file))
-        try:
-            offset: int
-            size: int
-            mtime: datetime
-            md5: Optional[str]
-            offset, size, mtime, md5 = add_file(tar, current_file, follow_symlinks)
-            t: TupleFilesRowNoId = (
-                current_file,
-                size,
-                mtime,
-                md5,
-                tfname,
-                offset,
-            )
-            archived.append(t)
-            # Increase tarsize by the size of the current file.
-            # Use `tell()` to also include the tar's metadata in the size.
-            tarsize = tarFileObject.tell()
-        except Exception:
-            # Catch all exceptions here.
-            traceback.print_exc()
-            logger.error("Archiving {}".format(current_file))
-            failures.append(current_file)
-
-        # Close tar archive if current file is the last one or
-        # if adding one more would push us over the limit.
-        next_file_size: int = tar.gettarinfo(current_file).size
-        if config.maxsize is not None:
-            maxsize: int = config.maxsize
-        else:
-            raise TypeError("Invalid config.maxsize={}".format(config.maxsize))
-        if i == nfiles - 1 or tarsize + next_file_size > maxsize:
-
-            # Close current temporary file
-            logger.debug(f"{ts_utc()}: Closing tar archive {tfname}")
-            tar.close()
-
-            tarsize = tarFileObject.tell()
-            tar_md5: Optional[str] = tarFileObject.md5()
-            tarFileObject.close()
-            logger.info(f"{ts_utc()}: (add_files): Completed archive file {tfname}")
-
-            # Transfer tar to HPSS
-            if config.hpss is not None:
-                hpss: str = config.hpss
-            else:
-                raise TypeError("Invalid config.hpss={}".format(config.hpss))
-
-            logger.info(
-                f"Contents of the cache prior to `hpss_put`: {os.listdir(cache)}"
-            )
-
-            logger.info(
-                f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {tfname} [keep, non_blocking] = [{keep}, {non_blocking}]"
-            )
-            hpss_put(
-                hpss,
-                os.path.join(cache, tfname),
-                cache,
-                keep,
-                non_blocking,
-                is_index=False,
-                transfer_manager=transfer_manager,
-            )
-            logger.info(
-                f"{ts_utc()}: SURFACE (add_files): Called hpss_put to dispatch archive file {tfname}"
-            )
-
-            if not skip_tars_md5:
-                tar_tuple: TupleTarsRowNoId = (tfname, tarsize, tar_md5)
-                logger.info("tar name={}, tar size={}, tar md5={}".format(*tar_tuple))
-                if not tars_table_exists(cur):
-                    # Need to create tars table
-                    create_tars_table(cur, con)
-
-                # For developers only! For debugging purposes only!
-                if force_database_corruption == "simulate_row_existing":
-                    # Tested by database_corruption.bash Cases 3, 5
-                    logger.info(
-                        f"TESTING/DEBUGGING ONLY: Simulating row existing for {tfname}."
-                    )
-                    cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
-                elif force_database_corruption == "simulate_row_existing_bad_size":
-                    # Tested by database_corruption.bash CaseS 4, 7
-                    logger.info(
-                        f"TESTING/DEBUGGING ONLY: Simulating row existing with bad size for {tfname}."
-                    )
-                    cur.execute(
-                        "INSERT INTO tars VALUES (NULL,?,?,?)",
-                        (tfname, tarsize + 1000, tar_md5),
-                    )
-
-                # We're done adding files to the tar.
-                # And we've transferred it to HPSS.
-                # Now we can insert the tar into the database.
-                cur.execute("SELECT COUNT(*) FROM tars WHERE name = ?", (tfname,))
-                tar_count: int = cur.fetchone()[0]
-                if tar_count != 0:
-                    error_str: str = (
-                        f"Database corruption detected! {tfname} is already in the database."
-                    )
-                    if error_on_duplicate_tar:
-                        # Tested by database_corruption.bash Case 3
-                        # Exists - error out
-                        logger.error(error_str)
-                        raise RuntimeError(error_str)
-                    elif overwrite_duplicate_tars:
-                        # Tested by database_corruption.bash Case 4
-                        # Exists - update with new size and md5
-                        logger.warning(error_str)
-                        logger.warning(f"Updating existing tar {tfname} to proceed.")
-                        cur.execute(
-                            "UPDATE tars SET size = ?, md5 = ? WHERE name = ?",
-                            (tarsize, tar_md5, tfname),
-                        )
-                    else:
-                        # Tested by database_corruption.bash Cases 5,7
-                        # Proceed as if we're in the typical case -- insert new
-                        logger.warning(error_str)
-                        logger.warning(f"Adding a new entry for {tfname}.")
-                        cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
-                elif force_database_corruption == "simulate_no_correct_size":
-                    # Tested by database_corruption.bash Case 6
-                    # For developers only! For debugging purposes only!
-                    # Add this tar twice, with different sizes.
-                    logger.info(
-                        f"TESTING/DEBUGGING ONLY: Simulating no correct size for {tfname}."
-                    )
-                    cur.execute(
-                        "INSERT INTO tars VALUES (NULL,?,?,?)",
-                        (tfname, tarsize + 1000, tar_md5),
-                    )
-                    cur.execute(
-                        "INSERT INTO tars VALUES (NULL,?,?,?)",
-                        (tfname, tarsize + 2000, tar_md5),
-                    )
-                elif force_database_corruption == "simulate_bad_size_for_most_recent":
-                    # Tested by database_corruption.bash Case 8
-                    # For developers only! For debugging purposes only!
-                    # Add this tar twice, second time with bad size.
-                    logger.info(
-                        f"TESTING/DEBUGGING ONLY: Simulating bad size for most recent entry for {tfname}."
-                    )
-                    cur.execute(
-                        "INSERT INTO tars VALUES (NULL,?,?,?)",
-                        (tfname, tarsize, tar_md5),
-                    )
-                    cur.execute(
-                        "INSERT INTO tars VALUES (NULL,?,?,?)",
-                        (tfname, tarsize + 2000, tar_md5),
-                    )
-                else:
-                    # Tested by database_corruption.bash Cases 1,2
-                    # Typical case
-                    # Doesn't exist - insert new
-                    logger.info(f"Adding {tfname} to the database.")
-                    cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
-
-                con.commit()
-
-            # Update database with the individual files that have been archived
-            # Add a row to the "files" table,
-            # the last 6 columns matching the values of `archived`
-            cur.executemany("insert into files values (NULL,?,?,?,?,?,?)", archived)
-            con.commit()
-
-            # Open new tar next time
-            create_new_tar = True
-
-    return failures
-
-
-# Create a wrapper that computes hash while data passes through
-class HashingFileWrapper:
-    def __init__(self, fileobj, hasher):
-        self.fileobj = fileobj
-        self.hasher = hasher
-
-    def read(self, size=-1):
-        data = self.fileobj.read(size)
-        if data:
-            self.hasher.update(data)
-        return data
-
-
 # Add file to tar archive while computing its hash
 # Return file offset (in tar archive), size and md5 hash
-def add_file(
-    tar: tarfile.TarFile, file_name: str, follow_symlinks: bool
+def add_file_to_tar_archive(
+    tar: tarfile.TarFile, file_name: str
 ) -> Tuple[int, int, datetime, Optional[str]]:
     offset = tar.offset
     tarinfo = tar.gettarinfo(file_name)
@@ -325,3 +274,90 @@ def add_file(
     size = tarinfo.size
     mtime = datetime.utcfromtimestamp(tarinfo.mtime)
     return offset, size, mtime, md5
+
+
+def construct_tars(
+    cur: sqlite3.Cursor,
+    con: sqlite3.Connection,
+    itar: int,
+    files: List[str],
+    cache: str,
+    keep: bool,
+    follow_symlinks: bool,
+    skip_tars_md5: bool = False,
+    non_blocking: bool = False,
+    error_on_duplicate_tar: bool = False,
+    overwrite_duplicate_tars: bool = False,
+    force_database_corruption: str = "",
+    transfer_manager: Optional[TransferManager] = None,
+) -> List[str]:
+
+    failures: List[str] = []
+    nfiles: int = len(files)
+
+    if config.maxsize is not None:
+        max_size: int = config.maxsize
+    else:
+        raise TypeError(f"Invalid config.maxsize={config.maxsize}")
+
+    i_file: int = 0
+    while i_file < nfiles:
+        # Each iteration of this loop constructs one tar
+
+        # `create` passes in itar=-1, so the first tar will be 000001.tar
+        # `update` passes in itar=max existing tar number, so the first tar will be max+1
+        itar += 1
+        tar_size: int = 0
+        archived: List[TupleFilesRowNoId] = []
+
+        # Open a new tar
+        # Note: if we're not skipping tars, we want to calculate the hash of the tars.
+        tar_wrapper = TarWrapper(
+            tar_num=itar,
+            cache=cache,
+            do_hash=not skip_tars_md5,
+            follow_symlinks=follow_symlinks,
+        )
+
+        # Add files to the tar until we reach the max size
+        while i_file < nfiles:
+            current_file: str = files[i_file]
+            current_file_size: int = os.path.getsize(current_file)
+            # Check if adding this file would send us over the max size.
+            if tar_size + current_file_size < max_size:
+                # Add current file to tar archive
+                tar_size += tar_wrapper.process_file(current_file, archived, failures)
+                i_file += 1
+            else:
+                # Time to close and transfer this tar archive.
+                break
+
+        # Close and transfer this tar archive, and update the database with the archived files.
+        tar_wrapper.process_tar(
+            cache,
+            keep,
+            non_blocking,
+            transfer_manager,
+            skip_tars_md5,
+            cur,
+            con,
+            force_database_corruption,
+            error_on_duplicate_tar,
+            overwrite_duplicate_tars,
+            archived,
+        )
+
+    return failures
+
+
+# Create a wrapper that computes hash while data passes through
+class HashingFileWrapper:
+    def __init__(self, fileobj, hasher):
+        self.fileobj = fileobj
+        self.hasher = hasher
+
+    def read(self, size=-1):
+        data = self.fileobj.read(size)
+        if data:
+            self.hasher.update(data)
+        return data

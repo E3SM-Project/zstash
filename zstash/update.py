@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Tuple
 
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_get, hpss_put
-from .hpss_utils import add_files
+from .hpss_utils import construct_tars
 from .settings import DEFAULT_CACHE, TIME_TOL, config, get_db_filename, logger
 from .transfer_tracking import TransferManager
 from .utils import get_files_to_archive_with_stats, update_config
@@ -277,7 +277,7 @@ def update_database(  # noqa: C901
         itar = max(itar, int(tfile_string[0:6], 16))
     try:
         # Add files
-        failures = add_files(
+        failures = construct_tars(
             cur,
             con,
             itar,

@@ -12,7 +12,7 @@ from six.moves.urllib.parse import urlparse
 
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_put
-from .hpss_utils import add_files
+from .hpss_utils import construct_tars
 from .settings import DEFAULT_CACHE, config, get_db_filename, logger
 from .transfer_tracking import TransferManager
 from .utils import (
@@ -276,7 +276,7 @@ create table files (
     failures: List[str]
     try:
         # Add files to archive
-        failures = add_files(
+        failures = construct_tars(
             cur,
             con,
             -1,
