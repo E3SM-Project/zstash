@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Tuple
 
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_get, hpss_put
-from .hpss_utils import construct_tars
+from .hpss_utils import DevOptions, construct_tars
 from .settings import DEFAULT_CACHE, TIME_TOL, config, get_db_filename, logger
 from .transfer_tracking import TransferManager
 from .utils import get_files_to_archive_with_stats, update_config
@@ -275,6 +275,11 @@ def update_database(  # noqa: C901
     for tfile in tfiles:
         tfile_string: str = tfile[0]
         itar = max(itar, int(tfile_string[0:6], 16))
+    dev_options: DevOptions = DevOptions(
+        error_on_duplicate_tar=args.error_on_duplicate_tar,
+        overwrite_duplicate_tars=args.overwrite_duplicate_tars,
+        force_database_corruption="",
+    )
     try:
         # Add files
         failures = construct_tars(
@@ -285,9 +290,8 @@ def update_database(  # noqa: C901
             cache,
             keep,
             args.follow_symlinks,
+            dev_options,
             non_blocking=args.non_blocking,
-            error_on_duplicate_tar=args.error_on_duplicate_tar,
-            overwrite_duplicate_tars=args.overwrite_duplicate_tars,
             transfer_manager=transfer_manager,
         )
     except FileNotFoundError:

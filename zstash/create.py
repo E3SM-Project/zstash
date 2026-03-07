@@ -12,7 +12,7 @@ from six.moves.urllib.parse import urlparse
 
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_put
-from .hpss_utils import construct_tars
+from .hpss_utils import DevOptions, construct_tars
 from .settings import DEFAULT_CACHE, config, get_db_filename, logger
 from .transfer_tracking import TransferManager
 from .utils import (
@@ -274,6 +274,11 @@ create table files (
     files: List[str] = get_files_to_archive(cache, args.include, args.exclude)
 
     failures: List[str]
+    dev_options: DevOptions = DevOptions(
+        error_on_duplicate_tar=args.error_on_duplicate_tar,
+        overwrite_duplicate_tars=args.overwrite_duplicate_tars,
+        force_database_corruption=args.for_developers_force_database_corruption,
+    )
     try:
         # Add files to archive
         failures = construct_tars(
@@ -284,11 +289,9 @@ create table files (
             cache,
             args.keep,
             args.follow_symlinks,
+            dev_options,
             skip_tars_md5=args.no_tars_md5,
             non_blocking=args.non_blocking,
-            error_on_duplicate_tar=args.error_on_duplicate_tar,
-            overwrite_duplicate_tars=args.overwrite_duplicate_tars,
-            force_database_corruption=args.for_developers_force_database_corruption,
             transfer_manager=transfer_manager,
         )
     except FileNotFoundError:

@@ -17,6 +17,44 @@ from .transfer_tracking import TransferManager
 from .utils import create_tars_table, tars_table_exists, ts_utc
 
 
+# This class holds parameters for developer options.
+# I.e., these parameters should only ever be activated by developers during debugging and/or testing.
+class DevOptions(object):
+    def __init__(
+        self,
+        error_on_duplicate_tar: bool,
+        overwrite_duplicate_tars: bool,
+        force_database_corruption: str,
+    ):
+        self.error_on_duplicate_tar: bool = error_on_duplicate_tar
+        self.overwrite_duplicate_tars: bool = overwrite_duplicate_tars
+        self.force_database_corruption: str = force_database_corruption
+
+    def simulate_row_existing(
+        self,
+        tfname: str,
+        cur: sqlite3.Cursor,
+        tar_tuple: TupleTarsRowNoId,
+        tar_size: int,
+        tar_md5: Optional[str],
+    ):
+        if self.force_database_corruption == "simulate_row_existing":
+            # Tested by database_corruption.bash Cases 3, 5
+            logger.info(
+                f"TESTING/DEBUGGING ONLY: Simulating row existing for {tfname}."
+            )
+            cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
+        elif self.force_database_corruption == "simulate_row_existing_bad_size":
+            # Tested by database_corruption.bash Cases 4, 7
+            logger.info(
+                f"TESTING/DEBUGGING ONLY: Simulating row existing with bad size for {tfname}."
+            )
+            cur.execute(
+                "INSERT INTO tars VALUES (NULL,?,?,?)",
+                (tfname, tar_size + 1000, tar_md5),
+            )
+
+
 class TarWrapper(object):
     def __init__(self, tar_num: int, cache: str, do_hash: bool, follow_symlinks: bool):
         # Create a hex value at least 6 digits long
@@ -49,7 +87,7 @@ class TarWrapper(object):
                 offset,
             )
             archived.append(t)
-            # Increase tarsize by the size of the current file.
+            # Increase tar_size by the size of the current file.
             # Use `tell()` to also include the tar's metadata in the size.
             tar_size = self.tarFileObject.tell()
         except Exception:
@@ -68,20 +106,19 @@ class TarWrapper(object):
         skip_tars_md5: bool,
         cur: sqlite3.Cursor,
         con: sqlite3.Connection,
-        force_database_corruption: str,
-        error_on_duplicate_tar: bool,
-        overwrite_duplicate_tars: bool,
+        dev_options: DevOptions,
         archived: List[TupleFilesRowNoId],
     ):
+        # 1. Close the tar ####################################################
         logger.debug(f"{ts_utc()}: Closing tar archive {self.tfname}")
         self.tar.close()
 
-        tarsize = self.tarFileObject.tell()
+        tar_size = self.tarFileObject.tell()
         tar_md5: Optional[str] = self.tarFileObject.md5()
         self.tarFileObject.close()
         logger.info(f"{ts_utc()}: (add_files): Completed archive file {self.tfname}")
 
-        # Transfer tar to HPSS
+        # 2. Transfer the tar to HPSS #########################################
         if config.hpss is not None:
             hpss: str = config.hpss
         else:
@@ -92,6 +129,7 @@ class TarWrapper(object):
         logger.info(
             f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {self.tfname} [keep, non_blocking] = [{keep}, {non_blocking}]"
         )
+        # Actually transfer the tar file
         hpss_put(
             hpss,
             os.path.join(cache, self.tfname),
@@ -105,29 +143,18 @@ class TarWrapper(object):
             f"{ts_utc()}: SURFACE (add_files): Called hpss_put to dispatch archive file {self.tfname}"
         )
 
+        # 3. Add the tar itself to the tars table #############################
         if not skip_tars_md5:
-            tar_tuple: TupleTarsRowNoId = (self.tfname, tarsize, tar_md5)
+            tar_tuple: TupleTarsRowNoId = (self.tfname, tar_size, tar_md5)
             logger.info("tar name={}, tar size={}, tar md5={}".format(*tar_tuple))
             if not tars_table_exists(cur):
                 # Need to create tars table
                 create_tars_table(cur, con)
 
-            # For developers only! For debugging purposes only!
-            if force_database_corruption == "simulate_row_existing":
-                # Tested by database_corruption.bash Cases 3, 5
-                logger.info(
-                    f"TESTING/DEBUGGING ONLY: Simulating row existing for {self.tfname}."
-                )
-                cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
-            elif force_database_corruption == "simulate_row_existing_bad_size":
-                # Tested by database_corruption.bash CaseS 4, 7
-                logger.info(
-                    f"TESTING/DEBUGGING ONLY: Simulating row existing with bad size for {self.tfname}."
-                )
-                cur.execute(
-                    "INSERT INTO tars VALUES (NULL,?,?,?)",
-                    (self.tfname, tarsize + 1000, tar_md5),
-                )
+            # For developers only! For debugging/testing purposes only!
+            dev_options.simulate_row_existing(
+                self.tfname, cur, tar_tuple, tar_size, tar_md5
+            )
 
             # We're done adding files to the tar.
             # And we've transferred it to HPSS.
@@ -138,19 +165,19 @@ class TarWrapper(object):
                 error_str: str = (
                     f"Database corruption detected! {self.tfname} is already in the database."
                 )
-                if error_on_duplicate_tar:
+                if dev_options.error_on_duplicate_tar:
                     # Tested by database_corruption.bash Case 3
                     # Exists - error out
                     logger.error(error_str)
                     raise RuntimeError(error_str)
-                elif overwrite_duplicate_tars:
+                elif dev_options.overwrite_duplicate_tars:
                     # Tested by database_corruption.bash Case 4
                     # Exists - update with new size and md5
                     logger.warning(error_str)
                     logger.warning(f"Updating existing tar {self.tfname} to proceed.")
                     cur.execute(
                         "UPDATE tars SET size = ?, md5 = ? WHERE name = ?",
-                        (tarsize, tar_md5, self.tfname),
+                        (tar_size, tar_md5, self.tfname),
                     )
                 else:
                     # Tested by database_corruption.bash Cases 5,7
@@ -158,7 +185,7 @@ class TarWrapper(object):
                     logger.warning(error_str)
                     logger.warning(f"Adding a new entry for {self.tfname}.")
                     cur.execute("INSERT INTO tars VALUES (NULL,?,?,?)", tar_tuple)
-            elif force_database_corruption == "simulate_no_correct_size":
+            elif dev_options.force_database_corruption == "simulate_no_correct_size":
                 # Tested by database_corruption.bash Case 6
                 # For developers only! For debugging purposes only!
                 # Add this tar twice, with different sizes.
@@ -167,13 +194,16 @@ class TarWrapper(object):
                 )
                 cur.execute(
                     "INSERT INTO tars VALUES (NULL,?,?,?)",
-                    (self.tfname, tarsize + 1000, tar_md5),
+                    (self.tfname, tar_size + 1000, tar_md5),
                 )
                 cur.execute(
                     "INSERT INTO tars VALUES (NULL,?,?,?)",
-                    (self.tfname, tarsize + 2000, tar_md5),
+                    (self.tfname, tar_size + 2000, tar_md5),
                 )
-            elif force_database_corruption == "simulate_bad_size_for_most_recent":
+            elif (
+                dev_options.force_database_corruption
+                == "simulate_bad_size_for_most_recent"
+            ):
                 # Tested by database_corruption.bash Case 8
                 # For developers only! For debugging purposes only!
                 # Add this tar twice, second time with bad size.
@@ -182,11 +212,11 @@ class TarWrapper(object):
                 )
                 cur.execute(
                     "INSERT INTO tars VALUES (NULL,?,?,?)",
-                    (self.tfname, tarsize, tar_md5),
+                    (self.tfname, tar_size, tar_md5),
                 )
                 cur.execute(
                     "INSERT INTO tars VALUES (NULL,?,?,?)",
-                    (self.tfname, tarsize + 2000, tar_md5),
+                    (self.tfname, tar_size + 2000, tar_md5),
                 )
             else:
                 # Tested by database_corruption.bash Cases 1,2
@@ -197,6 +227,7 @@ class TarWrapper(object):
 
             con.commit()
 
+        # 4. Add the files included in this tar to the files table ############
         # Update database with the individual files that have been archived
         # Add a row to the "files" table,
         # the last 6 columns matching the values of `archived`
@@ -252,7 +283,7 @@ def add_file_to_tar_archive(
     if tarinfo.islnk():
         tarinfo.size = os.path.getsize(file_name)
 
-    md5 = None
+    md5: Optional[str] = None
 
     # For files/hardlinks
     if tarinfo.isfile() or tarinfo.islnk():
@@ -269,6 +300,7 @@ def add_file_to_tar_archive(
             md5 = hashlib.md5(b"").hexdigest()  # MD5 of empty bytes
     else:
         # Directories, symlinks, etc.
+        # md5 will be None in these cases.
         tar.addfile(tarinfo)
 
     size = tarinfo.size
@@ -284,11 +316,9 @@ def construct_tars(
     cache: str,
     keep: bool,
     follow_symlinks: bool,
+    dev_options: DevOptions,
     skip_tars_md5: bool = False,
     non_blocking: bool = False,
-    error_on_duplicate_tar: bool = False,
-    overwrite_duplicate_tars: bool = False,
-    force_database_corruption: str = "",
     transfer_manager: Optional[TransferManager] = None,
 ) -> List[str]:
 
@@ -341,9 +371,7 @@ def construct_tars(
             skip_tars_md5,
             cur,
             con,
-            force_database_corruption,
-            error_on_duplicate_tar,
-            overwrite_duplicate_tars,
+            dev_options,
             archived,
         )
 
