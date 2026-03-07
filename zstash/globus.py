@@ -120,14 +120,13 @@ def globus_transfer(  # noqa: C901
             task = transfer_manager.globus_config.transfer_client.get_task(mrt.task_id)
             mrt.task_status = task["status"]
             # one  of {ACTIVE, SUCCEEDED, FAILED, CANCELED, PENDING, INACTIVE}
-            # NOTE: How we behave here depends upon whether we want to support mutliple active transfers.
-            # Presently, we do not, except inadvertantly (if status == PENDING)
             if mrt.task_status == "ACTIVE":
                 logger.info(
                     f"{ts_utc()}: Previous task_id {mrt.task_id} Still Active. Returning ACTIVE."
                 )
-                # Don't return early - continue to submit the new transfer
-                # The previous transfer will complete asynchronously
+                # Don't return early -- continue to submit the new transfer.
+                # The previous transfer will complete asynchronously.
+                # That is, we will permit multiple active transfers.
             elif mrt.task_status == "SUCCEEDED":
                 logger.info(
                     f"{ts_utc()}: Previous task_id {mrt.task_id} status = SUCCEEDED."
@@ -155,8 +154,9 @@ def globus_transfer(  # noqa: C901
                     flush=True,
                 )
 
-        # Submit the current transfer_data
         logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
+        # Submit the current transfer_data
+        # ALWAYS submit. If we've gotten to this point, we're ready to submit.
         task = submit_transfer_with_checks(
             transfer_manager.globus_config.transfer_client, transfer_data
         )
@@ -196,11 +196,11 @@ def globus_transfer(  # noqa: C901
     task_status = "UNKNOWN"
     if new_mrt and new_mrt.task_id:
         if not non_blocking:
+            # If blocking, wait for the task to complete and get the final status,
+            # before we proceed with any more transfers.
             new_mrt.task_status = globus_block_wait(
                 transfer_manager.globus_config.transfer_client,
                 task_id=new_mrt.task_id,
-                wait_timeout=7200,
-                max_retries=5,
             )
             task_status = new_mrt.task_status
         else:
@@ -220,33 +220,48 @@ def globus_transfer(  # noqa: C901
 def globus_block_wait(
     transfer_client: TransferClient,
     task_id: str,
-    wait_timeout: int,
-    max_retries: int,
+    wait_timeout: int = 7200,  # 7200/3600 = 2 hours
+    max_retries: int = 5,
 ):
-
-    # poll every "polling_interval" seconds to speed up small transfers.  Report every 2 hours, stop waiting aftert 5*2 = 10 hours
+    # Poll every "polling_interval" seconds to speed up small transfers.
+    # Report every "wait_timeout" seconds, and stop waiting after "max_retries" reports.
+    # By default: report every 2 hours, stop waiting after 5*2 = 10 hours
     logger.info(
         f"{ts_utc()}: BLOCKING START: invoking task_wait for task_id = {task_id}"
     )
-    task_status = "UNKNOWN"
-    retry_count = 0
+    task_status: str = "UNKNOWN"
+    retry_count: int = 0
     while retry_count < max_retries:
         try:
-            # Wait for the task to complete
             logger.info(
                 f"{ts_utc()}: on task_wait try {retry_count + 1} out of {max_retries}"
             )
-            transfer_client.task_wait(
+            # Wait for the task to complete. This is what makes this function BLOCKING.
+            # From https://globus-sdk-python.readthedocs.io/en/stable/services/transfer.html#globus_sdk.TransferClient.task_wait: Wait until a Task is complete or fails, with a time limit. If the task is “ACTIVE” after time runs out, returns False. Otherwise returns True.
+            task_is_not_active: bool = transfer_client.task_wait(
                 task_id, timeout=wait_timeout, polling_interval=10
             )
+            if task_is_not_active:
+                curr_task = transfer_client.get_task(task_id)
+                task_status = curr_task["status"]
+                if task_status == "SUCCEEDED":
+                    break  # Break out of the while-loop. The transfer already succeeded, so no need to retry.
+                elif task_status in ["FAILED", "CANCELED"]:
+                    error_str = f"{ts_utc()}: task_wait returned True, but task_status={task_status} for task_id {task_id}. No reason to keep retrying now."
+                    logger.warning(error_str)
+                    # We still need to break, because no matter how long we wait now, nothing will change with the transfer status.
+                    break
+                elif task_status in ["PENDING", "INACTIVE"]:
+                    error_str = f"{ts_utc()}: task_wait returned True, but task_status={task_status} for task_id {task_id}. Will retry waiting until max_retries is reached."
+                    logger.warning(error_str)
+                    # Don't break -- continue retries
+                else:
+                    error_str = f"{ts_utc()}: task_wait returned True, but task_status={task_status} is unexpected for task_id {task_id}. Will retry waiting until max_retries is reached."
+                    logger.warning(error_str)
+                    # Don't break -- continue retries
             logger.info(f"{ts_utc()}: done with wait")
         except Exception as e:
             logger.error(f"Unexpected Exception: {e}")
-        else:
-            curr_task = transfer_client.get_task(task_id)
-            task_status = curr_task["status"]
-            if task_status == "SUCCEEDED":
-                break
         finally:
             retry_count += 1
             logger.info(
