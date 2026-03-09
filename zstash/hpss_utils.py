@@ -352,16 +352,25 @@ def construct_tars(
         # Add files to the tar until we reach the max size
         while i_file < nfiles:
             current_file: str = files[i_file]
-            # TODO: check if the extra stat call (via getsize) impacts performance
-            current_file_size: int = os.path.getsize(current_file)
+            # It's ok that current_file isn't in the tar yet.
+            tarinfo = tar_wrapper.tar.gettarinfo(current_file)
+            current_file_size = tarinfo.size
+
             # Check if adding this file would send us over the max size.
-            if tar_size + current_file_size > max_size:
-                # If so, time to close and transfer this tar archive.
-                break
-            else:
-                # If not, add current file to tar archive.
-                tar_size += tar_wrapper.process_file(current_file, archived, failures)
+            if (tar_size == 0) or (tar_size + current_file_size <= max_size):
+                # Case 1: if the tar is empty, always add the file, even if it's over the max size.
+                # Case 2: if the tar is nonempty, only add the file if it won't put us over the max size.
+                new_tar_size = tar_wrapper.process_file(
+                    current_file, archived, failures
+                )
+                if new_tar_size != 0:
+                    tar_size = new_tar_size
+                # Else: process_file failed, so we should keep the original tar_size
                 i_file += 1
+            else:
+                # Over the size limit.
+                # Time to close and transfer this tar archive.
+                break
 
         # Close and transfer this tar archive, and update the database with the archived files.
         tar_wrapper.process_tar(
