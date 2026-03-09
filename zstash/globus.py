@@ -124,9 +124,22 @@ def globus_transfer(  # noqa: C901
                 logger.info(
                     f"{ts_utc()}: Previous task_id {mrt.task_id} Still Active. Returning ACTIVE."
                 )
-                # Don't return early -- continue to submit the new transfer.
-                # The previous transfer will complete asynchronously.
-                # That is, we will permit multiple active transfers.
+                # There is currently an active Globus transfer.
+                # Globus allows 3 simultaneous transfers, but right now, we only do one at a time.
+                # So, return for now, skipping the rest of `globus_transfer`.
+                # What happens next?
+                # We return to constructing tars.
+                # We won't need to create a new batch because the current batch exists.
+                # Once the transfer status is finally SUCCEEDED,
+                # we'll submit the current batch for Globus transfer.
+                if non_blocking:
+                    return "ACTIVE"
+                else:
+                    error_str: str = (
+                        "task_status='ACTIVE', but in blocking mode, the previous transfer should have waited through globus_block_wait"
+                    )
+                    logger.error(error_str)
+                    raise RuntimeError(error_str)
             elif mrt.task_status == "SUCCEEDED":
                 logger.info(
                     f"{ts_utc()}: Previous task_id {mrt.task_id} status = SUCCEEDED."
@@ -138,6 +151,8 @@ def globus_transfer(  # noqa: C901
                 logger.info(
                     f"{ts}:Globus transfer {mrt.task_id}, from {src_ep} to {dst_ep}: {label} succeeded"
                 )
+                # The previous transfer succeeded.
+                # That means we can transfer the current batch now.
             else:
                 logger.error(
                     f"{ts_utc()}: Previous task_id {mrt.task_id} status = {mrt.task_status}."

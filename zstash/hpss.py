@@ -113,8 +113,11 @@ def hpss_transfer(
                 transfer_manager.globus_config = GlobusConfig()
             # Transfer file using the Globus Transfer Service
             logger.info(f"{ts_utc()}: DIVING: hpss calls globus_transfer(name={name})")
-            globus_transfer(
+            task_status: str = globus_transfer(
                 transfer_manager, endpoint, url_path, name, transfer_type, non_blocking
+            )
+            logger.info(
+                f"{ts_utc()}: globus_transfer(name={name}) returned task_status={task_status}"
             )
             mrt: Optional[TransferBatch] = transfer_manager.get_most_recent_transfer()
             if mrt and mrt.task_status:

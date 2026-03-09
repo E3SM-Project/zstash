@@ -68,7 +68,11 @@ class TarWrapper(object):
         self.tar = tarfile.open(mode="w", fileobj=self.tarFileObject, dereference=follow_symlinks)  # type: ignore
 
     def process_file(
-        self, current_file: str, archived: List[TupleFilesRowNoId], failures: List[str]
+        self,
+        current_file: str,
+        tar_info: tarfile.TarInfo,
+        archived: List[TupleFilesRowNoId],
+        failures: List[str],
     ) -> int:
         logger.info(f"Archiving {current_file}")
         tar_size: int = 0
@@ -77,7 +81,9 @@ class TarWrapper(object):
             size: int
             mtime: datetime
             md5: Optional[str]
-            offset, size, mtime, md5 = add_file_to_tar_archive(self.tar, current_file)
+            offset, size, mtime, md5 = add_file_to_tar_archive(
+                self.tar, current_file, tar_info
+            )
             t: TupleFilesRowNoId = (
                 current_file,
                 size,
@@ -275,36 +281,32 @@ class HashIO(object):
 # Add file to tar archive while computing its hash
 # Return file offset (in tar archive), size and md5 hash
 def add_file_to_tar_archive(
-    tar: tarfile.TarFile, file_name: str
+    tar: tarfile.TarFile, file_name: str, tar_info: tarfile.TarInfo
 ) -> Tuple[int, int, datetime, Optional[str]]:
     offset = tar.offset
-    tarinfo = tar.gettarinfo(file_name)
-
-    if tarinfo.islnk():
-        tarinfo.size = os.path.getsize(file_name)
 
     md5: Optional[str] = None
 
     # For files/hardlinks
-    if tarinfo.isfile() or tarinfo.islnk():
-        if tarinfo.size > 0:
+    if tar_info.isfile() or tar_info.islnk():
+        if tar_info.size > 0:
             # Non-empty files: stream with hash computation
             hash_md5 = hashlib.md5()
             with open(file_name, "rb") as f:
                 wrapper = HashingFileWrapper(f, hash_md5)
-                tar.addfile(tarinfo, wrapper)
+                tar.addfile(tar_info, wrapper)
             md5 = hash_md5.hexdigest()
         else:
             # Empty files: just add to tar, compute hash of empty data
-            tar.addfile(tarinfo)
+            tar.addfile(tar_info)
             md5 = hashlib.md5(b"").hexdigest()  # MD5 of empty bytes
     else:
         # Directories, symlinks, etc.
         # md5 will be None in these cases.
-        tar.addfile(tarinfo)
+        tar.addfile(tar_info)
 
-    size = tarinfo.size
-    mtime = datetime.utcfromtimestamp(tarinfo.mtime)
+    size = tar_info.size
+    mtime = datetime.utcfromtimestamp(tar_info.mtime)
     return offset, size, mtime, md5
 
 
@@ -331,6 +333,7 @@ def construct_tars(
         raise TypeError(f"Invalid config.maxsize={config.maxsize}")
 
     i_file: int = 0
+    carried_over_tar_info: Optional[tarfile.TarInfo] = None
     while i_file < nfiles:
         # Each iteration of this loop constructs one tar
 
@@ -352,24 +355,46 @@ def construct_tars(
         # Add files to the tar until we reach the max size
         while i_file < nfiles:
             current_file: str = files[i_file]
-            # It's ok that current_file isn't in the tar yet.
-            tarinfo = tar_wrapper.tar.gettarinfo(current_file)
-            current_file_size = tarinfo.size
+            if carried_over_tar_info:
+                # If current_file wasn't added to the last tar,
+                # then we can immediately add it now.
+                # No need to repeat the size calculations.
+                tar_info = carried_over_tar_info
+                current_file_size = tar_info.size
+            else:
+                try:
+                    # It's ok that current_file isn't in the tar yet.
+                    tar_info = tar_wrapper.tar.gettarinfo(current_file)
+                    if tar_info.islnk():
+                        tar_info.size = os.path.getsize(current_file)
+                    current_file_size = tar_info.size
+                except Exception:
+                    # We couldn't even get the size of this file.
+                    # So let's continue to the next file.
+                    # (Likely cause: broken symlink)
+                    traceback.print_exc()
+                    logger.error(f"Archiving {current_file}")
+                    # failures.append(current_file)  # Mark this file as an error
+                    # i_file += 1  # Go to the next file
+                    raise
 
             # Check if adding this file would send us over the max size.
             if (tar_size == 0) or (tar_size + current_file_size <= max_size):
                 # Case 1: if the tar is empty, always add the file, even if it's over the max size.
                 # Case 2: if the tar is nonempty, only add the file if it won't put us over the max size.
                 new_tar_size = tar_wrapper.process_file(
-                    current_file, archived, failures
+                    current_file, tar_info, archived, failures
                 )
                 if new_tar_size != 0:
                     tar_size = new_tar_size
                 # Else: process_file failed, so we should keep the original tar_size
                 i_file += 1
             else:
-                # Over the size limit.
+                # Over the size limit:
                 # Time to close and transfer this tar archive.
+                carried_over_tar_info = tar_info  # Carry over this info to the next tar
+                # Break out of the inner while-loop:
+                # Done adding files to this particular tar.
                 break
 
         # Close and transfer this tar archive, and update the database with the archived files.
