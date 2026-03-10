@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function
 
 import sys
-from typing import List, Optional
+from typing import Dict, List, Optional, Set, Tuple
 
 from globus_sdk import TransferAPIError, TransferClient
 from globus_sdk.response import GlobusHTTPResponse
@@ -338,73 +338,182 @@ def globus_wait(transfer_client: TransferClient, task_id: str):
         sys.exit(1)
 
 
-def globus_finalize(transfer_manager: TransferManager):
+def _submit_pending_transfer_data(
+    transfer_client: TransferClient,
+    transfer_manager: TransferManager,
+) -> Optional[str]:
+    """
+    If the most recent batch has unsubmitted TransferData, submit it and return task_id.
+    Otherwise return None.
+    """
+    transfer: Optional[TransferBatch] = transfer_manager.get_most_recent_transfer()
+    if not transfer or not transfer.transfer_data:
+        return None
 
-    last_task_id = None
+    logger.info(f"{ts_utc()}: FINAL TransferData: accumulated items:")
+    attribs = transfer.transfer_data.__dict__
+    for item in attribs["data"]["DATA"]:
+        if item["DATA_TYPE"] == "transfer_item":
+            transfer_manager.cumulative_tarfiles_pushed += 1
+            print(
+                f"    (finalize) PUSHING ({transfer_manager.cumulative_tarfiles_pushed}) source item: {item['source_path']}",
+                flush=True,
+            )
 
+    logger.info(
+        f"{ts_utc()}: DIVING: Submit Transfer for {transfer.transfer_data['label']}"
+    )
+    try:
+        last_task = submit_transfer_with_checks(transfer_client, transfer.transfer_data)
+        task_id = last_task.get("task_id")
+
+        # Best-effort: if this batch represents the submission, store the task_id.
+        if task_id and transfer.is_globus and not transfer.task_id:
+            transfer.task_id = task_id
+
+        return task_id
+
+    except TransferAPIError as e:
+        if e.code == "NoCredException":
+            logger.error(
+                "{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(
+                    e.message
+                )
+            )
+        else:
+            logger.error(e)
+        sys.exit(1)
+    except Exception as e:
+        logger.error("Exception: {}".format(e))
+        sys.exit(1)
+
+
+def _collect_globus_task_ids(
+    transfer_manager: TransferManager,
+    extra_task_id: Optional[str],
+) -> Tuple[List[str], Dict[str, TransferBatch]]:
+    """
+    Return (ordered unique task_ids, task_id->batch mapping for first occurrence).
+
+    Includes:
+      - All Globus batch.task_id values where batch.file_paths is non-empty
+        (i.e., still pending deletion)
+      - extra_task_id if provided
+
+    Skips:
+      - Non-Globus batches
+      - Batches without task_id
+      - Batches whose file_paths is empty (already processed/deleted)
+    """
+    task_ids: List[str] = []
+    seen: Set[str] = set()
+    task_to_batch: Dict[str, TransferBatch] = {}
+
+    for batch in transfer_manager.batches:
+        already_deleted: bool = not batch.file_paths
+
+        if (not batch.is_globus) or (not batch.task_id) or (already_deleted):
+            continue
+
+        # By this point, we know batch.task_id is not None
+        tid: str = batch.task_id
+        if tid in seen:
+            continue
+
+        seen.add(tid)
+        task_ids.append(tid)
+        task_to_batch[tid] = batch
+
+    # Always include extra_task_id (e.g., just-submitted transfer),
+    # even if not yet reflected in batches.
+    if extra_task_id and (extra_task_id not in seen):
+        task_ids.append(extra_task_id)
+
+    return task_ids, task_to_batch
+
+
+def _refresh_batch_status(
+    transfer_client: TransferClient,
+    task_id: str,
+    task_to_batch: Dict[str, TransferBatch],
+) -> Optional[str]:
+    """
+    Fetch Globus task status and update corresponding batch.task_status if present.
+    Returns status, or None if fetch fails.
+    """
+    try:
+        task: GlobusHTTPResponse = transfer_client.get_task(task_id)
+        status = task["status"]
+        batch: Optional[TransferBatch] = task_to_batch.get(task_id)
+        if batch:
+            batch.task_status = status
+        return status
+    except Exception as e:
+        logger.warning(
+            f"{ts_utc()}: Could not fetch status for task_id={task_id}; will wait anyway. ({e})"
+        )
+        return None
+
+
+def _wait_for_all_tasks(
+    transfer_client: TransferClient,
+    task_ids: List[str],
+    task_to_batch: Dict[str, TransferBatch],
+) -> None:
+    """
+    For each task_id, refresh status; if not SUCCEEDED, block via globus_wait;
+    then refresh status again for deletion logic.
+    """
+    for tid in task_ids:
+        status = _refresh_batch_status(transfer_client, tid, task_to_batch)
+        if status == "SUCCEEDED":
+            logger.info(f"{ts_utc()}: task_id={tid} already SUCCEEDED; skipping wait")
+            continue
+
+        logger.info(
+            f"{ts_utc()}: Waiting for transfer task_id={tid} to complete (status={status})"
+        )
+        globus_wait(transfer_client, tid)
+
+        # After wait returns, task is terminal; refresh once more.
+        _refresh_batch_status(transfer_client, tid, task_to_batch)
+
+
+def _prune_empty_batches(transfer_manager: TransferManager) -> None:
+    """
+    Remove batches which have no remaining files to manage.
+
+    Note: we only prune batches whose file_paths is empty, regardless of Globus/HPSS.
+    That matches current semantics where file_paths=[] means "processed".
+    """
+    before = len(transfer_manager.batches)
+    transfer_manager.batches = [b for b in transfer_manager.batches if b.file_paths]
+    after = len(transfer_manager.batches)
+    if after != before:
+        logger.debug(f"{ts_utc()}: Pruned {before - after} empty transfer batches")
+
+
+def globus_finalize(transfer_manager: TransferManager) -> None:
     if transfer_manager.globus_config is None:
         logger.warning("No GlobusConfig object provided for finalization")
         return
+    if transfer_manager.globus_config.transfer_client is None:
+        logger.warning("GlobusConfig provided but transfer_client is None")
+        return
 
-    transfer: Optional[TransferBatch] = transfer_manager.get_most_recent_transfer()
-    if transfer:
-        # Check if there's any pending transfer data that hasn't been submitted yet
-        if transfer.transfer_data:
-            # DEBUG: review accumulated items in TransferData
-            logger.info(f"{ts_utc()}: FINAL TransferData: accumulated items:")
-            attribs = transfer.transfer_data.__dict__
-            for item in attribs["data"]["DATA"]:
-                if item["DATA_TYPE"] == "transfer_item":
-                    transfer_manager.cumulative_tarfiles_pushed += 1
-                    print(
-                        f"    (finalize) PUSHING ({transfer_manager.cumulative_tarfiles_pushed}) source item: {item['source_path']}",
-                        flush=True,
-                    )
+    # By this point, we know transfer_client is not None
+    transfer_client: TransferClient = transfer_manager.globus_config.transfer_client
 
-            # SUBMIT new transfer here
-            logger.info(
-                f"{ts_utc()}: DIVING: Submit Transfer for {transfer.transfer_data['label']}"
-            )
-            try:
-                last_task = submit_transfer_with_checks(
-                    transfer_manager.globus_config.transfer_client,
-                    transfer.transfer_data,
-                )
-                last_task_id = last_task.get("task_id")
-            except TransferAPIError as e:
-                if e.code == "NoCredException":
-                    logger.error(
-                        "{}. Please go to https://app.globus.org/endpoints and activate the endpoint.".format(
-                            e.message
-                        )
-                    )
-                else:
-                    logger.error(e)
-                sys.exit(1)
-            except Exception as e:
-                logger.error("Exception: {}".format(e))
-                sys.exit(1)
+    last_task_id: Optional[str] = _submit_pending_transfer_data(
+        transfer_client, transfer_manager
+    )
 
-        # Wait for any submitted transfers to complete
-        # In non-blocking mode, this ensures index.db and any accumulated tar files complete
-        # In blocking mode, this is redundant but harmless
-        skip_last_wait: bool = False
-        if transfer and transfer.task_id:
-            if transfer.task_id == last_task_id:
-                skip_last_wait = (
-                    True  # No reason to call globus_wait twice on the same task_id
-                )
-            logger.info(
-                f"{ts_utc()}: Waiting for transfer task_id={transfer.task_id} to complete"
-            )
-            globus_wait(
-                transfer_manager.globus_config.transfer_client, transfer.task_id
-            )
-        if last_task_id and (not skip_last_wait):
-            logger.info(
-                f"{ts_utc()}: Waiting for last transfer task_id={last_task_id} to complete"
-            )
-            globus_wait(transfer_manager.globus_config.transfer_client, last_task_id)
+    task_ids: List[str]
+    task_to_batch: Dict[str, TransferBatch]
+    task_ids, task_to_batch = _collect_globus_task_ids(transfer_manager, last_task_id)
 
-        # Clean up tar files that were queued for deletion
-        transfer_manager.delete_successfully_transferred_files()
+    _wait_for_all_tasks(transfer_client, task_ids, task_to_batch)
+
+    transfer_manager.delete_successfully_transferred_files()
+
+    _prune_empty_batches(transfer_manager)
