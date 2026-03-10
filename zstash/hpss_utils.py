@@ -130,7 +130,7 @@ class TarWrapper(object):
         else:
             raise TypeError("Invalid config.hpss={}".format(config.hpss))
 
-        logger.info(f"Contents of the cache prior to `hpss_put`: {os.listdir(cache)}")
+        logger.debug(f"Contents of the cache prior to `hpss_put`: {os.listdir(cache)}")
 
         logger.info(
             f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {self.tfname} [keep, non_blocking] = [{keep}, {non_blocking}]"

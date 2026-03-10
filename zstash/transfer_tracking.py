@@ -56,26 +56,42 @@ class TransferManager:
         self.batches = [
             batch for batch in self.batches if batch.file_paths
         ]  # Clean up empty batches
-        for batch in self.batches:
-            # Check if this is a Globus transfer that needs status update
-            if batch.is_globus and batch.task_id and (batch.task_status != "SUCCEEDED"):
-                logger.debug(f"{ts_utc()}: batch is globus AND is not yet successful")
-                if self.globus_config and self.globus_config.transfer_client:
-                    # Non-blocking status check
-                    logger.debug(
-                        f"{ts_utc()}: Checking status of task_id={batch.task_id}"
-                    )
-                    task = self.globus_config.transfer_client.get_task(batch.task_id)
-                    batch.task_status = task["status"]
-                    logger.debug(
-                        f"{ts_utc()}: task_id={batch.task_id} status={batch.task_status}"
-                    )
-                else:
-                    logger.debug(
-                        f"{ts_utc()}: globus_config is not set up with a transfer client"
-                    )
 
-            # Now delete if successful
+        # Identify pending Globus batches (not yet succeeded)
+        pending_globus_batches = [
+            batch
+            for batch in self.batches
+            if batch.is_globus and batch.task_id and batch.task_status != "SUCCEEDED"
+        ]
+
+        # To avoid excessive Globus API calls, only poll one pending batch per
+        # invocation. We poll the first (oldest) element in pending_globus_batches,
+        # since the list preserves insertion order. globus_finalize() handles all
+        # remaining ones at the end.
+        if pending_globus_batches:
+            batch_to_poll = pending_globus_batches[0]
+            logger.debug(
+                f"{ts_utc()}: batch is globus AND is not yet successful "
+                f"(task_id={batch_to_poll.task_id})"
+            )
+            if self.globus_config and self.globus_config.transfer_client:
+                # Non-blocking status check
+                logger.debug(
+                    f"{ts_utc()}: Checking status of task_id={batch_to_poll.task_id}"
+                )
+                task = self.globus_config.transfer_client.get_task(batch_to_poll.task_id)
+                batch_to_poll.task_status = task["status"]
+                logger.debug(
+                    f"{ts_utc()}: task_id={batch_to_poll.task_id} "
+                    f"status={batch_to_poll.task_status}"
+                )
+            else:
+                logger.debug(
+                    f"{ts_utc()}: globus_config is not set up with a transfer client"
+                )
+
+        # Delete from all batches that have already succeeded
+        for batch in self.batches:
             if (not batch.is_globus) or (batch.task_status == "SUCCEEDED"):
                 # The files were transferred successfully, so delete them
                 logger.info(
