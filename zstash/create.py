@@ -104,7 +104,7 @@ def create():
     )
 
     logger.debug(f"{ts_utc()}: calling globus_finalize()")
-    globus_finalize(transfer_manager)
+    globus_finalize(transfer_manager, args.keep)
 
     if len(failures) > 0:
         # List the failures

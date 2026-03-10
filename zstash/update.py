@@ -45,7 +45,7 @@ def update():
         transfer_manager=transfer_manager,
     )
 
-    globus_finalize(transfer_manager)
+    globus_finalize(transfer_manager, args.keep)
 
     # List failures
     if len(failures) > 0:

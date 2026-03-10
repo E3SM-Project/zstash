@@ -401,30 +401,25 @@ def _submit_pending_transfer_data(
 
 
 def _collect_globus_task_ids(
-    transfer_manager: TransferManager,
-    extra_task_id: Optional[str],
+    transfer_manager: TransferManager, extra_task_id: Optional[str], keep: bool
 ) -> Tuple[List[str], Dict[str, TransferBatch]]:
     """
     Return (ordered unique task_ids, task_id->batch mapping for first occurrence).
-
-    Includes:
-      - All Globus batch.task_id values where batch.file_paths is non-empty
-        (i.e., still pending deletion)
-      - extra_task_id if provided
-
-    Skips:
-      - Non-Globus batches
-      - Batches without task_id
-      - Batches whose file_paths is empty (already processed/deleted)
     """
     task_ids: List[str] = []
     seen: Set[str] = set()
     task_to_batch: Dict[str, TransferBatch] = {}
 
     for batch in transfer_manager.batches:
-        already_deleted: bool = not batch.file_paths
+        if not keep:
+            # NOTE: This is always true if `keep` is set,
+            # since we never track files for deletion if `keep` is set.
+            already_deleted: bool = not batch.file_paths
+            if already_deleted:
+                # This batch has already been processed and files deleted, so we can skip it.
+                continue
 
-        if (not batch.is_globus) or (not batch.task_id) or (already_deleted):
+        if (not batch.is_globus) or (not batch.task_id):
             continue
 
         # By this point, we know batch.task_id is not None
@@ -505,7 +500,7 @@ def _prune_empty_batches(transfer_manager: TransferManager) -> None:
         logger.debug(f"{ts_utc()}: Pruned {before - after} empty transfer batches")
 
 
-def globus_finalize(transfer_manager: TransferManager) -> None:
+def globus_finalize(transfer_manager: TransferManager, keep: bool) -> None:
     if transfer_manager.globus_config is None:
         logger.debug("No GlobusConfig object provided for finalization")
         return
@@ -522,7 +517,9 @@ def globus_finalize(transfer_manager: TransferManager) -> None:
 
     task_ids: List[str]
     task_to_batch: Dict[str, TransferBatch]
-    task_ids, task_to_batch = _collect_globus_task_ids(transfer_manager, last_task_id)
+    task_ids, task_to_batch = _collect_globus_task_ids(
+        transfer_manager, last_task_id, keep
+    )
 
     _wait_for_all_tasks(transfer_client, task_ids, task_to_batch)
 
