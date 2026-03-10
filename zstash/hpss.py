@@ -169,13 +169,19 @@ def hpss_put(
     )
 
 
-def hpss_get(hpss: str, file_path: str, cache: str):
+def hpss_get(
+    hpss: str,
+    file_path: str,
+    cache: str,
+    transfer_manager: Optional[TransferManager] = None,
+):
     """
     Get a file from the HPSS archive.
     """
     url = urlparse(hpss)
-    transfer_manager: TransferManager = TransferManager()
-    if url.scheme == "globus":
+    if not transfer_manager:
+        transfer_manager = TransferManager()
+    if (url.scheme == "globus") and not (transfer_manager.globus_config):
         transfer_manager.globus_config = GlobusConfig()
     hpss_transfer(
         hpss, file_path, "get", cache, False, transfer_manager=transfer_manager

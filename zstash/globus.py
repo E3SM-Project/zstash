@@ -124,14 +124,12 @@ def globus_transfer(  # noqa: C901
                 logger.info(
                     f"{ts_utc()}: Previous task_id {mrt.task_id} Still Active. Returning ACTIVE."
                 )
-                # There is currently an active Globus transfer.
-                # Globus allows 3 simultaneous transfers, but right now, we only do one at a time.
-                # So, return for now, skipping the rest of `globus_transfer`.
-                # What happens next?
-                # We return to constructing tars.
-                # We won't need to create a new batch because the current batch exists.
-                # Once the transfer status is finally SUCCEEDED,
-                # we'll submit the current batch for Globus transfer.
+                # There is currently an active Globus transfer associated with this
+                # managed transfer record. For this call, we skip submitting a new
+                # transfer for this record and return early.
+                # In non-blocking mode, callers may have multiple Globus transfers
+                # in flight overall; this branch only ensures we do not resubmit
+                # the same task while it is still ACTIVE.
                 if non_blocking:
                     return "ACTIVE"
                 else:

@@ -161,7 +161,7 @@ def update_database(  # noqa: C901
             else:
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
             transfer_manager.globus_config = globus_activate(hpss)
-            hpss_get(hpss, get_db_filename(cache), cache)
+            hpss_get(hpss, get_db_filename(cache), cache, transfer_manager)
         else:
             error_str: str = (
                 "--hpss argument is required when local copy of database is unavailable"
