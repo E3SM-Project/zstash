@@ -334,7 +334,7 @@ def construct_tars(
 
     operation: str
     if itar == -1:
-        operation = "create"
+        operation = "creation"
     else:
         operation = "update"
 
