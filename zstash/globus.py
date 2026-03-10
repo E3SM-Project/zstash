@@ -495,10 +495,10 @@ def _prune_empty_batches(transfer_manager: TransferManager) -> None:
 
 def globus_finalize(transfer_manager: TransferManager) -> None:
     if transfer_manager.globus_config is None:
-        logger.warning("No GlobusConfig object provided for finalization")
+        logger.debug("No GlobusConfig object provided for finalization")
         return
     if transfer_manager.globus_config.transfer_client is None:
-        logger.warning("GlobusConfig provided but transfer_client is None")
+        logger.debug("GlobusConfig provided but transfer_client is None")
         return
 
     # By this point, we know transfer_client is not None
