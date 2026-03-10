@@ -279,26 +279,20 @@ create table files (
         overwrite_duplicate_tars=args.overwrite_duplicate_tars,
         force_database_corruption=args.for_developers_force_database_corruption,
     )
-    try:
-        # Add files to archive
-        failures = construct_tars(
-            cur,
-            con,
-            -1,
-            files,
-            cache,
-            args.keep,
-            args.follow_symlinks,
-            dev_options,
-            skip_tars_md5=args.no_tars_md5,
-            non_blocking=args.non_blocking,
-            transfer_manager=transfer_manager,
-        )
-    except FileNotFoundError:
-        if args.follow_symlinks:
-            raise Exception("Archive creation failed due to broken symlink.")
-        else:
-            raise
+    # Add files to archive
+    failures = construct_tars(
+        cur,
+        con,
+        -1,
+        files,
+        cache,
+        args.keep,
+        args.follow_symlinks,
+        dev_options,
+        skip_tars_md5=args.no_tars_md5,
+        non_blocking=args.non_blocking,
+        transfer_manager=transfer_manager,
+    )
 
     # Close database
     con.commit()

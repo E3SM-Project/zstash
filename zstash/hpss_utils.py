@@ -332,12 +332,18 @@ def construct_tars(
     else:
         raise TypeError(f"Invalid config.maxsize={config.maxsize}")
 
+    operation: str
+    if itar == -1:
+        operation = "create"
+    else:
+        operation = "update"
+
     i_file: int = 0
     carried_over_tar_info: Optional[tarfile.TarInfo] = None
     while i_file < nfiles:
         # Each iteration of this loop constructs one tar
 
-        # `create` passes in itar=-1, so the first tar will be 000001.tar
+        # `create` passes in itar=-1, so the first tar will be 000000.tar
         # `update` passes in itar=max existing tar number, so the first tar will be max+1
         itar += 1
         tar_size: int = 0
@@ -361,6 +367,7 @@ def construct_tars(
                 # No need to repeat the size calculations.
                 tar_info = carried_over_tar_info
                 current_file_size = tar_info.size
+                carried_over_tar_info = None  # Reset for next iteration
             else:
                 try:
                     # It's ok that current_file isn't in the tar yet.
@@ -368,15 +375,14 @@ def construct_tars(
                     if tar_info.islnk():
                         tar_info.size = os.path.getsize(current_file)
                     current_file_size = tar_info.size
-                except Exception:
-                    # We couldn't even get the size of this file.
-                    # So let's continue to the next file.
-                    # (Likely cause: broken symlink)
-                    traceback.print_exc()
+                except FileNotFoundError:
                     logger.error(f"Archiving {current_file}")
-                    # failures.append(current_file)  # Mark this file as an error
-                    # i_file += 1  # Go to the next file
-                    raise
+                    if follow_symlinks:
+                        raise Exception(
+                            f"Archive {operation} failed due to broken symlink."
+                        )
+                    else:
+                        raise
 
             # Check if adding this file would send us over the max size.
             if (tar_size == 0) or (tar_size + current_file_size <= max_size):

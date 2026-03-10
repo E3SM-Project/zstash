@@ -280,25 +280,19 @@ def update_database(  # noqa: C901
         overwrite_duplicate_tars=args.overwrite_duplicate_tars,
         force_database_corruption="",
     )
-    try:
-        # Add files
-        failures = construct_tars(
-            cur,
-            con,
-            itar,
-            newfiles,
-            cache,
-            keep,
-            args.follow_symlinks,
-            dev_options,
-            non_blocking=args.non_blocking,
-            transfer_manager=transfer_manager,
-        )
-    except FileNotFoundError:
-        if args.follow_symlinks:
-            raise Exception("Archive update failed due to broken symlink.")
-        else:
-            raise
+    # Add files
+    failures = construct_tars(
+        cur,
+        con,
+        itar,
+        newfiles,
+        cache,
+        keep,
+        args.follow_symlinks,
+        dev_options,
+        non_blocking=args.non_blocking,
+        transfer_manager=transfer_manager,
+    )
 
     # Close database
     con.commit()
