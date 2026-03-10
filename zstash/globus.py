@@ -117,22 +117,29 @@ def globus_transfer(  # noqa: C901
     task: GlobusHTTPResponse
     try:
         if mrt and mrt.task_id:
+            # This the current transfer task associated with the most recent batch.
             task = transfer_manager.globus_config.transfer_client.get_task(mrt.task_id)
+            # Update the most recent batch's task_status based on the current status from Globus API.
             mrt.task_status = task["status"]
-            # one  of {ACTIVE, SUCCEEDED, FAILED, CANCELED, PENDING, INACTIVE}
+            # According to https://docs.globus.org/api/transfer/task/#task_fields,
+            # this will be one  of {ACTIVE, INACTIVE, SUCCEEDED, FAILED}
             if mrt.task_status == "ACTIVE":
+                # The most recent transfer (mrt) is still active.
                 logger.info(
                     f"{ts_utc()}: Previous task_id {mrt.task_id} Still Active. Returning ACTIVE."
                 )
-                # There is currently an active Globus transfer associated with this
-                # managed transfer record. For this call, we skip submitting a new
-                # transfer for this record and return early.
-                # In non-blocking mode, callers may have multiple Globus transfers
-                # in flight overall; this branch only ensures we do not resubmit
-                # the same task while it is still ACTIVE.
                 if non_blocking:
+                    # Globus allows up to 3 simulataneous transfers,
+                    # but zstash is currently configured to only ever allow 1.
+                    # If we're in this block, then we're already at 1 active transfer.
+                    # We will therefore wait to submit a new transfer until it's done.
+                    # So, we'll simply return and the next run of globus_transfer
+                    # (i.e., on the next tar) will evaluate if the active transfer has finished.
                     return "ACTIVE"
                 else:
+                    # If we're in this block, then the blocking wait
+                    # for the previous transfer to finish was unsuccessful.
+                    # This is an unexpected state and so we raise an error.
                     error_str: str = (
                         "task_status='ACTIVE', but in blocking mode, the previous transfer should have waited through globus_block_wait"
                     )
@@ -259,16 +266,23 @@ def globus_block_wait(
                 task_status = curr_task["status"]
                 if task_status == "SUCCEEDED":
                     break  # Break out of the while-loop. The transfer already succeeded, so no need to retry.
-                elif task_status in ["FAILED", "CANCELED"]:
+                elif task_status == "FAILED":
                     error_str = f"{ts_utc()}: task_wait returned True, but task_status={task_status} for task_id {task_id}. No reason to keep retrying now."
                     logger.warning(error_str)
                     # We still need to break, because no matter how long we wait now, nothing will change with the transfer status.
                     break
-                elif task_status in ["PENDING", "INACTIVE"]:
+                elif task_status in [
+                    "INACTIVE",
+                    "UNKNOWN",
+                    "EXHAUSTED_TIMEOUT_RETRIES",
+                ]:
+                    # The latter two options here are ones we assign manually and aren't included on
+                    # https://docs.globus.org/api/transfer/task/#task_fields
                     error_str = f"{ts_utc()}: task_wait returned True, but task_status={task_status} for task_id {task_id}. Will retry waiting until max_retries is reached."
                     logger.warning(error_str)
                     # Don't break -- continue retries
                 else:
+                    # If we're in this block, then somehow an unexpected task_status was returned.
                     error_str = f"{ts_utc()}: task_wait returned True, but task_status={task_status} is unexpected for task_id {task_id}. Will retry waiting until max_retries is reached."
                     logger.warning(error_str)
                     # Don't break -- continue retries

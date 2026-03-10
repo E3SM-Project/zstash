@@ -87,8 +87,9 @@ def hpss_transfer(
         name: str
         path, name = os.path.split(file_path)
 
-        # Add this file to the current batch
-        if (not keep) and (not is_index):  # Never track index.db for deletion
+        # Never track index.db for deletion, only the tar files
+        if (not keep) and (not is_index):
+            # Add this tar file to the current batch
             transfer_manager.batches[-1].file_paths.append(file_path)
             logger.debug(
                 f"{ts_utc()}: Added {file_path} to current batch, batch now has {len(transfer_manager.batches[-1].file_paths)} files"
