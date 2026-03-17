@@ -8,7 +8,7 @@ dependencies:
   - python >=3.11,<3.14
   - sqlite
   - six >=1.16.0
-  - globus-sdk >=3.15.0,<4.0
+  - globus-sdk ==4.0 # >=3.15.0,<4.0
   # Developer Tools
   # =================
   # If versions are updated, also update 'rev' in `.pre-commit.config.yaml`
