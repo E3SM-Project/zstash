@@ -19,6 +19,7 @@ import _hashlib
 import _io
 
 from . import parallel
+from .globus import globus_activate
 from .hpss import hpss_get
 from .settings import (
     BLOCK_SIZE,
@@ -99,6 +100,11 @@ def setup_extract() -> Tuple[argparse.Namespace, str]:
     )
     optional.add_argument("--tars", type=str, help="specify which tars to process")
     optional.add_argument(
+        "--globus-token-file",
+        type=str,
+        help="Path to custom Globus token file. If not specified, uses ~/.zstash_globus_tokens.json",
+    )
+    optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
     optional.add_argument(
@@ -175,6 +181,7 @@ def extract_database(
                 hpss: str = config.hpss
             else:
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
+            globus_activate(hpss, args.globus_token_file)
             hpss_get(hpss, get_db_filename(cache), cache)
         else:
             error_str: str = (

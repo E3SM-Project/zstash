@@ -7,6 +7,7 @@ import sqlite3
 import sys
 from typing import List, Tuple, Union
 
+from .globus import globus_activate
 from .hpss import hpss_get
 from .settings import (
     DEFAULT_CACHE,
@@ -71,6 +72,11 @@ def setup_ls() -> Tuple[argparse.Namespace, str]:
     )
     optional.add_argument("--tars", action="store_true", help="Display tars")
     optional.add_argument(
+        "--globus-token-file",
+        type=str,
+        help="Path to custom Globus token file. If not specified, uses ~/.zstash_globus_tokens.json",
+    )
+    optional.add_argument(
         "-v", "--verbose", action="store_true", help="increase output verbosity"
     )
 
@@ -101,6 +107,7 @@ def ls_database(args: argparse.Namespace, cache: str) -> List[FilesRow]:
             else:
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
             try:
+                globus_activate(hpss, args.globus_token_file)
                 # Retrieve from HPSS
                 hpss_get(hpss, get_db_filename(cache), cache)
             except RuntimeError:
