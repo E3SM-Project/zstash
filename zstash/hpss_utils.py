@@ -362,7 +362,12 @@ def construct_tars(
         archived: List[TupleFilesRowNoId] = []
 
         # Open a new tar
-        # Note: if we're not skipping tars, we want to calculate the hash of the tars.
+        # Note: if we're not skipping the tars table, then we DO want to calculate the hash of the tars.
+        # That is, we DO want to add the tar to the tars table in the database.
+        # That means we need to calculate the hash of the tar file as well.
+        #
+        # We ALWAYS want to calculate the hashes of the individual files, regardless of skip_tars_table,
+        # because we need to add those to the files table.
         tar_wrapper = TarWrapper(
             tar_num=itar,
             cache=cache,
