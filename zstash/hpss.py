@@ -118,13 +118,13 @@ def hpss_transfer(
                 transfer_manager, endpoint, url_path, name, transfer_type, non_blocking
             )
             logger.info(
-                f"{ts_utc()}: globus_transfer(name={name}) returned task_status={task_status}"
+                f"{ts_utc()}: SURFACE: hpss globus_transfer(name={name}) returned task_status={task_status}"
             )
             mrt: Optional[TransferBatch] = transfer_manager.get_most_recent_transfer()
             if mrt and mrt.task_status:
                 globus_status = mrt.task_status
                 logger.info(
-                    f"{ts_utc()}: SURFACE hpss globus_transfer(name={name}) returns {globus_status}"
+                    f"{ts_utc()}: Most recent globus_transfer returned task_status={globus_status}"
                 )
             # NOTE: Here, the status could be "EXHAUSTED_TIMEOUT_RETRIES", meaning a very long transfer
             # or perhaps transfer is hanging. We should decide whether to ignore it, or cancel it, but

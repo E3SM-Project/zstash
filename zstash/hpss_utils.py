@@ -122,7 +122,7 @@ class TarWrapper(object):
         tar_size = self.tarFileObject.tell()
         tar_md5: Optional[str] = self.tarFileObject.md5()
         self.tarFileObject.close()
-        logger.info(f"{ts_utc()}: (add_files): Completed archive file {self.tfname}")
+        logger.info(f"{ts_utc()}: (process_tar): Completed archive file {self.tfname}")
 
         # 2. Transfer the tar to HPSS #########################################
         if config.hpss is not None:
@@ -133,7 +133,7 @@ class TarWrapper(object):
         logger.debug(f"Contents of the cache prior to `hpss_put`: {os.listdir(cache)}")
 
         logger.info(
-            f"{ts_utc()}: DIVING: (add_files): Calling hpss_put to dispatch archive file {self.tfname} [keep, non_blocking] = [{keep}, {non_blocking}]"
+            f"{ts_utc()}: DIVING: (process_tar): Calling hpss_put to dispatch archive file {self.tfname} [keep, non_blocking] = [{keep}, {non_blocking}]"
         )
         # Actually transfer the tar file
         hpss_put(
@@ -146,7 +146,7 @@ class TarWrapper(object):
             transfer_manager=transfer_manager,
         )
         logger.info(
-            f"{ts_utc()}: SURFACE (add_files): Called hpss_put to dispatch archive file {self.tfname}"
+            f"{ts_utc()}: SURFACE (process_tar): Called hpss_put to dispatch archive file {self.tfname}"
         )
 
         # 3. Add the tar itself to the tars table #############################
