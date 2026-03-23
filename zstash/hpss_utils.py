@@ -257,6 +257,18 @@ class HashIO(object):
         return self.position
 
     def write(self, s):
+        """
+        This is called implicitly.
+        In TarWrapper.__init__:
+
+        ```
+        self.tarFileObject = HashIO(os.path.join(cache, self.tfname), "wb", do_hash)
+        self.tar = tarfile.open(mode="w", fileobj=self.tarFileObject, dereference=follow_symlinks)
+        ```
+
+        tarfile.open requires that the fileobj argument has a write() method.
+        It calls that method to write data to the tar file.
+        """
         self.f.write(s)
         if self.hash:
             self.hash.update(s)
