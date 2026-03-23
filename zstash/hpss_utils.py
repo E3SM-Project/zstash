@@ -124,7 +124,7 @@ class TarWrapper(object):
         self.tarFileObject.close()
         logger.info(f"{ts_utc()}: (process_tar): Completed archive file {self.tfname}")
 
-        # 2. Transfer the tar to HPSS #########################################
+        # 2. Submit the tar to the transfer manager's batch transfer system ###
         if config.hpss is not None:
             hpss: str = config.hpss
         else:
@@ -135,7 +135,7 @@ class TarWrapper(object):
         logger.info(
             f"{ts_utc()}: DIVING: (process_tar): Calling hpss_put to dispatch archive file {self.tfname} [keep, non_blocking] = [{keep}, {non_blocking}]"
         )
-        # Actually transfer the tar file
+        # Actually submit the tar file
         hpss_put(
             hpss,
             os.path.join(cache, self.tfname),
@@ -420,7 +420,7 @@ def construct_tars(
                 # Done adding files to this particular tar.
                 break
 
-        # Close and transfer this tar archive, and update the database with the archived files.
+        # Close the tar, submit it to the batch transfer system, and update the database with the archived files (and optionally the tar as well, depending on skip_tars_table)
         tar_wrapper.process_tar(
             cache,
             keep,
