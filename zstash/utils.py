@@ -220,15 +220,6 @@ def get_files_to_archive_with_stats(
     return file_stats
 
 
-def get_files_to_archive(cache: str, include: str, exclude: str) -> List[str]:
-    """
-    LEGACY VERSION: Still used for `zstash create`.
-    Uses the optimized version but returns only the file list.
-    """
-    file_stats = get_files_to_archive_with_stats(cache, include, exclude)
-    return list(file_stats.keys())
-
-
 def update_config(cur: sqlite3.Cursor):
     # Retrieve some configuration settings from database
     # Loop through all attributes of config.

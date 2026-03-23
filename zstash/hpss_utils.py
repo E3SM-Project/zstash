@@ -7,7 +7,7 @@ import sqlite3
 import tarfile
 import traceback
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import _hashlib
 
@@ -290,6 +290,19 @@ class HashIO(object):
         self.closed = True
 
 
+def estimate_tar_entry_size(file_size: int) -> int:
+    """
+    Estimate how much space a file of a given size would take in the tar archive,
+    including metadata and padding.
+    """
+    TAR_BLOCK_SIZE = 512
+    TAR_HEADER_SIZE = 512  # per file header
+    # This formula computes: ceil(file_size / TAR_BLOCK_SIZE)
+    # But faster and avoiding floats.
+    data_blocks = (file_size + TAR_BLOCK_SIZE - 1) // TAR_BLOCK_SIZE
+    return TAR_HEADER_SIZE + (data_blocks * TAR_BLOCK_SIZE)
+
+
 # Add file to tar archive while computing its hash
 # Return file offset (in tar archive), size and md5 hash
 def add_file_to_tar_archive(
@@ -326,7 +339,7 @@ def construct_tars(
     cur: sqlite3.Cursor,
     con: sqlite3.Connection,
     itar: int,
-    files: List[str],
+    file_stats: Dict[str, Tuple[int, datetime]],
     cache: str,
     keep: bool,
     follow_symlinks: bool,
@@ -337,6 +350,7 @@ def construct_tars(
 ) -> List[str]:
 
     failures: List[str] = []
+    files: List[str] = list(file_stats.keys())
     nfiles: int = len(files)
 
     if config.maxsize is not None:
@@ -351,14 +365,13 @@ def construct_tars(
         operation = "update"
 
     i_file: int = 0
-    carried_over_tar_info: Optional[tarfile.TarInfo] = None
     while i_file < nfiles:
         # Each iteration of this loop constructs one tar
 
         # `create` passes in itar=-1, so the first tar will be 000000.tar
         # `update` passes in itar=max existing tar number, so the first tar will be max+1
         itar += 1
-        tar_size: int = 0
+        cumulative_tar_size: int = 0
         archived: List[TupleFilesRowNoId] = []
 
         # Open a new tar
@@ -378,47 +391,40 @@ def construct_tars(
         # Add files to the tar until we reach the max size
         while i_file < nfiles:
             current_file: str = files[i_file]
-            if carried_over_tar_info:
-                # If current_file wasn't added to the last tar,
-                # then we can immediately add it now.
-                # No need to repeat the size calculations.
-                tar_info = carried_over_tar_info
-                current_file_size = tar_info.size
-                carried_over_tar_info = None  # Reset for next iteration
-            else:
-                try:
-                    # It's ok that current_file isn't in the tar yet.
-                    tar_info = tar_wrapper.tar.gettarinfo(current_file)
-                    if tar_info.islnk():
-                        tar_info.size = os.path.getsize(current_file)
-                    current_file_size = tar_info.size
-                except FileNotFoundError:
-                    logger.error(f"Archiving {current_file}")
-                    if follow_symlinks:
-                        raise Exception(
-                            f"Archive {operation} failed due to broken symlink."
-                        )
-                    else:
-                        raise
-
-            # Check if adding this file would send us over the max size.
-            if (tar_size == 0) or (tar_size + current_file_size <= max_size):
-                # Case 1: if the tar is empty, always add the file, even if it's over the max size.
-                # Case 2: if the tar is nonempty, only add the file if it won't put us over the max size.
-                new_tar_size = tar_wrapper.process_file(
-                    current_file, tar_info, archived, failures
-                )
-                if new_tar_size != 0:
-                    tar_size = new_tar_size
-                # Else: process_file failed, so we should keep the original tar_size
-                i_file += 1
-            else:
-                # Over the size limit:
-                # Time to close and transfer this tar archive.
-                carried_over_tar_info = tar_info  # Carry over this info to the next tar
-                # Break out of the inner while-loop:
+            current_file_size: int
+            current_file_size, _ = file_stats[current_file]
+            estimated_entry_size: int = estimate_tar_entry_size(current_file_size)
+            if (cumulative_tar_size != 0) and (
+                cumulative_tar_size + estimated_entry_size > max_size
+            ):
+                # Over the size limit: time to close and transfer this tar archive.
                 # Done adding files to this particular tar.
+                # Break out of the inner while-loop
                 break
+            # If we make it this far,
+            # we know we can add the current file without going over the max size.
+            # (Either that, or the tar is currently empty,
+            # in which case we add the file even if it's over the max size.)
+            try:
+                tar_info = tar_wrapper.tar.gettarinfo(current_file)
+                if tar_info.islnk():
+                    tar_info.size = os.path.getsize(current_file)
+            except FileNotFoundError:
+                logger.error(f"Archiving {current_file}")
+                if follow_symlinks:
+                    raise Exception(
+                        f"Archive {operation} failed due to broken symlink."
+                    )
+                else:
+                    raise
+            new_cumulative_tar_size = tar_wrapper.process_file(
+                current_file, tar_info, archived, failures
+            )
+            if new_cumulative_tar_size != 0:
+                # Update the cumulative tar size with the new tar size returned by process_file.
+                cumulative_tar_size = new_cumulative_tar_size
+            # Else: process_file failed, so we should keep the original cumulative_tar_size
+            i_file += 1
 
         # Close the tar, submit it to the batch transfer system, and update the database with the archived files (and optionally the tar as well, depending on skip_tars_table)
         tar_wrapper.process_tar(

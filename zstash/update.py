@@ -226,7 +226,7 @@ def update_database(  # noqa: C901
         else:
             archived_files[file_path] = (size, mtime)
 
-    newfiles: List[str] = []
+    newfiles: Dict[str, Tuple[int, datetime]] = {}
     files_checked = 0
 
     for file_path in files:
@@ -236,7 +236,7 @@ def update_database(  # noqa: C901
         # Check if file exists in database
         if file_path not in archived_files:
             # File not in database - it's new
-            newfiles.append(file_path)
+            newfiles[file_path] = (size_new, mdtime_new)
         else:
             # File exists in database - check if it changed
             archived_size, archived_mtime = archived_files[file_path]
@@ -246,7 +246,7 @@ def update_database(  # noqa: C901
                 and (abs((mdtime_new - archived_mtime).total_seconds()) <= TIME_TOL)
             ):
                 # File has changed
-                newfiles.append(file_path)
+                newfiles[file_path] = (size_new, mdtime_new)
 
         files_checked += 1
 
@@ -261,7 +261,7 @@ def update_database(  # noqa: C901
     # --dry-run option
     if args.dry_run:
         print("List of files to be updated")
-        for file_path in newfiles:
+        for file_path in newfiles.keys():
             print(file_path)
         # Close database
         con.commit()

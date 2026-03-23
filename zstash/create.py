@@ -6,7 +6,8 @@ import logging
 import os.path
 import sqlite3
 import sys
-from typing import Any, List, Tuple
+from datetime import datetime
+from typing import Any, Dict, List, Tuple
 
 from six.moves.urllib.parse import urlparse
 
@@ -17,7 +18,7 @@ from .settings import DEFAULT_CACHE, config, get_db_filename, logger
 from .transfer_tracking import TransferManager
 from .utils import (
     create_tars_table,
-    get_files_to_archive,
+    get_files_to_archive_with_stats,
     run_command,
     tars_table_exists,
     ts_utc,
@@ -271,7 +272,9 @@ create table files (
             cur.execute("insert into config values (?,?)", (attr, value))
     con.commit()
 
-    files: List[str] = get_files_to_archive(cache, args.include, args.exclude)
+    file_stats: Dict[str, Tuple[int, datetime]] = get_files_to_archive_with_stats(
+        cache, args.include, args.exclude
+    )
 
     failures: List[str]
     dev_options: DevOptions = DevOptions(
@@ -284,7 +287,7 @@ create table files (
         cur,
         con,
         -1,
-        files,
+        file_stats,
         cache,
         args.keep,
         args.follow_symlinks,
