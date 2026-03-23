@@ -109,7 +109,7 @@ class TarWrapper(object):
         keep: bool,
         non_blocking: bool,
         transfer_manager: Optional[TransferManager],
-        skip_tars_md5: bool,
+        skip_tars_table: bool,
         cur: sqlite3.Cursor,
         con: sqlite3.Connection,
         dev_options: DevOptions,
@@ -150,7 +150,7 @@ class TarWrapper(object):
         )
 
         # 3. Add the tar itself to the tars table #############################
-        if not skip_tars_md5:
+        if not skip_tars_table:
             tar_tuple: TupleTarsRowNoId = (self.tfname, tar_size, tar_md5)
             logger.info("tar name={}, tar size={}, tar md5={}".format(*tar_tuple))
             if not tars_table_exists(cur):
@@ -319,7 +319,7 @@ def construct_tars(
     keep: bool,
     follow_symlinks: bool,
     dev_options: DevOptions,
-    skip_tars_md5: bool = False,
+    skip_tars_table: bool = False,
     non_blocking: bool = False,
     transfer_manager: Optional[TransferManager] = None,
 ) -> List[str]:
@@ -354,7 +354,7 @@ def construct_tars(
         tar_wrapper = TarWrapper(
             tar_num=itar,
             cache=cache,
-            do_hash=not skip_tars_md5,
+            do_hash=not skip_tars_table,
             follow_symlinks=follow_symlinks,
         )
 
@@ -409,7 +409,7 @@ def construct_tars(
             keep,
             non_blocking,
             transfer_manager,
-            skip_tars_md5,
+            skip_tars_table,
             cur,
             con,
             dev_options,

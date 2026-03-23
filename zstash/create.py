@@ -289,7 +289,7 @@ create table files (
         args.keep,
         args.follow_symlinks,
         dev_options,
-        skip_tars_md5=args.no_tars_md5,
+        skip_tars_table=args.no_tars_md5,
         non_blocking=args.non_blocking,
         transfer_manager=transfer_manager,
     )
