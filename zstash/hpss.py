@@ -8,7 +8,7 @@ from six.moves.urllib.parse import urlparse
 
 from .globus import globus_transfer
 from .settings import get_db_filename, logger
-from .transfer_tracking import GlobusConfig, TransferBatch, TransferManager
+from .transfer_tracking import GlobusConfig, TaskStatus, TransferBatch, TransferManager
 from .utils import run_command, ts_utc
 
 
@@ -108,13 +108,13 @@ def hpss_transfer(
             # For `get`, this directory is where the file we get from HPSS will go.
             os.chdir(path)
 
-        globus_status: str = "UNKNOWN"
+        globus_status: TaskStatus = TaskStatus.UNKNOWN
         if scheme == "globus":
             if not transfer_manager.globus_config:
                 transfer_manager.globus_config = GlobusConfig()
             # Transfer file using the Globus Transfer Service
             logger.info(f"{ts_utc()}: DIVING: hpss calls globus_transfer(name={name})")
-            task_status: str = globus_transfer(
+            task_status: TaskStatus = globus_transfer(
                 transfer_manager, endpoint, url_path, name, transfer_type, non_blocking
             )
             logger.info(

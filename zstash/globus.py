@@ -17,7 +17,7 @@ from .globus_utils import (
     submit_transfer_with_checks,
 )
 from .settings import logger
-from .transfer_tracking import GlobusConfig, TransferBatch, TransferManager
+from .transfer_tracking import GlobusConfig, TaskStatus, TransferBatch, TransferManager
 from .utils import ts_utc
 
 
@@ -87,7 +87,7 @@ def globus_transfer(  # noqa: C901
     name: str,
     transfer_type: str,
     non_blocking: bool,
-) -> str:
+) -> TaskStatus:
 
     logger.info(f"{ts_utc()}: Entered globus_transfer() for name = {name}")
     logger.debug(f"{ts_utc()}: non_blocking = {non_blocking}")
@@ -138,10 +138,8 @@ def globus_transfer(  # noqa: C901
             # This the current transfer task associated with the most recent batch.
             task = transfer_manager.globus_config.transfer_client.get_task(mrb.task_id)
             # Update the most recent batch's task_status based on the current status from Globus API.
-            mrb.task_status = task["status"]
-            # According to https://docs.globus.org/api/transfer/task/#task_fields,
-            # this will be one  of {ACTIVE, INACTIVE, SUCCEEDED, FAILED}
-            if mrb.task_status == "ACTIVE":
+            mrb.task_status = TaskStatus.convert_from_status_from_globus_sdk(task)
+            if mrb.task_status == TaskStatus.ACTIVE:
                 # The most recent transfer (mrb) is still active.
                 logger.info(
                     f"{ts_utc()}: Previous task_id {mrb.task_id} Still Active. Returning ACTIVE."
@@ -153,7 +151,7 @@ def globus_transfer(  # noqa: C901
                     # We will therefore wait to submit a new transfer until it's done.
                     # So, we'll simply return and the next run of globus_transfer
                     # (i.e., on the next tar) will evaluate if the active transfer has finished.
-                    return "ACTIVE"
+                    return TaskStatus.ACTIVE
                 else:
                     # If we're in this block, then the blocking wait
                     # for the previous transfer to finish was unsuccessful.
@@ -163,7 +161,7 @@ def globus_transfer(  # noqa: C901
                     )
                     logger.error(error_str)
                     raise RuntimeError(error_str)
-            elif mrb.task_status == "SUCCEEDED":
+            elif mrb.task_status == TaskStatus.SUCCEEDED:
                 logger.info(
                     f"{ts_utc()}: Previous task_id {mrb.task_id} status = SUCCEEDED."
                 )
@@ -208,7 +206,7 @@ def globus_transfer(  # noqa: C901
             # Update these two fields of the most recent batch
             # (which is still available in this function as `mrb`).
             transfer_manager.batches[-1].task_id = task_id
-            transfer_manager.batches[-1].task_status = "SUBMITTED"
+            transfer_manager.batches[-1].task_status = TaskStatus.SUBMITTED
         else:
             # This block should be impossible to reach.
             # By now, we've ensured that `get_most_recent_batch()` returns a batch,
@@ -234,7 +232,7 @@ def globus_transfer(  # noqa: C901
         logger.error("Exception: {}".format(e))
         sys.exit(1)
 
-    task_status = "UNKNOWN"
+    task_status: TaskStatus = TaskStatus.UNKNOWN
     if mrb.task_id:
         if not non_blocking:
             # If blocking, wait for the task to complete and get the final status,
@@ -269,14 +267,14 @@ def globus_block_wait(
     task_id: str,
     wait_timeout: int = 7200,  # 7200/3600 = 2 hours
     max_retries: int = 5,
-):
+) -> TaskStatus:
     # Poll every "polling_interval" seconds to speed up small transfers.
     # Report every "wait_timeout" seconds, and stop waiting after "max_retries" reports.
     # By default: report every 2 hours, stop waiting after 5*2 = 10 hours
     logger.info(
         f"{ts_utc()}: BLOCKING START: invoking task_wait for task_id = {task_id}"
     )
-    task_status: str = "UNKNOWN"
+    task_status: TaskStatus = TaskStatus.UNKNOWN
     retry_count: int = 0
     while retry_count < max_retries:
         try:
@@ -289,29 +287,17 @@ def globus_block_wait(
                 task_id, timeout=wait_timeout, polling_interval=10
             )
             if task_is_not_active:
-                curr_task = transfer_client.get_task(task_id)
-                task_status = curr_task["status"]
-                if task_status == "SUCCEEDED":
+                curr_task: GlobusHTTPResponse = transfer_client.get_task(task_id)
+                task_status = TaskStatus.convert_from_status_from_globus_sdk(curr_task)
+                if task_status == TaskStatus.SUCCEEDED:
                     break  # Break out of the while-loop. The transfer already succeeded, so no need to retry.
-                elif task_status == "FAILED":
+                elif task_status == TaskStatus.FAILED:
                     error_str = f"{ts_utc()}: task_wait returned True, but task_status={task_status} for task_id {task_id}. No reason to keep retrying now."
                     logger.warning(error_str)
                     # We still need to break, because no matter how long we wait now, nothing will change with the transfer status.
                     break
-                elif task_status in [
-                    "INACTIVE",
-                    "UNKNOWN",
-                    "SUBMITTED",
-                    "EXHAUSTED_TIMEOUT_RETRIES",
-                ]:
-                    # The latter three options here are ones we assign manually and aren't included on
-                    # https://docs.globus.org/api/transfer/task/#task_fields
-                    error_str = f"{ts_utc()}: task_wait returned True, but task_status={task_status} for task_id {task_id}. Will retry waiting until max_retries is reached."
-                    logger.warning(error_str)
-                    # Don't break -- continue retries
                 else:
-                    # If we're in this block, then somehow an unexpected task_status was returned.
-                    error_str = f"{ts_utc()}: task_wait returned True, but task_status={task_status} is unexpected for task_id {task_id}. Will retry waiting until max_retries is reached."
+                    error_str = f"{ts_utc()}: task_wait returned True, but task_status={task_status} for task_id {task_id}. Will retry waiting until max_retries is reached."
                     logger.warning(error_str)
                     # Don't break -- continue retries
             logger.info(f"{ts_utc()}: done with wait")
@@ -327,7 +313,7 @@ def globus_block_wait(
         logger.info(
             f"{ts_utc()}: BLOCKING EXHAUSTED {max_retries} of timeout {wait_timeout} seconds"
         )
-        task_status = "EXHAUSTED_TIMEOUT_RETRIES"
+        task_status = TaskStatus.EXHAUSTED_TIMEOUT_RETRIES
 
     logger.info(
         f"{ts_utc()}: BLOCKING ENDS: task_id {task_id} returned from task_wait with status {task_status}"
@@ -339,8 +325,10 @@ def globus_block_wait(
 def globus_wait(transfer_client: TransferClient, task_id: str):
     try:
         """
-        A Globus transfer job (task) can be in one of the three states:
-        ACTIVE, SUCCEEDED, FAILED. The script every 20 seconds polls a
+        A Globus transfer job (task) can be in one of the four states:
+        {ACTIVE, SUCCEEDED, FAILED, INACTIVE}
+        according to https://docs.globus.org/api/transfer/task/#task_fields.
+        The script every 20 seconds polls a
         status of the transfer job (task) from the Globus Transfer service,
         with 20 second timeout limit. If the task is ACTIVE after time runs
         out 'task_wait' returns False, and True otherwise.
@@ -351,8 +339,8 @@ def globus_wait(transfer_client: TransferClient, task_id: str):
         The Globus transfer job (task) has been finished (SUCCEEDED or FAILED).
         Check if the transfer SUCCEEDED or FAILED.
         """
-        task = transfer_client.get_task(task_id)
-        if task["status"] == "SUCCEEDED":
+        task: GlobusHTTPResponse = transfer_client.get_task(task_id)
+        if TaskStatus.convert_from_status_from_globus_sdk(task) == TaskStatus.SUCCEEDED:
             src_ep = task["source_endpoint_id"]
             dst_ep = task["destination_endpoint_id"]
             label = task["label"]
@@ -463,14 +451,14 @@ def _refresh_batch_status(
     transfer_client: TransferClient,
     task_id: str,
     task_to_batch: Dict[str, TransferBatch],
-) -> Optional[str]:
+) -> Optional[TaskStatus]:
     """
     Fetch Globus task status and update corresponding batch.task_status if present.
     Returns status, or None if fetch fails.
     """
     try:
         task: GlobusHTTPResponse = transfer_client.get_task(task_id)
-        status = task["status"]
+        status: TaskStatus = TaskStatus.convert_from_status_from_globus_sdk(task)
         batch: Optional[TransferBatch] = task_to_batch.get(task_id)
         if batch:
             batch.task_status = status
@@ -493,7 +481,7 @@ def _wait_for_all_tasks(
     """
     for tid in task_ids:
         status = _refresh_batch_status(transfer_client, tid, task_to_batch)
-        if status == "SUCCEEDED":
+        if status == TaskStatus.SUCCEEDED:
             logger.info(f"{ts_utc()}: task_id={tid} already SUCCEEDED; skipping wait")
             continue
 
