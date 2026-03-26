@@ -226,6 +226,9 @@ def set_up_TransferData(
     transfer_client: TransferClient,
     transfer_data: Optional[TransferData] = None,
 ) -> TransferData:
+    """
+    Set up the TransferData object, creating one if not provided.
+    """
     if not local_endpoint:
         raise ValueError("Local endpoint ID is not set.")
     if not remote_endpoint:

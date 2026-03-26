@@ -45,7 +45,8 @@ class TransferManager:
         # Connection state (Globus-specific, None if not using Globus)
         self.globus_config: Optional[GlobusConfig] = None
 
-    def get_most_recent_transfer(self) -> Optional[TransferBatch]:
+    def get_most_recent_batch(self) -> Optional[TransferBatch]:
+        """Get the last batch added to the manager, or None if no batches exist"""
         return self.batches[-1] if self.batches else None
 
     def delete_successfully_transferred_files(self):

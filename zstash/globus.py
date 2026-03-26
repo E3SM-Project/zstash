@@ -3,7 +3,7 @@ from __future__ import absolute_import, print_function
 import sys
 from typing import Dict, List, Optional, Set, Tuple
 
-from globus_sdk import TransferAPIError, TransferClient
+from globus_sdk import TransferAPIError, TransferClient, TransferData
 from globus_sdk.response import GlobusHTTPResponse
 from globus_sdk.services.transfer.response.iterable import IterableTransferResponse
 from six.moves.urllib.parse import urlparse
@@ -65,6 +65,20 @@ def file_exists(archive_directory_listing: IterableTransferResponse, name: str) 
     return False
 
 
+def update_cumulative_tarfiles_pushed(
+    transfer_manager: TransferManager, transfer_data: TransferData
+) -> None:
+    logger.info(f"{ts_utc()}: TransferData: accumulated items:")
+    attribs = transfer_data.__dict__
+    for item in attribs["data"]["DATA"]:
+        if item["DATA_TYPE"] == "transfer_item":
+            transfer_manager.cumulative_tarfiles_pushed += 1
+            print(
+                f"PUSHED (#{transfer_manager.cumulative_tarfiles_pushed}) tars, STORED source item: {item['source_path']}",
+                flush=True,
+            )
+
+
 # C901 'globus_transfer' is too complex (20)
 def globus_transfer(  # noqa: C901
     transfer_manager: TransferManager,
@@ -103,7 +117,11 @@ def globus_transfer(  # noqa: C901
             )
             sys.exit(1)
 
-    mrt: Optional[TransferBatch] = transfer_manager.get_most_recent_transfer()
+    mrb: Optional[TransferBatch] = transfer_manager.get_most_recent_batch()
+    if not mrb:
+        raise RuntimeError(
+            "The transfer manager should always have at least one batch by the time globus_transfer is called, however, the batch list is empty."
+        )
     transfer_data = set_up_TransferData(
         transfer_type,
         transfer_manager.globus_config.local_endpoint,
@@ -111,22 +129,22 @@ def globus_transfer(  # noqa: C901
         remote_path,
         name,
         transfer_manager.globus_config.transfer_client,
-        mrt.transfer_data if mrt else None,
+        mrb.transfer_data,
     )
 
     task: GlobusHTTPResponse
     try:
-        if mrt and mrt.task_id:
+        if mrb.task_id:
             # This the current transfer task associated with the most recent batch.
-            task = transfer_manager.globus_config.transfer_client.get_task(mrt.task_id)
+            task = transfer_manager.globus_config.transfer_client.get_task(mrb.task_id)
             # Update the most recent batch's task_status based on the current status from Globus API.
-            mrt.task_status = task["status"]
+            mrb.task_status = task["status"]
             # According to https://docs.globus.org/api/transfer/task/#task_fields,
             # this will be one  of {ACTIVE, INACTIVE, SUCCEEDED, FAILED}
-            if mrt.task_status == "ACTIVE":
-                # The most recent transfer (mrt) is still active.
+            if mrb.task_status == "ACTIVE":
+                # The most recent transfer (mrb) is still active.
                 logger.info(
-                    f"{ts_utc()}: Previous task_id {mrt.task_id} Still Active. Returning ACTIVE."
+                    f"{ts_utc()}: Previous task_id {mrb.task_id} Still Active. Returning ACTIVE."
                 )
                 if non_blocking:
                     # Globus allows up to 3 simulataneous transfers,
@@ -145,34 +163,32 @@ def globus_transfer(  # noqa: C901
                     )
                     logger.error(error_str)
                     raise RuntimeError(error_str)
-            elif mrt.task_status == "SUCCEEDED":
+            elif mrb.task_status == "SUCCEEDED":
                 logger.info(
-                    f"{ts_utc()}: Previous task_id {mrt.task_id} status = SUCCEEDED."
+                    f"{ts_utc()}: Previous task_id {mrb.task_id} status = SUCCEEDED."
                 )
                 src_ep = task["source_endpoint_id"]
                 dst_ep = task["destination_endpoint_id"]
                 label = task["label"]
                 ts = ts_utc()
                 logger.info(
-                    f"{ts}:Globus transfer {mrt.task_id}, from {src_ep} to {dst_ep}: {label} succeeded"
+                    f"{ts}:Globus transfer {mrb.task_id}, from {src_ep} to {dst_ep}: {label} succeeded"
                 )
                 # The previous transfer succeeded.
                 # That means we can transfer the current batch now.
             else:
+                # The previous transfer is in an unexpected state (i.e., "INACTIVE", "FAILED").
+                # Either way, the previous transfer is effectively terminated,
+                # so we will proceed with the current transfer attempt.
+                # (I.e., we will not return yet).
+                # Note: any status we manually set
+                # (I.e., "UNKNOWN", "SUBMITTED", "EXHAUSTED_TIMEOUT_RETRIES") is NOT possible here,
+                # because we're using `task["status"]` from the globus_sdk TransferClient.
                 logger.error(
-                    f"{ts_utc()}: Previous task_id {mrt.task_id} status = {mrt.task_status}."
+                    f"{ts_utc()}: Previous task_id {mrb.task_id} status = {mrb.task_status}."
                 )
 
-        # DEBUG: review accumulated items in TransferData
-        logger.info(f"{ts_utc()}: TransferData: accumulated items:")
-        attribs = transfer_data.__dict__
-        for item in attribs["data"]["DATA"]:
-            if item["DATA_TYPE"] == "transfer_item":
-                transfer_manager.cumulative_tarfiles_pushed += 1
-                print(
-                    f"   (routine)  PUSHING (#{transfer_manager.cumulative_tarfiles_pushed}) STORED source item: {item['source_path']}",
-                    flush=True,
-                )
+        update_cumulative_tarfiles_pushed(transfer_manager, transfer_data)
 
         logger.info(f"{ts_utc()}: DIVING: Submit Transfer for {transfer_data['label']}")
         # Submit the current transfer_data
@@ -181,19 +197,26 @@ def globus_transfer(  # noqa: C901
             transfer_manager.globus_config.transfer_client, transfer_data
         )
         task_id = task.get("task_id")
-        # NOTE: This log message is misleading. If we have accumulated multiple tar files for transfer,
-        # the "lable" given here refers only to the LAST tarfile in the TransferData list.
         logger.info(
-            f"{ts_utc()}: SURFACE Submit Transfer returned new task_id = {task_id} for label {transfer_data['label']}"
+            f"{ts_utc()}: SURFACE Submit Transfer returned new task_id = {task_id}, with last tarfile having label: {transfer_data['label']}"
         )
 
         # Update the current batch with the task info
         # The batch was already created in hpss_transfer with files added to it
         # We just need to mark it as submitted
         if transfer_manager.batches:
+            # Update these two fields of the most recent batch
+            # (which is still available in this function as `mrb`).
             transfer_manager.batches[-1].task_id = task_id
-            transfer_manager.batches[-1].task_status = "UNKNOWN"
-            transfer_manager.batches[-1].transfer_data = None  # Was just submitted
+            transfer_manager.batches[-1].task_status = "SUBMITTED"
+        else:
+            # This block should be impossible to reach.
+            # By now, we've ensured that `get_most_recent_batch()` returns a batch,
+            # and we haven't removed any batches since then,
+            # so there should always be at least one batch in `batches`.
+            error_str = "transfer_manager has no batches"
+            logger.error(error_str)
+            raise RuntimeError(error_str)
 
         # Nullify the submitted transfer data structure so that a new one will be created on next call.
         transfer_data = None
@@ -211,22 +234,26 @@ def globus_transfer(  # noqa: C901
         logger.error("Exception: {}".format(e))
         sys.exit(1)
 
-    new_mrt: Optional[TransferBatch] = transfer_manager.get_most_recent_transfer()
-    # test for blocking on new task_id
     task_status = "UNKNOWN"
-    if new_mrt and new_mrt.task_id:
+    if mrb.task_id:
         if not non_blocking:
             # If blocking, wait for the task to complete and get the final status,
             # before we proceed with any more transfers.
-            new_mrt.task_status = globus_block_wait(
+            mrb.task_status = globus_block_wait(
                 transfer_manager.globus_config.transfer_client,
-                task_id=new_mrt.task_id,
+                task_id=mrb.task_id,
             )
-            task_status = new_mrt.task_status
+            task_status = mrb.task_status
         else:
             logger.info(
-                f"{ts_utc()}: NO BLOCKING (task_wait) for task_id {new_mrt.task_id}"
+                f"{ts_utc()}: NO BLOCKING (task_wait) for task_id {mrb.task_id}"
             )
+    else:
+        # This block should be impossible to reach.
+        # By now, we've set `transfer_manager.batches[-1].task_id = task_id` or else raised an error, so `mrb.task_id` should always be set.
+        error_str = "No task_id found for most recent batch after submission"
+        logger.error(f"{ts_utc()}: {error_str}")
+        raise RuntimeError(error_str)
 
     if transfer_type == "put":
         return task_status
@@ -274,9 +301,10 @@ def globus_block_wait(
                 elif task_status in [
                     "INACTIVE",
                     "UNKNOWN",
+                    "SUBMITTED",
                     "EXHAUSTED_TIMEOUT_RETRIES",
                 ]:
-                    # The latter two options here are ones we assign manually and aren't included on
+                    # The latter three options here are ones we assign manually and aren't included on
                     # https://docs.globus.org/api/transfer/task/#task_fields
                     error_str = f"{ts_utc()}: task_wait returned True, but task_status={task_status} for task_id {task_id}. Will retry waiting until max_retries is reached."
                     logger.warning(error_str)
@@ -358,19 +386,11 @@ def _submit_pending_transfer_data(
     If the most recent batch has unsubmitted TransferData, submit it and return task_id.
     Otherwise return None.
     """
-    transfer: Optional[TransferBatch] = transfer_manager.get_most_recent_transfer()
+    transfer: Optional[TransferBatch] = transfer_manager.get_most_recent_batch()
     if not transfer or not transfer.transfer_data:
         return None
 
-    logger.info(f"{ts_utc()}: FINAL TransferData: accumulated items:")
-    attribs = transfer.transfer_data.__dict__
-    for item in attribs["data"]["DATA"]:
-        if item["DATA_TYPE"] == "transfer_item":
-            transfer_manager.cumulative_tarfiles_pushed += 1
-            print(
-                f"    (finalize) PUSHING ({transfer_manager.cumulative_tarfiles_pushed}) source item: {item['source_path']}",
-                flush=True,
-            )
+    update_cumulative_tarfiles_pushed(transfer_manager, transfer.transfer_data)
 
     logger.info(
         f"{ts_utc()}: DIVING: Submit Transfer for {transfer.transfer_data['label']}"

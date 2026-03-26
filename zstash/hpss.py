@@ -120,9 +120,9 @@ def hpss_transfer(
             logger.info(
                 f"{ts_utc()}: SURFACE: hpss globus_transfer(name={name}) returned task_status={task_status}"
             )
-            mrt: Optional[TransferBatch] = transfer_manager.get_most_recent_transfer()
-            if mrt and mrt.task_status:
-                globus_status = mrt.task_status
+            mrb: Optional[TransferBatch] = transfer_manager.get_most_recent_batch()
+            if mrb and mrb.task_status:
+                globus_status = mrb.task_status
                 logger.info(
                     f"{ts_utc()}: Most recent globus_transfer returned task_status={globus_status}"
                 )
