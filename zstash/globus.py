@@ -10,10 +10,12 @@ from six.moves.urllib.parse import urlparse
 
 from .globus_utils import (
     HPSS_ENDPOINT_MAP,
+    add_file_to_TransferData,
     check_state_files,
+    create_TransferData,
+    get_label,
     get_local_endpoint_id,
     get_transfer_client_with_auth,
-    set_up_TransferData,
     submit_transfer_with_checks,
 )
 from .settings import logger
@@ -122,14 +124,37 @@ def globus_transfer(  # noqa: C901
         raise RuntimeError(
             "The transfer manager should always have at least one batch by the time globus_transfer is called, however, the batch list is empty."
         )
-    transfer_data = set_up_TransferData(
+
+    if transfer_manager.globus_config.local_endpoint:
+        local_endpoint: str = transfer_manager.globus_config.local_endpoint
+    else:
+        raise ValueError("Local endpoint ID is not set.")
+    if transfer_manager.globus_config.remote_endpoint:
+        remote_endpoint: str = transfer_manager.globus_config.remote_endpoint
+    else:
+        raise ValueError("Remote endpoint ID is not set.")
+    label: str = get_label(remote_path, name)
+    transfer_data: TransferData
+    if mrb.transfer_data:
+        # We already have a TransferData for this batch.
+        transfer_data = mrb.transfer_data
+    else:
+        # We need to create a new TransferData for this batch.
+        transfer_data = create_TransferData(
+            transfer_type,
+            local_endpoint,
+            remote_endpoint,
+            transfer_manager.globus_config.transfer_client,
+            label,
+        )
+    add_file_to_TransferData(
         transfer_type,
-        transfer_manager.globus_config.local_endpoint,
-        transfer_manager.globus_config.remote_endpoint,
+        local_endpoint,
+        remote_endpoint,
         remote_path,
         name,
-        transfer_manager.globus_config.transfer_client,
-        mrb.transfer_data,
+        transfer_data,
+        label,
     )
 
     task: GlobusHTTPResponse
@@ -215,9 +240,6 @@ def globus_transfer(  # noqa: C901
             error_str = "transfer_manager has no batches"
             logger.error(error_str)
             raise RuntimeError(error_str)
-
-        # Nullify the submitted transfer data structure so that a new one will be created on next call.
-        transfer_data = None
     except TransferAPIError as e:
         if e.code == "NoCredException":
             logger.error(

@@ -217,51 +217,61 @@ def save_tokens(token_response):
 
 
 # Primarily used by globus_transfer ###########################################
-def set_up_TransferData(
+def get_label(remote_path: str, name: str) -> str:
+    subdir = os.path.basename(os.path.normpath(remote_path))
+    subdir_label = re.sub("[^A-Za-z0-9_ -]", "", subdir)
+    filename = name.split(".")[0]
+    label = subdir_label + " " + filename
+    return label
+
+
+def create_TransferData(
+    transfer_type: str,
+    local_endpoint: str,
+    remote_endpoint: str,
+    transfer_client: TransferClient,
+    label: str,
+) -> TransferData:
+    if transfer_type == "get":
+        src_ep = remote_endpoint
+        dst_ep = local_endpoint
+    else:
+        src_ep = local_endpoint
+        dst_ep = remote_endpoint
+    transfer_data = TransferData(
+        transfer_client,
+        src_ep,
+        dst_ep,
+        label=label,
+        verify_checksum=True,
+        preserve_timestamp=True,
+        fail_on_quota_errors=True,
+    )
+    return transfer_data
+
+
+def add_file_to_TransferData(
     transfer_type: str,
     local_endpoint: Optional[str],
     remote_endpoint: Optional[str],
     remote_path: str,
     name: str,
-    transfer_client: TransferClient,
-    transfer_data: Optional[TransferData] = None,
-) -> TransferData:
-    """
-    Set up the TransferData object, creating one if not provided.
-    """
+    transfer_data: TransferData,
+    label: str,
+):
     if not local_endpoint:
         raise ValueError("Local endpoint ID is not set.")
     if not remote_endpoint:
         raise ValueError("Remote endpoint ID is not set.")
     if transfer_type == "get":
-        src_ep = remote_endpoint
         src_path = os.path.join(remote_path, name)
-        dst_ep = local_endpoint
         dst_path = os.path.join(os.getcwd(), name)
     else:
-        src_ep = local_endpoint
         src_path = os.path.join(os.getcwd(), name)
-        dst_ep = remote_endpoint
         dst_path = os.path.join(remote_path, name)
 
-    subdir = os.path.basename(os.path.normpath(remote_path))
-    subdir_label = re.sub("[^A-Za-z0-9_ -]", "", subdir)
-    filename = name.split(".")[0]
-    label = subdir_label + " " + filename
-
-    if not transfer_data:
-        transfer_data = TransferData(
-            transfer_client,
-            src_ep,
-            dst_ep,
-            label=label,
-            verify_checksum=True,
-            preserve_timestamp=True,
-            fail_on_quota_errors=True,
-        )
     transfer_data.add_item(src_path, dst_path)
     transfer_data["label"] = label
-    return transfer_data
 
 
 def submit_transfer_with_checks(transfer_client, transfer_data) -> GlobusHTTPResponse:
