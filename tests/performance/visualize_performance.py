@@ -43,6 +43,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
@@ -54,19 +55,19 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 
 # The results to show in Fig. 1
-RESULTS_CSV = (
-    "/pscratch/sd/f/forsyth/zstash_performance/performance_20260226_pr424/results.csv"
+RESULTS_CSV: str = (
+    "/pscratch/sd/f/forsyth/zstash_performance/performance_20260402/results.csv"
 )
 
 # The results to compare against in Fig. 2.
 # Set to None to skip Fig. 2.
-BASELINE_RESULTS_CSV = (
-    "/pscratch/sd/f/forsyth/zstash_performance/performance_20260225/results.csv"
-)
+BASELINE_RESULTS_CSV: Optional[str] = None
 
 # Output path for the saved figures.
 # Set to None to display interactively instead of saving.
-OUTPUT_PATH = "/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance/performance_pr424_vs_main.png"
+OUTPUT_PATH: Optional[str] = (
+    "/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance/performance__20260402_pr427.png"
+)
 
 # ---------------------------------------------------------------------------
 # Config
