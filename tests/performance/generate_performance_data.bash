@@ -15,7 +15,7 @@ set -e
 # Run from Perlmutter, so that we can do both
 # a direct transfer to HPSS & a Globus transfer to Chrysalis
 work_dir=/pscratch/sd/f/forsyth/zstash_performance/
-unique_id=performance_20260225
+unique_id=performance_20260402
 
 dir_to_copy_from=/global/cfs/cdirs/e3sm/forsyth/E3SMv2/v2.LR.historical_0201/
 subdir0=build/
@@ -44,7 +44,7 @@ subdir2=init/
 # For `--hpss=...`
 # Which HPSS options to run. Comment out any you want to skip.
 # Options: "none"  "hpss"  "globus"
-HPSS_OPTIONS=("none" "hpss") # globus endpoint currently down
+HPSS_OPTIONS=("none" "hpss" "globus")
 
 dst_hpss_path=/home/f/forsyth/zstash_performance
 
