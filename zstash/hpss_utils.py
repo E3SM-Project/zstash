@@ -108,7 +108,7 @@ class TarWrapper(object):
         cache: str,
         keep: bool,
         non_blocking: bool,
-        transfer_manager: Optional[TransferManager],
+        transfer_manager: TransferManager,
         skip_tars_table: bool,
         cur: sqlite3.Cursor,
         con: sqlite3.Connection,
@@ -140,10 +140,10 @@ class TarWrapper(object):
             hpss,
             os.path.join(cache, self.tfname),
             cache,
+            transfer_manager,
             keep,
             non_blocking,
             is_index=False,
-            transfer_manager=transfer_manager,
         )
         logger.info(
             f"{ts_utc()}: SURFACE (process_tar): Called hpss_put to dispatch archive file {self.tfname}"
@@ -344,9 +344,9 @@ def construct_tars(
     keep: bool,
     follow_symlinks: bool,
     dev_options: DevOptions,
+    transfer_manager: TransferManager,
     skip_tars_table: bool = False,
     non_blocking: bool = False,
-    transfer_manager: Optional[TransferManager] = None,
 ) -> List[str]:
 
     failures: List[str] = []

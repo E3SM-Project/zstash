@@ -207,7 +207,7 @@ def globus_transfer(  # noqa: C901
                 # Note: any status we manually set
                 # (I.e., "UNKNOWN", "SUBMITTED", "EXHAUSTED_TIMEOUT_RETRIES") is NOT possible here,
                 # because we're using `task["status"]` from the globus_sdk TransferClient.
-                logger.error(
+                logger.warning(
                     f"{ts_utc()}: Previous task_id {mrb.task_id} status = {mrb.task_status}."
                 )
 

@@ -150,10 +150,10 @@ def hpss_put(
     hpss: str,
     file_path: str,
     cache: str,
+    transfer_manager: TransferManager,
     keep: bool = True,
     non_blocking: bool = False,
     is_index=False,
-    transfer_manager: Optional[TransferManager] = None,
 ):
     """
     Put a file to the HPSS archive.

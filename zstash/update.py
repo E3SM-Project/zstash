@@ -40,9 +40,9 @@ def update():
         hpss,
         get_db_filename(cache),
         cache,
+        transfer_manager,
         keep=args.keep,
         is_index=True,
-        transfer_manager=transfer_manager,
     )
 
     globus_finalize(transfer_manager, args.keep)
@@ -290,8 +290,8 @@ def update_database(  # noqa: C901
         keep,
         args.follow_symlinks,
         dev_options,
+        transfer_manager,
         non_blocking=args.non_blocking,
-        transfer_manager=transfer_manager,
     )
 
     # Close database

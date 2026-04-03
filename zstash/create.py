@@ -99,9 +99,9 @@ def create():
         hpss,
         get_db_filename(cache),
         cache,
+        transfer_manager,
         keep=args.keep,
         is_index=True,
-        transfer_manager=transfer_manager,
     )
 
     logger.debug(f"{ts_utc()}: calling globus_finalize()")
@@ -292,9 +292,9 @@ create table files (
         args.keep,
         args.follow_symlinks,
         dev_options,
+        transfer_manager,
         skip_tars_table=args.no_tars_md5,
         non_blocking=args.non_blocking,
-        transfer_manager=transfer_manager,
     )
 
     # Close database
