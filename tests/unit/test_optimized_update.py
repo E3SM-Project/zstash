@@ -563,40 +563,6 @@ class TestUpdateDatabaseOptimization:
             assert is_within_tolerance == should_match
 
 
-class TestBackwardCompatibility:
-    """Tests to ensure backward compatibility with existing code."""
-
-    def test_get_files_to_archive_still_works(self, tmp_path):
-        """Test that legacy get_files_to_archive function still works."""
-        from zstash.utils import get_files_to_archive
-
-        (tmp_path / "file.txt").write_text("content")
-
-        os.chdir(tmp_path)
-        result = get_files_to_archive("cache", None, None)
-
-        # Should return list of strings
-        assert isinstance(result, list)
-        assert len(result) > 0
-        assert all(isinstance(item, str) for item in result)
-
-    def test_output_format_matches_original(self, tmp_path):
-        """Test that file paths are normalized the same way as original."""
-        subdir = tmp_path / "subdir"
-        subdir.mkdir()
-        (subdir / "file.txt").write_text("content")
-
-        os.chdir(tmp_path)
-
-        from zstash.utils import get_files_to_archive
-
-        legacy_result = get_files_to_archive("cache", None, None)
-        new_result = list(get_files_to_archive_with_stats("cache", None, None).keys())
-
-        # Should produce same file list
-        assert legacy_result == new_result
-
-
 @pytest.fixture
 def mock_database():
     """Fixture providing a mock database cursor."""

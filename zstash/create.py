@@ -6,17 +6,19 @@ import logging
 import os.path
 import sqlite3
 import sys
-from typing import Any, List, Tuple
+from datetime import datetime
+from typing import Any, Dict, List, Tuple
 
 from six.moves.urllib.parse import urlparse
 
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_put
-from .hpss_utils import add_files
+from .hpss_utils import DevOptions, construct_tars
 from .settings import DEFAULT_CACHE, config, get_db_filename, logger
+from .transfer_tracking import TransferManager
 from .utils import (
     create_tars_table,
-    get_files_to_archive,
+    get_files_to_archive_with_stats,
     run_command,
     tars_table_exists,
     ts_utc,
@@ -52,12 +54,13 @@ def create():
         logger.error(input_path_error_str)
         raise NotADirectoryError(input_path_error_str)
 
+    transfer_manager: TransferManager = TransferManager()
     if hpss != "none":
         url = urlparse(hpss)
         if url.scheme == "globus":
             # identify globus endpoints
             logger.debug(f"{ts_utc()}:Calling globus_activate(hpss)")
-            globus_activate(hpss)
+            transfer_manager.globus_config = globus_activate(hpss)
         else:
             # config.hpss is not "none", so we need to
             # create target HPSS directory
@@ -88,14 +91,21 @@ def create():
 
     # Create and set up the database
     logger.debug(f"{ts_utc()}: Calling create_database()")
-    failures: List[str] = create_database(cache, args)
+    failures: List[str] = create_database(cache, args, transfer_manager)
 
     # Transfer to HPSS. Always keep a local copy.
     logger.debug(f"{ts_utc()}: calling hpss_put() for {get_db_filename(cache)}")
-    hpss_put(hpss, get_db_filename(cache), cache, keep=args.keep, is_index=True)
+    hpss_put(
+        hpss,
+        get_db_filename(cache),
+        cache,
+        transfer_manager,
+        keep=args.keep,
+        is_index=True,
+    )
 
     logger.debug(f"{ts_utc()}: calling globus_finalize()")
-    globus_finalize(non_blocking=args.non_blocking)
+    globus_finalize(transfer_manager, args.keep)
 
     if len(failures) > 0:
         # List the failures
@@ -204,7 +214,9 @@ def setup_create() -> Tuple[str, argparse.Namespace]:
     return cache, args
 
 
-def create_database(cache: str, args: argparse.Namespace) -> List[str]:
+def create_database(
+    cache: str, args: argparse.Namespace, transfer_manager: TransferManager
+) -> List[str]:
     # Create new database
     logger.debug(f"{ts_utc()}:Creating index database")
     if os.path.exists(get_db_filename(cache)):
@@ -260,44 +272,30 @@ create table files (
             cur.execute("insert into config values (?,?)", (attr, value))
     con.commit()
 
-    files: List[str] = get_files_to_archive(cache, args.include, args.exclude)
+    file_stats: Dict[str, Tuple[int, datetime]] = get_files_to_archive_with_stats(
+        cache, args.include, args.exclude
+    )
 
     failures: List[str]
-    if args.follow_symlinks:
-        try:
-            # Add files to archive
-            failures = add_files(
-                cur,
-                con,
-                -1,
-                files,
-                cache,
-                args.keep,
-                args.follow_symlinks,
-                skip_tars_md5=args.no_tars_md5,
-                non_blocking=args.non_blocking,
-                error_on_duplicate_tar=args.error_on_duplicate_tar,
-                overwrite_duplicate_tars=args.overwrite_duplicate_tars,
-                force_database_corruption=args.for_developers_force_database_corruption,
-            )
-        except FileNotFoundError:
-            raise Exception("Archive creation failed due to broken symlink.")
-    else:
-        # Add files to archive
-        failures = add_files(
-            cur,
-            con,
-            -1,
-            files,
-            cache,
-            args.keep,
-            args.follow_symlinks,
-            skip_tars_md5=args.no_tars_md5,
-            non_blocking=args.non_blocking,
-            error_on_duplicate_tar=args.error_on_duplicate_tar,
-            overwrite_duplicate_tars=args.overwrite_duplicate_tars,
-            force_database_corruption=args.for_developers_force_database_corruption,
-        )
+    dev_options: DevOptions = DevOptions(
+        error_on_duplicate_tar=args.error_on_duplicate_tar,
+        overwrite_duplicate_tars=args.overwrite_duplicate_tars,
+        force_database_corruption=args.for_developers_force_database_corruption,
+    )
+    # Add files to archive
+    failures = construct_tars(
+        cur,
+        con,
+        -1,
+        file_stats,
+        cache,
+        args.keep,
+        args.follow_symlinks,
+        dev_options,
+        transfer_manager,
+        skip_tars_table=args.no_tars_md5,
+        non_blocking=args.non_blocking,
+    )
 
     # Close database
     con.commit()

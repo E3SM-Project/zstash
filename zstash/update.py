@@ -10,8 +10,9 @@ from typing import Dict, List, Optional, Tuple
 
 from .globus import globus_activate, globus_finalize
 from .hpss import hpss_get, hpss_put
-from .hpss_utils import add_files
+from .hpss_utils import DevOptions, construct_tars
 from .settings import DEFAULT_CACHE, TIME_TOL, config, get_db_filename, logger
+from .transfer_tracking import TransferManager
 from .utils import get_files_to_archive_with_stats, update_config
 
 
@@ -21,7 +22,8 @@ def update():
     cache: str
     args, cache = setup_update()
 
-    result: Optional[List[str]] = update_database(args, cache)
+    transfer_manager = TransferManager()
+    result: Optional[List[str]] = update_database(args, cache, transfer_manager)
 
     if result is None:
         # There was either nothing to update or `--dry-run` was set.
@@ -34,9 +36,16 @@ def update():
         hpss = config.hpss
     else:
         raise TypeError("Invalid config.hpss={}".format(config.hpss))
-    hpss_put(hpss, get_db_filename(cache), cache, keep=args.keep, is_index=True)
+    hpss_put(
+        hpss,
+        get_db_filename(cache),
+        cache,
+        transfer_manager,
+        keep=args.keep,
+        is_index=True,
+    )
 
-    globus_finalize(non_blocking=args.non_blocking)
+    globus_finalize(transfer_manager, args.keep)
 
     # List failures
     if len(failures) > 0:
@@ -138,7 +147,7 @@ def setup_update() -> Tuple[argparse.Namespace, str]:
 
 # C901 'update_database' is too complex (20)
 def update_database(  # noqa: C901
-    args: argparse.Namespace, cache: str
+    args: argparse.Namespace, cache: str, transfer_manager: TransferManager
 ) -> Optional[List[str]]:
     # Open database
     logger.debug("Opening index database")
@@ -151,8 +160,8 @@ def update_database(  # noqa: C901
                 hpss: str = config.hpss
             else:
                 raise TypeError("Invalid config.hpss={}".format(config.hpss))
-            globus_activate(hpss)
-            hpss_get(hpss, get_db_filename(cache), cache)
+            transfer_manager.globus_config = globus_activate(hpss)
+            hpss_get(hpss, get_db_filename(cache), cache, transfer_manager)
         else:
             error_str: str = (
                 "--hpss argument is required when local copy of database is unavailable"
@@ -217,7 +226,7 @@ def update_database(  # noqa: C901
         else:
             archived_files[file_path] = (size, mtime)
 
-    newfiles: List[str] = []
+    newfiles: Dict[str, Tuple[int, datetime]] = {}
     files_checked = 0
 
     for file_path in files:
@@ -227,7 +236,7 @@ def update_database(  # noqa: C901
         # Check if file exists in database
         if file_path not in archived_files:
             # File not in database - it's new
-            newfiles.append(file_path)
+            newfiles[file_path] = (size_new, mdtime_new)
         else:
             # File exists in database - check if it changed
             archived_size, archived_mtime = archived_files[file_path]
@@ -237,7 +246,7 @@ def update_database(  # noqa: C901
                 and (abs((mdtime_new - archived_mtime).total_seconds()) <= TIME_TOL)
             ):
                 # File has changed
-                newfiles.append(file_path)
+                newfiles[file_path] = (size_new, mdtime_new)
 
         files_checked += 1
 
@@ -252,7 +261,7 @@ def update_database(  # noqa: C901
     # --dry-run option
     if args.dry_run:
         print("List of files to be updated")
-        for file_path in newfiles:
+        for file_path in newfiles.keys():
             print(file_path)
         # Close database
         con.commit()
@@ -266,40 +275,24 @@ def update_database(  # noqa: C901
     for tfile in tfiles:
         tfile_string: str = tfile[0]
         itar = max(itar, int(tfile_string[0:6], 16))
-
+    dev_options: DevOptions = DevOptions(
+        error_on_duplicate_tar=args.error_on_duplicate_tar,
+        overwrite_duplicate_tars=args.overwrite_duplicate_tars,
+        force_database_corruption="",
+    )
     # Add files
-    failures: List[str]
-    if args.follow_symlinks:
-        try:
-            # Add files
-            failures = add_files(
-                cur,
-                con,
-                itar,
-                newfiles,
-                cache,
-                keep,
-                args.follow_symlinks,
-                non_blocking=args.non_blocking,
-                error_on_duplicate_tar=args.error_on_duplicate_tar,
-                overwrite_duplicate_tars=args.overwrite_duplicate_tars,
-            )
-        except FileNotFoundError:
-            raise Exception("Archive update failed due to broken symlink.")
-    else:
-        # Add files
-        failures = add_files(
-            cur,
-            con,
-            itar,
-            newfiles,
-            cache,
-            keep,
-            args.follow_symlinks,
-            non_blocking=args.non_blocking,
-            error_on_duplicate_tar=args.error_on_duplicate_tar,
-            overwrite_duplicate_tars=args.overwrite_duplicate_tars,
-        )
+    failures = construct_tars(
+        cur,
+        con,
+        itar,
+        newfiles,
+        cache,
+        keep,
+        args.follow_symlinks,
+        dev_options,
+        transfer_manager,
+        non_blocking=args.non_blocking,
+    )
 
     # Close database
     con.commit()
