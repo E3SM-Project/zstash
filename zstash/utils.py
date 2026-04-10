@@ -12,6 +12,8 @@ from typing import Any, Dict, List, Tuple
 
 from .settings import TupleTarsRow, config, logger
 
+LOADER_SANITIZED_ENV_VARS: Tuple[str, ...] = ("LD_LIBRARY_PATH", "LD_PRELOAD")
+
 
 # Classes #####################################################################
 class DirectoryScanner:
@@ -138,9 +140,24 @@ def include_files(include: str, files: List[str]) -> List[str]:
     return filter_files(include, files, include=True)
 
 
-def run_command(command: str, error_str: str):
+def get_command_environment(command_args: List[str]) -> Dict[str, str]:
+    env: Dict[str, str] = os.environ.copy()
+
+    if command_args and command_args[0] == "hsi":
+        # Avoid inheriting pixi/conda loader overrides into the system hsi binary.
+        for env_var in LOADER_SANITIZED_ENV_VARS:
+            env.pop(env_var, None)
+
+    return env
+
+
+def run_command(command: str, error_str: str) -> None:
+    command_args: List[str] = shlex.split(command)
     p1: subprocess.Popen = subprocess.Popen(
-        shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        command_args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=get_command_environment(command_args),
     )
     stdout: bytes
     stderr: bytes
