@@ -16,6 +16,7 @@ set -e
 # a direct transfer to HPSS & a Globus transfer to Chrysalis
 work_dir=/pscratch/sd/f/forsyth/zstash_performance/
 unique_id=performance_20260402
+environment_commands="source /global/common/software/e3sm/anaconda_envs/test_e3sm_unified_1.13.0rc5_pm-cpu.sh"
 
 dir_to_copy_from=/global/cfs/cdirs/e3sm/forsyth/E3SMv2/v2.LR.historical_0201/
 subdir0=build/
@@ -294,6 +295,10 @@ record_result()
 
 ###############################################################################
 # Main script:
+
+# Make sure we're running from the correct environment.
+# It might not necessarily be a dev environment built off this branch!
+${environment_commands}
 
 validate_configuration "$dir_to_copy_from" "$subdir0" "$subdir1" "$subdir2"
 
