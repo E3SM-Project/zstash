@@ -14,6 +14,10 @@ check_log_has()
     done
 }
 
+run_hsi() {
+    env -u LD_LIBRARY_PATH -u LD_PRELOAD hsi "$@"
+}
+
 setup()
 {
   echo "##########################################################################################################"
@@ -22,7 +26,7 @@ setup()
   case_name="${3}"
   archive_name=$4
   if [[ "${use_hpss}" == "true" ]]; then
-      hsi rm -R ${archive_name}
+      run_hsi rm -R ${archive_name}
   fi
   echo "use_hpss=${use_hpss}"
   echo "follow_symlinks=${follow_symlinks}"

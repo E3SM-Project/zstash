@@ -14,6 +14,10 @@ check_log_has()
     fi
 }
 
+run_hsi() {
+    env -u LD_LIBRARY_PATH -u LD_PRELOAD hsi "$@"
+}
+
 # base.setupDirs ##############################################################
 test_dir=zstash_test
 
@@ -47,7 +51,7 @@ echo "Cache:"
 ls -l ${test_dir}/${cache} 2>&1 | tee ${case_name}_cache.log
 check_log_has "index.db" ${case_name}_cache.log
 echo "HPSS:"
-hsi ls -l ${hpss_path} 2>&1 | tee ${case_name}_hpss.log
+run_hsi ls -l ${hpss_path} 2>&1 | tee ${case_name}_hpss.log
 check_log_has "000000.tar" ${case_name}_hpss.log
 check_log_has "index.db" ${case_name}_hpss.log
 
@@ -65,7 +69,7 @@ echo "Cache:"
 ls -l ${test_dir}/${cache} 2>&1 | tee ${case_name}_cache.log
 check_log_has "index.db" ${case_name}_cache.log
 echo "HPSS:"
-hsi ls -l ${hpss_path} 2>&1 | tee ${case_name}_hpss.log
+run_hsi ls -l ${hpss_path} 2>&1 | tee ${case_name}_hpss.log
 check_log_has "000000.tar" ${case_name}_hpss.log
 check_log_has "000001.tar" ${case_name}_hpss.log
 check_log_has "index.db" ${case_name}_hpss.log
@@ -81,7 +85,7 @@ echo "Cache:"
 ls -l ${test_dir}/${cache} 2>&1 | tee ${case_name}_cache.log
 check_log_has "index.db" ${case_name}_cache.log
 echo "HPSS:"
-hsi ls -l ${hpss_path} 2>&1 | tee ${case_name}_hpss.log
+run_hsi ls -l ${hpss_path} 2>&1 | tee ${case_name}_hpss.log
 check_log_has "000000.tar" ${case_name}_hpss.log
 check_log_has "000001.tar" ${case_name}_hpss.log
 check_log_has "000002.tar" ${case_name}_hpss.log
@@ -97,7 +101,7 @@ echo "Cache:"
 ls -l ${test_dir}/${cache} 2>&1 | tee ${case_name}_cache.log
 check_log_has "index.db" ${case_name}_cache.log
 echo "HPSS:"
-hsi ls -l ${hpss_path} 2>&1 | tee ${case_name}_hpss.log
+run_hsi ls -l ${hpss_path} 2>&1 | tee ${case_name}_hpss.log
 check_log_has "000000.tar" ${case_name}_hpss.log
 check_log_has "000001.tar" ${case_name}_hpss.log
 check_log_has "000002.tar" ${case_name}_hpss.log
@@ -114,7 +118,7 @@ echo "Cache:"
 ls -l ${test_dir}/${cache} 2>&1 | tee ${case_name}_cache.log
 check_log_has "index.db" ${case_name}_cache.log
 echo "HPSS:"
-hsi ls -l ${hpss_path} 2>&1 | tee ${case_name}_hpss.log
+run_hsi ls -l ${hpss_path} 2>&1 | tee ${case_name}_hpss.log
 check_log_has "000000.tar" ${case_name}_hpss.log
 check_log_has "000001.tar" ${case_name}_hpss.log
 check_log_has "000002.tar" ${case_name}_hpss.log
@@ -135,4 +139,4 @@ rm create.log
 rm create_*.log
 rm ls.log
 rm update*.log
-hsi rm -R ${hpss_path}
+run_hsi rm -R ${hpss_path}

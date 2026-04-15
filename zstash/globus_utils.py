@@ -31,6 +31,7 @@ HPSS_ENDPOINT_MAP: Dict[str, str] = {
 REGEX_ENDPOINT_MAP: Dict[str, str] = {
     r"theta.*\.alcf\.anl\.gov": "08925f04-569f-11e7-bef8-22000b9a448b",
     r"beboplogin\d+.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
+    r"ilogin\d+.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
     r"blueslogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
     r"chrlogin.*\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
     r"b\d+\.lcrc\.anl\.gov": "15288284-7006-4041-ba1a-6b52501e49f1",
