@@ -1,6 +1,6 @@
 # How to profile zstash's performance
 
-Performance profiling should be done on Perlmutter. We're keeping the performance records in `/global/homes/f/forsyth/zstash_performance_records`.
+Performance profiling should be done on Perlmutter. We're keeping the performance records in `/global/homes/f/forsyth/zstash_performance_records`. (NOTE: this is currently user-specific. If we start having many other developers running performance profiling, we may try to find a more centralized location.)
 
 ## Generate performance data.bash
 
@@ -49,18 +49,18 @@ In `zstash/tests/performance/visualize_performance.py`, edit the run metadata:
 ```python
 # The results to show in Fig. 1
 # This should be the results.csv you just generated in the step above.
-RESULTS_CSV: str = ""
+RESULTS_CSV: str = "/pscratch/sd/f/forsyth/zstash_performance/performance_20260414/results.csv"
 
 # The results to compare against in Fig. 2.
 # Set to None to skip Fig. 2.
 # This will typically be the second-to-oldest results.csv in the records space
-BASELINE_RESULTS_CSV: Optional[str] = ""
+BASELINE_RESULTS_CSV: Optional[str] = "/pscratch/sd/f/forsyth/zstash_performance/performance_20260402/results.csv"
 
 # Output path for the saved figures.
 # Set to None to display interactively instead of saving.
 # Make sure to put this on the web server path,
 # i.e., /global/cfs/cdirs/e3sm/www/...
-OUTPUT_PATH: Optional[str] = ""
+OUTPUT_PATH: Optional[str] = "/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance/performance_pr427_20260603.png"
 ```
 
 ## For reference

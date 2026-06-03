@@ -7,7 +7,7 @@ Usage:
 
 Edit the constants at the top of this file to point at the CSV(s) to plot.
 
-The CSV is produced by performance_profile.sh and has columns:
+ The CSV is produced by generate_performance_data.bash and has columns:
     test_label, create_subdir, update_subdir, hpss_label, operation, elapsed_seconds
 
 Visualization strategy
@@ -835,10 +835,16 @@ def main():
     )
     args = parser.parse_args()
 
-    df = load_data(RESULTS_CSV)
-
+    results_path = Path(RESULTS_CSV)
+    if not RESULTS_CSV or not results_path.is_file():
+        print(f"ERROR: RESULTS_CSV not found: {RESULTS_CSV!r}", file=sys.stderr)
+        sys.exit(1)
+    df = load_data(str(results_path))
     if df.empty:
-        print("ERROR: CSV is empty or could not be parsed.", file=sys.stderr)
+        print(
+            f"ERROR: RESULTS_CSV is empty or could not be parsed: {RESULTS_CSV!r}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Determine the sorted list of directories that actually appear in the data
@@ -904,7 +910,7 @@ def main():
     # Baseline comparison figure (Figure 2)
     # -----------------------------------------------------------------------
     fig_cmp = None
-    if BASELINE_RESULTS_CSV is not None:
+    if BASELINE_RESULTS_CSV:
         bas_path = Path(BASELINE_RESULTS_CSV)
         if not bas_path.exists():
             print(
@@ -930,7 +936,7 @@ def main():
             out_path.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(out_path, dpi=args.dpi, bbox_inches="tight")
             print(f"{label} saved to: {out_path}")
-            os.chmod(out_path_str, 0o755)
+            os.chmod(out_path_str, 0o644)
             web_path = str(out_path).replace(
                 "/global/cfs/cdirs/e3sm/www/",
                 "https://portal.nersc.gov/cfs/e3sm/",

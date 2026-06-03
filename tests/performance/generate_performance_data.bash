@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -o pipefail
 
 # Analogous to CI/CD matrix testing of Python versions,
 # here we will do a matrix performance profiling
@@ -416,7 +417,7 @@ done
 print_success "All tests completed. Results saved to: ${results_csv}"
 
 performance_archive_path=/global/homes/f/forsyth/zstash_performance_records/${unique_id}_results.csv
-cp ${results_csv} ${performance_archive_path}
+cp "${results_csv}" "${performance_archive_path}"
 print_success "Results copied to: ${performance_archive_path}"
 
 print_info "Now edit IO paths and run: python visualize_performance.py"
