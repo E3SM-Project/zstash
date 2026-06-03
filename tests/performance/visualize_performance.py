@@ -447,8 +447,8 @@ def plot_comparison_operation(
         pair_offset = h_idx * (2 * pair_width + gap)
 
         for d_idx, d in enumerate(dirs):
-            x_left = x_base[d_idx] + pair_offset  # current bar
-            x_right = x_base[d_idx] + pair_offset + pair_width  # baseline bar
+            x_left = x_base[d_idx] + pair_offset  # baseline bar
+            x_right = x_base[d_idx] + pair_offset + pair_width  # current bar
 
             def mean_for(df, _op=operation, _h=hpss, _d=d):
                 v = (
@@ -465,19 +465,9 @@ def plot_comparison_operation(
             cur_mean = mean_for(df_cur)
             bas_mean = mean_for(df_bas)
 
-            # Current bar (solid)
+            # Baseline bar (hatched, lighter) — left
             ax.bar(
                 x_left,
-                cur_mean,
-                width=pair_width,
-                color=color,
-                alpha=0.85,
-                zorder=2,
-                label=HPSS_LABELS[hpss] if d_idx == 0 else "",
-            )
-            # Baseline bar (hatched, lighter)
-            ax.bar(
-                x_right,
                 bas_mean,
                 width=pair_width,
                 color=color,
@@ -485,6 +475,16 @@ def plot_comparison_operation(
                 hatch="////",
                 zorder=2,
                 edgecolor=color,
+            )
+            # Current bar (solid) — right
+            ax.bar(
+                x_right,
+                cur_mean,
+                width=pair_width,
+                color=color,
+                alpha=0.85,
+                zorder=2,
+                label=HPSS_LABELS[hpss] if d_idx == 0 else "",
             )
 
             # Ratio annotation
@@ -566,17 +566,9 @@ def _plot_comparison_extract_single_op(
             cur_mean = mean_for(df_cur)
             bas_mean = mean_for(df_bas)
 
+            # Baseline bar (hatched, lighter) — left
             ax.bar(
                 x_left,
-                cur_mean,
-                width=pair_width,
-                color=color,
-                alpha=0.85,
-                zorder=2,
-                label=HPSS_LABELS[hpss] if c_idx == 0 else "",
-            )
-            ax.bar(
-                x_right,
                 bas_mean,
                 width=pair_width,
                 color=color,
@@ -584,6 +576,16 @@ def _plot_comparison_extract_single_op(
                 hatch="////",
                 zorder=2,
                 edgecolor=color,
+            )
+            # Current bar (solid) — right
+            ax.bar(
+                x_right,
+                cur_mean,
+                width=pair_width,
+                color=color,
+                alpha=0.85,
+                zorder=2,
+                label=HPSS_LABELS[hpss] if c_idx == 0 else "",
             )
 
             if bas_mean > 0 and cur_mean > 0:
@@ -652,8 +654,8 @@ def plot_comparison_extract(
             for op_idx, op in enumerate(ops):
                 hatch = op_hatches[op]
                 op_origin = hpss_origin + op_idx * (pair_span + op_gap)
-                x_cur = op_origin
-                x_bas = op_origin + pair_width + inner_gap
+                x_bas = op_origin  # baseline — left
+                x_cur = op_origin + pair_width + inner_gap  # current  — right
 
                 def mean_for(df, _op=op, _h=hpss, _cs=create_sub, _us=update_sub):
                     v = (
@@ -671,6 +673,19 @@ def plot_comparison_extract(
                 cur_mean = mean_for(df_cur)
                 bas_mean = mean_for(df_bas)
 
+                # Baseline bar (left): op-hatch + //// to mark it as baseline
+                bas_hatch = hatch + "////"
+                ax.bar(
+                    x_bas,
+                    bas_mean,
+                    width=pair_width,
+                    color=color,
+                    hatch=bas_hatch,
+                    alpha=0.35,
+                    zorder=2,
+                    edgecolor=color,
+                )
+                # Current bar (right): op-hatch only
                 ax.bar(
                     x_cur,
                     cur_mean,
@@ -679,16 +694,6 @@ def plot_comparison_extract(
                     hatch=hatch,
                     alpha=0.85,
                     zorder=2,
-                )
-                ax.bar(
-                    x_bas,
-                    bas_mean,
-                    width=pair_width,
-                    color=color,
-                    hatch=hatch,
-                    alpha=0.35,
-                    zorder=2,
-                    edgecolor=color,
                 )
 
                 if bas_mean > 0 and cur_mean > 0:
@@ -734,17 +739,19 @@ def plot_comparison_extract(
         mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in HPSS_ORDER
     ]
     seq_patch = mpatches.Patch(
-        facecolor="grey", hatch="", label="Sequential (1 worker)"
+        facecolor="grey", hatch="", alpha=0.85, label="Sequential, current"
+    )
+    seq_bas_patch = mpatches.Patch(
+        facecolor="grey", hatch="////", alpha=0.35, label="Sequential, baseline"
     )
     par_patch = mpatches.Patch(
-        facecolor="grey", hatch="xxxx", label="Parallel (2 workers)"
+        facecolor="grey", hatch="xxxx", alpha=0.85, label="Parallel, current"
     )
-    cur_patch = mpatches.Patch(facecolor="grey", alpha=0.85, label="Current branch")
-    bas_patch = mpatches.Patch(
-        facecolor="grey", alpha=0.35, label="Baseline (main)", hatch="////"
+    par_bas_patch = mpatches.Patch(
+        facecolor="grey", hatch="xxxx////", alpha=0.35, label="Parallel, baseline"
     )
     ax.legend(
-        handles=hpss_patches + [seq_patch, par_patch, cur_patch, bas_patch],
+        handles=hpss_patches + [seq_patch, seq_bas_patch, par_patch, par_bas_patch],
         fontsize=6.5,
         loc="upper right",
         ncol=3,
