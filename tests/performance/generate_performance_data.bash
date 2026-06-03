@@ -18,6 +18,10 @@ work_dir=/pscratch/sd/f/forsyth/zstash_performance/
 unique_id=performance_20260402
 environment_commands="source /global/common/software/e3sm/anaconda_envs/test_e3sm_unified_1.13.0rc5_pm-cpu.sh"
 
+###############################################################################
+# These parameters don't usually need to be changed,
+# but can be changed for further customization.
+
 dir_to_copy_from=/global/cfs/cdirs/e3sm/forsyth/E3SMv2/v2.LR.historical_0201/
 subdir0=build/
 subdir1=run/
@@ -410,4 +414,9 @@ for test_idx in 0 1 2 3 4 5; do
 done
 
 print_success "All tests completed. Results saved to: ${results_csv}"
+
+performance_archive_path=/global/homes/f/forsyth/zstash_performance_records/${unique_id}_results.csv
+cp ${results_csv} ${performance_archive_path}
+print_success "Results copied to: ${performance_archive_path}"
+
 print_info "Now edit IO paths and run: python visualize_performance.py"
