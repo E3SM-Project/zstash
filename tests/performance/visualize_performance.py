@@ -56,19 +56,19 @@ import pandas as pd
 
 # The results to show in Fig. 1
 RESULTS_CSV: str = (
-    "/pscratch/sd/f/forsyth/zstash_performance/performance_20260414/results.csv"
+    "/pscratch/sd/f/forsyth/zstash_performance/performance_20260603/results.csv"
 )
 
 # The results to compare against in Fig. 2.
 # Set to None to skip Fig. 2.
 BASELINE_RESULTS_CSV: Optional[str] = (
-    "/pscratch/sd/f/forsyth/zstash_performance/performance_20260402/results.csv"
+    "/pscratch/sd/f/forsyth/zstash_performance/performance_20260414/results.csv"
 )
 
 # Output path for the saved figures.
 # Set to None to display interactively instead of saving.
 OUTPUT_PATH: Optional[str] = (
-    "/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance/performance_pr427_20260603.png"
+    "/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance/performance_pr427_20260603_run2.png"
 )
 
 # ---------------------------------------------------------------------------
