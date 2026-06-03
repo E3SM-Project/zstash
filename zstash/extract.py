@@ -7,6 +7,7 @@ import heapq
 import logging
 import multiprocessing
 import os.path
+import queue
 import re
 import sqlite3
 import sys
@@ -321,7 +322,7 @@ def multiprocess_extract(
         tar_to_size_unsorted[tar] += size
     # Sort by the size.
     tar_to_size: collections.OrderedDict[str, float] = collections.OrderedDict(
-        sorted(tar_to_size_unsorted.items(), key=lambda x: x[1])
+        sorted(tar_to_size_unsorted.items(), key=lambda x: x[1], reverse=True)
     )
 
     # We don't want to instantiate more processes than we need to.
@@ -336,15 +337,17 @@ def multiprocess_extract(
     # that worker_idx needs to work on.
     # We can efficiently get the worker with the least amount of work.
     work_to_workers: List[Tuple[int, int]] = [(0, i) for i in range(num_workers)]
-    heapq.heapify(workers_to_tars)
+    heapq.heapify(work_to_workers)
 
     # Using a greedy approach, populate workers_to_tars.
-    for _, tar in enumerate(tar_to_size):
+    tar_to_worker_idx: collections.OrderedDict[str, int] = collections.OrderedDict()
+    for tar in tar_to_size:
         # The worker with the least work should get the current largest amount of work.
         workers_work: int
         worker_idx: int
         workers_work, worker_idx = heapq.heappop(work_to_workers)
         workers_to_tars[worker_idx].add(tar)
+        tar_to_worker_idx[tar] = worker_idx
         # Add this worker back to the heap, with the new amount of work.
         worker_tuple: Tuple[float, int] = (workers_work + tar_to_size[tar], worker_idx)
         # FIXME: error: Cannot infer type argument 1 of "heappush"
@@ -355,11 +358,9 @@ def multiprocess_extract(
     workers_to_matches: List[List[FilesRow]] = [[] for _ in range(num_workers)]
     for db_row in matches:
         tar = db_row.tar
-        workers_idx: int
-        for workers_idx in range(len(workers_to_tars)):
-            if tar in workers_to_tars[workers_idx]:
-                # This worker gets this db_row.
-                workers_to_matches[workers_idx].append(db_row)
+        workers_idx = tar_to_worker_idx[tar]
+        # This worker gets this db_row.
+        workers_to_matches[workers_idx].append(db_row)
 
     tar_ordering: List[str] = sorted([tar for tar in tar_to_size])
     monitor: parallel.PrintMonitor = parallel.PrintMonitor(tar_ordering)
@@ -367,8 +368,8 @@ def multiprocess_extract(
     # The return value for extractFiles will be added here.
     failure_queue: multiprocessing.Queue[FilesRow] = multiprocessing.Queue()
     processes: List[multiprocessing.Process] = []
-    for matches in workers_to_matches:
-        tars_for_this_worker: List[str] = list(set(match.tar for match in matches))
+    for worker_idx, matches in enumerate(workers_to_matches):
+        tars_for_this_worker: List[str] = list(workers_to_tars[worker_idx])
         worker: parallel.ExtractWorker = parallel.ExtractWorker(
             monitor, tars_for_this_worker, failure_queue
         )
@@ -382,12 +383,20 @@ def multiprocess_extract(
 
     # While the processes are running, we need to empty the queue.
     # Otherwise, it causes hanging.
-    # No need to join() each of the processes when doing this,
-    # because we'll be in this loop until completion.
     failures: List[FilesRow] = []
-    while any(p.is_alive() for p in processes):
-        while not failure_queue.empty():
-            failures.append(failure_queue.get())
+    running_processes: Set[multiprocessing.Process] = set(processes)
+    while running_processes:
+        try:
+            failures.append(failure_queue.get(timeout=0.05))
+        except queue.Empty:
+            pass
+        running_processes = set(p for p in running_processes if p.is_alive())
+
+    while True:
+        try:
+            failures.append(failure_queue.get_nowait())
+        except queue.Empty:
+            break
 
     # Sort the failures, since they can come in at any order.
     failures.sort(key=lambda t: (t.name, t.tar, t.offset))
