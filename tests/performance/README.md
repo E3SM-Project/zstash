@@ -40,6 +40,12 @@ dst_endpoint_uuid=15288284-7006-4041-ba1a-6b52501e49f1 # This is LCRC's endpoint
 dst_endpoint_archive_dir=/lcrc/group/e3sm/ac.forsyth2/zstash_performance_dst_dir/
 ```
 
+Once you have the parameters set up, run:
+```bash
+cd tests/performance/
+./generate_performance_data.bash
+```
+
 Results will be saved to `${results_csv}` (recall `results_csv="${work_dir}${unique_id}/results.csv`). To keep all records together in a non-scratch space, the results csv is also copied to: `/global/homes/f/forsyth/zstash_performance_records/${unique_id}_results.csv`.
 
 ## Visualize performance
@@ -62,6 +68,14 @@ BASELINE_RESULTS_CSV: Optional[str] = "/pscratch/sd/f/forsyth/zstash_performance
 # i.e., /global/cfs/cdirs/e3sm/www/...
 OUTPUT_PATH: Optional[str] = "/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance/performance_pr427_20260603.png"
 ```
+
+Once you have the parameters set up, run:
+```bash
+cd tests/performance/
+python visualize_performance.py
+```
+
+The script will print both the file path and the URL to access the plots.
 
 ## For reference
 

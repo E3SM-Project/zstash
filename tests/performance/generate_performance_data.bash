@@ -331,7 +331,6 @@ declare -a test_configs=(
     "2 0"
     "2 1"
 )
-# FIX: removed erroneous commas that were present in the original array
 declare -a test_labels=("01" "02" "10" "12" "20" "21")
 
 # Loop through the 6 test configurations
@@ -360,8 +359,6 @@ for test_idx in 0 1 2 3 4 5; do
     log_dir="${work_subdir}logs/"
     mkdir -p "${log_dir}"
 
-    # FIX: renamed `dst_hpss` local var to `dst_globus_path` so it does not
-    # shadow/overwrite the top-level `dst_hpss_path` parameter.
     dst_globus_path="globus://${dst_endpoint_uuid}/${dst_endpoint_archive_dir}${unique_id}/test${test_label}/"
 
     # Iterate over the three HPSS modes
@@ -398,7 +395,6 @@ for test_idx in 0 1 2 3 4 5; do
             extract_dir="${mode_dir}extract_${num_workers}workers/"
             mkdir -p "${extract_dir}"
 
-            # FIX: pass num_workers argument (was missing in original)
             run_extract "$extract_dir" "$hpss_path" "$num_workers" "$cache_dir" "$extract_log"
 
             if [ "$num_workers" -eq 1 ]; then
