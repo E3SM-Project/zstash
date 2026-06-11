@@ -7,16 +7,16 @@ Usage:
 
 Edit the constants at the top of this file to point at the CSV(s) to plot.
 
- The CSV is produced by generate_performance_data.bash and has columns:
+The CSV is produced by generate_performance_data.bash and has columns:
     test_label, create_subdir, update_subdir, hpss_label, operation, elapsed_seconds
 
 Visualization strategy
 ----------------------
 Four dimensions:
-  1. Operation  : create | update | extract_seq | extract_par
+  1. Operation  : create | update | extract_seq | extract_par | check_seq | check_par
   2. Directory  : build/ (many small) | run/ (medium) | init/ (few large)
   3. HPSS mode  : none | hpss | globus
-  4. Parallelism: already encoded in operation (extract_seq vs extract_par)
+  4. Parallelism: already encoded in operation (extract_seq vs extract_par, etc.)
 
 Figure 1 – Performance overview:
   Layout: 2×2 grid of subplots, one per operation.
@@ -37,6 +37,18 @@ Figure 2 – Baseline comparison (current branch vs main):
   (current = solid, baseline = hatched) with a ratio annotation
   (current/baseline) above each pair. Ratio > 1 = regression (slower),
   ratio < 1 = improvement (faster).
+
+Figure 3 – zstash check vs extract:
+  Always produced when check data is present in the CSV.
+  Layout: 3 rows × 2 cols
+    Row 0: check_seq | check_par          (standalone check performance)
+    Row 1: check_seq vs extract_seq       (direct apples-to-apples comparison)
+    Row 2: check_par vs extract_par       (same for parallel mode)
+  Since check is essentially a dry run of extract (it downloads tars and
+  verifies md5 checksums but does not write extracted files to disk), these
+  plots make any overhead difference immediately visible.
+  If BASELINE_RESULTS_CSV is set, a Fig. 3b is also produced using the same
+  current-vs-baseline pairing as Fig. 2.
 """
 
 import argparse
@@ -54,19 +66,20 @@ import pandas as pd
 # ← EDIT THESE for each new run
 # ---------------------------------------------------------------------------
 
-# The results to show in Fig. 1
+# The results to show in Fig. 1 and Fig. 3
 RESULTS_CSV: str = (
     "/pscratch/sd/f/forsyth/zstash_performance/performance_20260603/results.csv"
 )
 
-# The results to compare against in Fig. 2.
-# Set to None to skip Fig. 2.
+# The results to compare against in Fig. 2 and Fig. 3b.
+# Set to None to skip those figures.
 BASELINE_RESULTS_CSV: Optional[str] = (
     "/pscratch/sd/f/forsyth/zstash_performance/performance_20260414/results.csv"
 )
 
 # Output path for the saved figures.
 # Set to None to display interactively instead of saving.
+# Fig. 2 and Fig. 3 paths are derived automatically from this path.
 OUTPUT_PATH: Optional[str] = (
     "/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance/performance_pr427_20260603_run2.png"
 )
@@ -85,11 +98,13 @@ OP_TITLES = {
     "update": "zstash update",
     "extract_seq": "zstash extract  (sequential, 1 worker)",
     "extract_par": "zstash extract  (parallel, 2 workers)",
+    "check_seq": "zstash check  (sequential, 1 worker)",
+    "check_par": "zstash check  (parallel, 2 workers)",
 }
 
 # Map an operation to the column that holds the "relevant directory".
-# Extract is intentionally absent: it operates on the combined create+update
-# archive, so both subdirs are needed and it is handled separately.
+# Extract and check are intentionally absent: they operate on the combined
+# create+update archive, so both subdirs are needed and are handled separately.
 OP_DIR_COL = {
     "create": "create_subdir",
     "update": "update_subdir",
@@ -242,6 +257,21 @@ def _extract_configs(df: pd.DataFrame) -> list[tuple[str, str]]:
         .tolist()
     )
     # Sort by create_subdir first, then update_subdir
+    return sorted(pairs, key=lambda p: (dir_sort_key(p[0]), dir_sort_key(p[1])))
+
+
+def _check_configs(df: pd.DataFrame) -> list[tuple[str, str]]:
+    """
+    Return the sorted list of (create_subdir, update_subdir) pairs that
+    appear in check rows of *df*.
+    """
+    mask = df["operation"].isin(["check_seq", "check_par"])
+    pairs = (
+        df[mask][["create_subdir", "update_subdir"]]
+        .drop_duplicates()
+        .apply(tuple, axis=1)
+        .tolist()
+    )
     return sorted(pairs, key=lambda p: (dir_sort_key(p[0]), dir_sort_key(p[1])))
 
 
@@ -817,6 +847,360 @@ def build_comparison_figure(
     return fig
 
 
+# ---------------------------------------------------------------------------
+# Figure 3 – zstash check vs extract
+# ---------------------------------------------------------------------------
+
+
+def _plot_check_vs_extract_pair(
+    ax,
+    df: pd.DataFrame,
+    check_op: str,
+    extract_op: str,
+):
+    """
+    Draw a grouped-bar subplot comparing check and extract for the same
+    worker count.  X-axis = (create, update) archive configs.
+    Within each config group, bars are ordered: [check, extract] × HPSS mode,
+    distinguished by hatch (check = "////", extract = "").
+
+    This makes the overhead (or savings) of check relative to extract
+    immediately visible, since check is conceptually a dry-run of extract.
+    """
+    configs = _check_configs(df)
+    if not configs:
+        ax.set_visible(False)
+        return
+
+    n_configs = len(configs)
+    n_hpss = len(HPSS_ORDER)
+    ops = [check_op, extract_op]
+    op_hatches = {check_op: "////", extract_op: ""}
+
+    n_bars = n_hpss * len(ops)
+    group_width = n_bars * BAR_WIDTH + 0.2
+    x_base = np.arange(n_configs) * group_width
+
+    for c_idx, (create_sub, update_sub) in enumerate(configs):
+        for h_idx, hpss in enumerate(HPSS_ORDER):
+            color = HPSS_COLORS[hpss]
+            for op_idx, op in enumerate(ops):
+                bar_x = x_base[c_idx] + (h_idx * len(ops) + op_idx) * BAR_WIDTH
+                vals = (
+                    df[
+                        (df["operation"] == op)
+                        & (df["hpss_label"] == hpss)
+                        & (df["create_subdir"] == create_sub)
+                        & (df["update_subdir"] == update_sub)
+                    ]["elapsed_seconds"]
+                    .dropna()
+                    .values
+                )
+                mean = vals.mean() if len(vals) > 0 else 0.0
+                ax.bar(
+                    bar_x,
+                    mean,
+                    width=BAR_WIDTH,
+                    color=color,
+                    hatch=op_hatches[op],
+                    alpha=0.85,
+                    zorder=2,
+                )
+                if mean > 0:
+                    ax.text(
+                        bar_x + BAR_WIDTH / 2,
+                        mean * 1.01,
+                        f"{mean:.0f}s",
+                        ha="center",
+                        va="bottom",
+                        fontsize=5.5,
+                        color="#333333",
+                    )
+
+    tick_positions = x_base + (n_bars / 2 - 0.5) * BAR_WIDTH
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels([_extract_tick_label(c, u) for c, u in configs], fontsize=7)
+    ax.set_ylabel("Wall-clock time (s)", fontsize=8)
+    ax.set_xlabel("Archive contents (create → update)", fontsize=8, labelpad=6)
+
+    workers = "1 worker" if check_op == "check_seq" else "2 workers"
+    ax.set_title(
+        f"check vs extract  ({workers})\n" f"Hatch = check  /  Solid = extract",
+        fontsize=10,
+        fontweight="bold",
+        pad=6,
+    )
+    ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
+    ax.set_axisbelow(True)
+
+    hpss_patches = [
+        mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in HPSS_ORDER
+    ]
+    check_patch = mpatches.Patch(facecolor="grey", hatch="////", label="check")
+    extract_patch = mpatches.Patch(facecolor="grey", hatch="", label="extract")
+    ax.legend(
+        handles=hpss_patches + [check_patch, extract_patch],
+        fontsize=7,
+        loc="upper right",
+        ncol=2,
+    )
+
+
+def build_check_figure(df: pd.DataFrame) -> Optional[plt.Figure]:
+    """
+    Build Figure 3: zstash check standalone and check-vs-extract comparison.
+
+    Layout (3 rows × 2 cols):
+      Row 0: check_seq (standalone) | check_par (standalone)
+      Row 1: check_seq vs extract_seq comparison
+      Row 2: check_par vs extract_par comparison
+    """
+    if not df["operation"].isin(["check_seq", "check_par"]).any():
+        return None
+
+    fig = plt.figure(figsize=(15, 16))
+    fig.suptitle(
+        "zstash check Performance\n"
+        "Top row: check standalone;  "
+        "bottom rows: check vs extract (check ≈ dry-run extract)",
+        fontsize=13,
+        fontweight="bold",
+        y=0.98,
+    )
+
+    gs = fig.add_gridspec(
+        3, 2, hspace=0.55, wspace=0.35, top=0.93, bottom=0.07, left=0.07, right=0.97
+    )
+
+    # Row 0: standalone check subplots
+    ax_check_seq = fig.add_subplot(gs[0, 0])
+    ax_check_par = fig.add_subplot(gs[0, 1])
+    _plot_extract_single_op(ax_check_seq, df, "check_seq")
+    _plot_extract_single_op(ax_check_par, df, "check_par")
+
+    # Row 1: check_seq vs extract_seq
+    ax_cmp_seq = fig.add_subplot(gs[1, :])
+    _plot_check_vs_extract_pair(ax_cmp_seq, df, "check_seq", "extract_seq")
+
+    # Row 2: check_par vs extract_par
+    ax_cmp_par = fig.add_subplot(gs[2, :])
+    _plot_check_vs_extract_pair(ax_cmp_par, df, "check_par", "extract_par")
+
+    # Legend for the standalone row
+    legend_handles = [
+        mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in HPSS_ORDER
+    ]
+    ax_check_seq.legend(handles=legend_handles, fontsize=7, loc="upper right")
+
+    return fig
+
+
+def _plot_check_vs_extract_pair_comparison(
+    ax,
+    df_cur: pd.DataFrame,
+    df_bas: pd.DataFrame,
+    check_op: str,
+    extract_op: str,
+):
+    """
+    Fig. 3b version of the check-vs-extract subplot, with current/baseline
+    pairing overlaid.
+
+    Bar order (innermost, per HPSS group):
+        [bas/check] [cur/check]  ‹op_gap›  [bas/extract] [cur/extract]
+    """
+    configs = _check_configs(df_cur)
+    if not configs:
+        ax.set_visible(False)
+        return
+
+    n_configs = len(configs)
+    ops = [check_op, extract_op]
+    op_hatches = {check_op: "////", extract_op: ""}
+
+    pair_width = BAR_WIDTH
+    inner_gap = BAR_WIDTH * 0.15
+    op_gap = BAR_WIDTH * 0.55
+    hpss_gap = BAR_WIDTH * 0.30
+
+    pair_span = 2 * pair_width + inner_gap
+    hpss_group_span = 2 * pair_span + op_gap
+    group_span = len(HPSS_ORDER) * (hpss_group_span + hpss_gap) + 0.3
+    x_base = np.arange(n_configs) * group_span
+
+    for c_idx, (create_sub, update_sub) in enumerate(configs):
+        for h_idx, hpss in enumerate(HPSS_ORDER):
+            color = HPSS_COLORS[hpss]
+            hpss_origin = x_base[c_idx] + h_idx * (hpss_group_span + hpss_gap)
+            for op_idx, op in enumerate(ops):
+                base_hatch = op_hatches[op]
+                op_origin = hpss_origin + op_idx * (pair_span + op_gap)
+                x_bas_bar = op_origin
+                x_cur_bar = op_origin + pair_width + inner_gap
+
+                def mean_for(df, _op=op, _h=hpss, _cs=create_sub, _us=update_sub):
+                    v = (
+                        df[
+                            (df["operation"] == _op)
+                            & (df["hpss_label"] == _h)
+                            & (df["create_subdir"] == _cs)
+                            & (df["update_subdir"] == _us)
+                        ]["elapsed_seconds"]
+                        .dropna()
+                        .values
+                    )
+                    return v.mean() if len(v) > 0 else 0.0
+
+                cur_mean = mean_for(df_cur)
+                bas_mean = mean_for(df_bas)
+
+                ax.bar(
+                    x_bas_bar,
+                    bas_mean,
+                    width=pair_width,
+                    color=color,
+                    hatch=base_hatch + "....",
+                    alpha=0.35,
+                    zorder=2,
+                    edgecolor=color,
+                )
+                ax.bar(
+                    x_cur_bar,
+                    cur_mean,
+                    width=pair_width,
+                    color=color,
+                    hatch=base_hatch,
+                    alpha=0.85,
+                    zorder=2,
+                )
+
+                if bas_mean > 0 and cur_mean > 0:
+                    ratio = cur_mean / bas_mean
+                    top = max(cur_mean, bas_mean)
+                    arrow = (
+                        "▲"
+                        if ratio >= RATIO_REGRESSION
+                        else ("▼" if ratio <= RATIO_IMPROVEMENT else "")
+                    )
+                    ax.text(
+                        (x_bas_bar + x_cur_bar) / 2 + pair_width / 2,
+                        top * 1.03,
+                        f"{arrow}{ratio:.2f}×",
+                        ha="center",
+                        va="bottom",
+                        fontsize=5.5,
+                        fontweight="bold",
+                        color=_ratio_color(ratio),
+                        zorder=4,
+                    )
+
+    group_total_bar_span = len(HPSS_ORDER) * (hpss_group_span + hpss_gap) - hpss_gap
+    x_ticks = x_base + group_total_bar_span / 2
+    ax.set_xticks(x_ticks)
+    ax.set_xticklabels([_extract_tick_label(c, u) for c, u in configs], fontsize=7)
+    ax.set_ylabel("Wall-clock time (s)", fontsize=8)
+    ax.set_xlabel("Archive contents (create → update)", fontsize=8, labelpad=6)
+
+    workers = "1 worker" if check_op == "check_seq" else "2 workers"
+    ax.set_title(
+        f"check vs extract  ({workers})  —  current vs baseline\n"
+        f"Hatch = check  /  Solid = extract  /  Faded = baseline",
+        fontsize=10,
+        fontweight="bold",
+        pad=6,
+    )
+    ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
+    ax.set_axisbelow(True)
+
+    hpss_patches = [
+        mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in HPSS_ORDER
+    ]
+    check_cur = mpatches.Patch(
+        facecolor="grey", hatch="////", alpha=0.85, label="check, current"
+    )
+    check_bas = mpatches.Patch(
+        facecolor="grey", hatch="////....", alpha=0.35, label="check, baseline"
+    )
+    ext_cur = mpatches.Patch(
+        facecolor="grey", hatch="", alpha=0.85, label="extract, current"
+    )
+    ext_bas = mpatches.Patch(
+        facecolor="grey", hatch="....", alpha=0.35, label="extract, baseline"
+    )
+    ax.legend(
+        handles=hpss_patches + [check_cur, check_bas, ext_cur, ext_bas],
+        fontsize=6.5,
+        loc="upper right",
+        ncol=3,
+    )
+
+
+def build_check_comparison_figure(
+    df_cur: pd.DataFrame,
+    df_bas: pd.DataFrame,
+    cur_label: str,
+    bas_label: str,
+) -> Optional[plt.Figure]:
+    """
+    Build Figure 3b: check vs extract with current/baseline pairing.
+
+    Layout (3 rows × 2 cols):
+      Row 0: check_seq (cur vs bas) | check_par (cur vs bas)
+      Row 1: check_seq vs extract_seq (cur vs bas)
+      Row 2: check_par vs extract_par (cur vs bas)
+    """
+    if not df_cur["operation"].isin(["check_seq", "check_par"]).any():
+        return None
+
+    fig = plt.figure(figsize=(16, 17))
+    fig.suptitle(
+        f"zstash check Performance: Current vs Baseline\n"
+        f"current = {cur_label}   |   baseline = {bas_label}\n"
+        f"Ratio = current / baseline  —  "
+        f"▲ {RATIO_REGRESSION_COLOR_LABEL} ≥{RATIO_REGRESSION:.0%} slower  "
+        f"▼ {RATIO_IMPROVEMENT_COLOR_LABEL} ≤{RATIO_IMPROVEMENT:.0%} faster  "
+        f"= within ±10%",
+        fontsize=11,
+        fontweight="bold",
+        y=0.98,
+    )
+
+    gs = fig.add_gridspec(
+        3, 2, hspace=0.58, wspace=0.35, top=0.92, bottom=0.07, left=0.07, right=0.97
+    )
+
+    ax_check_seq = fig.add_subplot(gs[0, 0])
+    ax_check_par = fig.add_subplot(gs[0, 1])
+    _plot_comparison_extract_single_op(ax_check_seq, df_cur, df_bas, "check_seq")
+    _plot_comparison_extract_single_op(ax_check_par, df_cur, df_bas, "check_par")
+
+    ax_cmp_seq = fig.add_subplot(gs[1, :])
+    _plot_check_vs_extract_pair_comparison(
+        ax_cmp_seq, df_cur, df_bas, "check_seq", "extract_seq"
+    )
+
+    ax_cmp_par = fig.add_subplot(gs[2, :])
+    _plot_check_vs_extract_pair_comparison(
+        ax_cmp_par, df_cur, df_bas, "check_par", "extract_par"
+    )
+
+    # Shared legend for the standalone row
+    cur_patch = mpatches.Patch(facecolor="grey", alpha=0.85, label="Current branch")
+    bas_patch = mpatches.Patch(
+        facecolor="grey", alpha=0.40, hatch="////", label="Baseline (main)"
+    )
+    hpss_patches = [
+        mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in HPSS_ORDER
+    ]
+    ax_check_seq.legend(
+        handles=[cur_patch, bas_patch] + hpss_patches,
+        fontsize=7,
+        loc="upper right",
+    )
+
+    return fig
+
+
 # String labels used in the suptitle (avoids referencing undefined vars earlier)
 RATIO_REGRESSION_COLOR_LABEL = "red"
 RATIO_IMPROVEMENT_COLOR_LABEL = "green"
@@ -910,22 +1294,35 @@ def main():
     # Baseline comparison figure (Figure 2)
     # -----------------------------------------------------------------------
     fig_cmp = None
+    df_bas = None
+    cur_label = Path(RESULTS_CSV).parent.name
+    bas_label = None
+
     if BASELINE_RESULTS_CSV:
         bas_path = Path(BASELINE_RESULTS_CSV)
         if not bas_path.exists():
             print(
                 f"WARNING: BASELINE_RESULTS_CSV not found: {bas_path}", file=sys.stderr
             )
-            print("Skipping baseline comparison figure.", file=sys.stderr)
+            print("Skipping baseline comparison figures.", file=sys.stderr)
         else:
             df_bas = load_data(str(bas_path))
-            # Derive a short label from the CSV path for titles,
-            # e.g. ".../performance_20260101/results.csv" → "performance_20260101"
             bas_label = bas_path.parent.name
-            cur_label = Path(RESULTS_CSV).parent.name
             fig_cmp = build_comparison_figure(
                 df, df_bas, all_dirs, cur_label, bas_label
             )
+
+    # -----------------------------------------------------------------------
+    # Figure 3 – check performance and check-vs-extract
+    # -----------------------------------------------------------------------
+    fig_check = build_check_figure(df)
+    fig_check_cmp = None
+    bas_has_check = (
+        df_bas is not None
+        and df_bas["operation"].isin(["check_seq", "check_par"]).any()
+    )
+    if bas_has_check and fig_check is not None:
+        fig_check_cmp = build_check_comparison_figure(df, df_bas, cur_label, bas_label)
 
     # -----------------------------------------------------------------------
     # Save or show
@@ -951,6 +1348,16 @@ def main():
             p = Path(OUTPUT_PATH)
             cmp_output = str(p.with_stem(p.stem + "_vs_baseline"))
             save_or_show(fig_cmp, cmp_output, "Figure 2 (baseline comparison)")
+        if fig_check is not None:
+            p = Path(OUTPUT_PATH)
+            check_output = str(p.with_stem(p.stem + "_check"))
+            save_or_show(fig_check, check_output, "Figure 3 (check)")
+        if fig_check_cmp is not None:
+            p = Path(OUTPUT_PATH)
+            check_cmp_output = str(p.with_stem(p.stem + "_check_vs_baseline"))
+            save_or_show(
+                fig_check_cmp, check_cmp_output, "Figure 3b (check vs baseline)"
+            )
     else:
         plt.show()
 

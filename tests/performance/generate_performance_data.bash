@@ -4,7 +4,7 @@ set -o pipefail
 
 # Analogous to CI/CD matrix testing of Python versions,
 # here we will do a matrix performance profiling
-# by comparing runtimes for create/update/extract:
+# by comparing runtimes for create/update/extract/check:
 # - On multiple directories
 # - With `--hpss=none`, with HPSS path, with Globus
 
@@ -277,6 +277,33 @@ run_extract()
     popd > /dev/null
 }
 
+run_check()
+{
+    local check_dir="${1}"
+    local hpss_path="${2}"
+    local num_workers="${3}"
+    local cache_dir="${4}"
+    local check_log="${5}"
+
+    print_step "Starting CHECK operation (workers=${num_workers})..."
+
+    print_info "Running zstash check..."
+    print_info "Command: zstash check --hpss=${hpss_path} --workers=${num_workers} --cache=${cache_dir} -v"
+
+    # zstash check must be run from a new, empty directory (like extract).
+    # The cache_dir points back to the same archive built by create+update,
+    # so there is no need to rerun those operations.
+    pushd "${check_dir}" > /dev/null
+    if { time zstash check --hpss="${hpss_path}" --workers="${num_workers}" --cache="${cache_dir}" -v ; } 2>&1 | tee "${check_log}"; then
+        print_success "zstash check completed successfully"
+    else
+        print_error "zstash check failed with exit code $?"
+        popd > /dev/null
+        exit 1
+    fi
+    popd > /dev/null
+}
+
 ###############################################################################
 # Results tracking
 
@@ -289,7 +316,7 @@ record_result()
     local create_subdir="${2}"
     local update_subdir="${3}"
     local hpss_label="${4}"   # "none", "hpss", "globus"
-    local operation="${5}"    # "create", "update", "extract_seq", "extract_par"
+    local operation="${5}"    # "create", "update", "extract_seq", "extract_par", "check_seq", "check_par"
     local log_file="${6}"
 
     local elapsed
@@ -403,6 +430,24 @@ for test_idx in 0 1 2 3 4 5; do
                 op_label="extract_par"
             fi
             record_result "$test_label" "$create_subdir" "$update_subdir" "$hpss_label" "$op_label" "$extract_log"
+        done
+
+        # --- CHECK (sequential=1 worker, parallel=2 workers) ---
+        # check operates on the same archive as extract; no need to rerun create/update.
+        # Each worker count gets its own empty directory, as required by zstash check.
+        for num_workers in 1 2; do
+            check_log="${log_dir}check_${hpss_label}_${num_workers}workers.log"
+            check_dir="${mode_dir}check_${num_workers}workers/"
+            mkdir -p "${check_dir}"
+
+            run_check "$check_dir" "$hpss_path" "$num_workers" "$cache_dir" "$check_log"
+
+            if [ "$num_workers" -eq 1 ]; then
+                op_label="check_seq"
+            else
+                op_label="check_par"
+            fi
+            record_result "$test_label" "$create_subdir" "$update_subdir" "$hpss_label" "$op_label" "$check_log"
         done
     done
 
