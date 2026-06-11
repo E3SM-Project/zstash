@@ -53,12 +53,13 @@ Results will be saved to `${results_csv}` (recall `results_csv="${work_dir}${uni
 In `zstash/tests/performance/visualize_performance.py`, edit the run metadata:
 
 ```python
-# The results to show in Fig. 1
+# The results to show in Fig. 1 and Fig. 3 (check).
 # This should be the results.csv you just generated in the step above.
 RESULTS_CSV: str = "/pscratch/sd/f/forsyth/zstash_performance/performance_20260414/results.csv"
 
-# The results to compare against in Fig. 2.
-# Set to None to skip Fig. 2.
+# The results to compare against in Fig. 2 and (if the baseline also contains
+# check data) Fig. 3b.
+# Set to None to skip those figures.
 # This will typically be the second-to-oldest results.csv in the records space
 BASELINE_RESULTS_CSV: Optional[str] = "/pscratch/sd/f/forsyth/zstash_performance/performance_20260402/results.csv"
 
