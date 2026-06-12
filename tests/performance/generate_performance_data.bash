@@ -16,7 +16,7 @@ set -o pipefail
 # Run from Perlmutter, so that we can do both
 # a direct transfer to HPSS & a Globus transfer to Chrysalis
 work_dir=/pscratch/sd/f/forsyth/zstash_performance/
-unique_id=performance_20260603
+unique_id=performance_20260611
 environment_commands="source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_pm-cpu.sh"
 
 ###############################################################################
