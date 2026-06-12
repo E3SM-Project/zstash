@@ -330,7 +330,11 @@ record_result()
 
 # Make sure we're running from the correct environment.
 # It might not necessarily be a dev environment built off this branch!
-${environment_commands}
+if [[ ! "${environment_commands}" =~ ^(source[^;]+)(;[[:space:]]*conda activate[^;]+)?$ ]]; then
+    print_error "environment_commands must only contain 'source' and optionally 'conda activate'"
+    exit 1
+fi
+eval "${environment_commands}"
 
 validate_configuration "$dir_to_copy_from" "$subdir0" "$subdir1" "$subdir2"
 
