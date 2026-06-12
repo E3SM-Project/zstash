@@ -109,3 +109,7 @@ GitHub Actions runs the tests according to `.github/workflows/build_workflow.yml
           python -m unittest tests/integration/python_tests/group_by_command/test_*.py
           python -m unittest tests/integration/python_tests/group_by_workflow/test_*.py
 ```
+
+## Performance
+
+For performance profiling, see `tests/performance/README.md`.
