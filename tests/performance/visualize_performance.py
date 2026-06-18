@@ -39,15 +39,30 @@ Figure 2 – Baseline comparison (current branch vs main):
   (current = solid, baseline = hatched) with a ratio annotation
   (current/baseline) above each pair. Ratio > 1 = regression (slower),
   ratio < 1 = improvement (faster).
+
+Figure 3 – Full record archive (all historical CSVs in performance_archive_dir):
+  Produced only when performance_archive_dir is set in the cfg and contains
+  *results*.csv files with YYYYMMDD in their names.
+  Layout: 2×2 grid (create | update) × (time-series | box plot).
+  Time-series: x = record date, y = runtime, color = hpss mode,
+               line style = subdir (solid=build, dashed=run, dotted=init).
+               9 lines per subplot (3 subdirs × 3 hpss modes).
+  Box plots: vertical box-and-whisker for each (subdir, hpss) combination,
+             with individual data-point dots overlaid.
+             9 boxes per subplot.
 """
 
 import argparse
 import configparser
+import datetime
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Optional
 
+import matplotlib.dates
+import matplotlib.lines
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
@@ -120,6 +135,19 @@ OP_DIR_COL = {
 BAR_WIDTH = 0.22
 DOT_ALPHA = 0.55
 DOT_SIZE = 40
+
+# ---------------------------------------------------------------------------
+# Figure 3 – per-subdir line styles (encode which directory is plotted)
+# ---------------------------------------------------------------------------
+# build/ = many small files  →  solid
+# run/   = mixed             →  dashed
+# init/  = few large files   →  dotted
+SUBDIR_LINESTYLES: dict[str, str] = {
+    "build": "solid",
+    "run": "dashed",
+    "init": "dotted",
+}
+SUBDIR_ORDER = ["build", "run", "init"]
 
 
 # ---------------------------------------------------------------------------
@@ -843,6 +871,294 @@ def build_comparison_figure(
 RATIO_REGRESSION_COLOR_LABEL = "red"
 RATIO_IMPROVEMENT_COLOR_LABEL = "green"
 
+
+# ---------------------------------------------------------------------------
+# Figure 3 – full record archive
+# ---------------------------------------------------------------------------
+
+
+def _archive_date_from_path(csv_path: Path) -> Optional[datetime.date]:
+    """
+    Parse the record date from a CSV filename that contains YYYYMMDD.
+
+    E.g. ``performance_20260603_results.csv`` → ``date(2026, 6, 3)``
+    Returns *None* when no eight-digit date string is found.
+    """
+    m = re.search(r"(\d{8})", csv_path.stem)
+    if not m:
+        return None
+    try:
+        s = m.group(1)
+        return datetime.date(int(s[:4]), int(s[4:6]), int(s[6:]))
+    except ValueError:
+        return None
+
+
+def load_archive_data(archive_dir: str) -> pd.DataFrame:
+    """
+    Load and concatenate every ``*results*.csv`` in *archive_dir*.
+
+    Adds a ``record_date`` column (pandas Timestamp) derived from the
+    filename.  Files with no parseable date are skipped with a warning.
+
+    Returns an empty DataFrame (with expected columns) on failure.
+    """
+    _empty = pd.DataFrame(
+        columns=[
+            "test_label",
+            "create_subdir",
+            "update_subdir",
+            "hpss_label",
+            "operation",
+            "elapsed_seconds",
+            "record_date",
+        ]
+    )
+    archive_path = Path(archive_dir)
+    if not archive_path.is_dir():
+        print(
+            f"WARNING: performance_archive_dir not found: {archive_path}",
+            file=sys.stderr,
+        )
+        return _empty
+
+    csv_files = sorted(archive_path.glob("*results*.csv"))
+    if not csv_files:
+        print(
+            f"WARNING: no *results*.csv files found in {archive_path}",
+            file=sys.stderr,
+        )
+        return _empty
+
+    frames = []
+    for p in csv_files:
+        record_date = _archive_date_from_path(p)
+        if record_date is None:
+            print(
+                f"WARNING: cannot parse date from filename {p.name!r}, skipping.",
+                file=sys.stderr,
+            )
+            continue
+        try:
+            df_i = load_data(str(p))
+        except Exception as exc:
+            print(f"WARNING: failed to load {p}: {exc}", file=sys.stderr)
+            continue
+        df_i["record_date"] = record_date
+        frames.append(df_i)
+
+    if not frames:
+        return _empty
+
+    df_all = pd.concat(frames, ignore_index=True)
+    df_all["record_date"] = pd.to_datetime(df_all["record_date"])
+    return df_all
+
+
+def plot_archive_timeseries(ax, df_arch: pd.DataFrame, operation: str) -> None:
+    """
+    Time-series line graph for *operation* over the full record archive.
+
+    Axes
+    ----
+    X : record date
+    Y : elapsed_seconds  (mean over all test configs sharing the same
+        subdir × hpss × date)
+
+    Visual encoding
+    ---------------
+    Color     : hpss_label  – blue (none) / orange (hpss) / green (globus)
+    Line style: subdir      – solid (build) / dashed (run) / dotted (init)
+    → 9 lines total (3 subdirs × 3 hpss modes)
+    """
+    dir_col = OP_DIR_COL[operation]
+    df_op = df_arch[df_arch["operation"] == operation].copy()
+
+    for hpss in HPSS_ORDER:
+        color = HPSS_COLORS[hpss]
+        for subdir in SUBDIR_ORDER:
+            ls = SUBDIR_LINESTYLES.get(subdir, "solid")
+            mask = (df_op["hpss_label"] == hpss) & (df_op[dir_col] == subdir)
+            df_line = (
+                df_op[mask]
+                .groupby("record_date")["elapsed_seconds"]
+                .mean()
+                .reset_index()
+                .sort_values("record_date")
+            )
+            if df_line.empty:
+                continue
+            ax.plot(
+                df_line["record_date"],
+                df_line["elapsed_seconds"],
+                color=color,
+                linestyle=ls,
+                linewidth=1.6,
+                marker="o",
+                markersize=4,
+                label=f"{HPSS_LABELS[hpss]} – {subdir}/",
+                zorder=3,
+            )
+
+    ax.set_title(
+        f"zstash {operation}  –  runtime over time",
+        fontsize=10,
+        fontweight="bold",
+        pad=6,
+    )
+    ax.set_xlabel("Record date", fontsize=8)
+    ax.set_ylabel("Wall-clock time (s)", fontsize=8)
+    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%Y-%m-%d"))
+    plt.setp(ax.get_xticklabels(), rotation=30, ha="right", fontsize=7)
+    ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
+    ax.set_axisbelow(True)
+
+    # Two-section legend: top = hpss color, bottom = subdir line style
+    color_handles = [
+        matplotlib.lines.Line2D(
+            [], [], color=HPSS_COLORS[h], linewidth=2, label=HPSS_LABELS[h]
+        )
+        for h in HPSS_ORDER
+    ]
+    style_handles = [
+        matplotlib.lines.Line2D(
+            [],
+            [],
+            color="grey",
+            linewidth=2,
+            linestyle=SUBDIR_LINESTYLES[s],
+            label=f"{s}/",
+        )
+        for s in SUBDIR_ORDER
+    ]
+    ax.legend(
+        handles=color_handles + style_handles,
+        fontsize=6.5,
+        loc="upper left",
+        ncol=2,
+        framealpha=0.8,
+    )
+
+
+def plot_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> None:
+    """
+    Vertical box-and-whisker plots for *operation* across the full archive.
+
+    Layout
+    ------
+    X axis  : one tick-group per subdir (build, run, init); within each group
+              the three hpss modes are placed side by side.
+    Color   : hpss_label  (same palette as all other figures)
+    Overlay : individual data-point dots (jittered, matching other figures)
+    → 9 boxes total (3 subdirs × 3 hpss modes)
+    """
+    dir_col = OP_DIR_COL[operation]
+    df_op = df_arch[df_arch["operation"] == operation].copy()
+
+    n_hpss = len(HPSS_ORDER)
+    group_width = n_hpss * BAR_WIDTH + 0.10
+    x_base = np.arange(len(SUBDIR_ORDER)) * group_width
+    offsets = np.linspace(0, (n_hpss - 1) * BAR_WIDTH, n_hpss)
+
+    tick_positions = []
+    tick_labels = []
+
+    for s_idx, subdir in enumerate(SUBDIR_ORDER):
+        tick_positions.append(x_base[s_idx] + offsets.mean())
+        tick_labels.append(f"{subdir}/")
+
+        for h_idx, hpss in enumerate(HPSS_ORDER):
+            mask = (df_op["hpss_label"] == hpss) & (df_op[dir_col] == subdir)
+            vals = df_op[mask]["elapsed_seconds"].dropna().values
+            x_pos = x_base[s_idx] + offsets[h_idx]
+
+            if len(vals) == 0:
+                continue
+
+            color = HPSS_COLORS[hpss]
+
+            ax.boxplot(
+                vals,
+                positions=[x_pos],
+                widths=BAR_WIDTH * 0.85,
+                patch_artist=True,
+                vert=True,
+                manage_ticks=False,
+                zorder=2,
+                boxprops=dict(facecolor=color, alpha=0.55, linewidth=0.8),
+                medianprops=dict(color="black", linewidth=1.5),
+                whiskerprops=dict(linewidth=0.8),
+                capprops=dict(linewidth=0.8),
+                flierprops=dict(marker="", linestyle="none"),
+            )
+
+            # Overlay individual data points
+            jitter = np.random.uniform(
+                -BAR_WIDTH * 0.2, BAR_WIDTH * 0.2, size=len(vals)
+            )
+            ax.scatter(
+                x_pos + jitter,
+                vals,
+                color="white",
+                edgecolors=color,
+                s=DOT_SIZE,
+                zorder=3,
+                alpha=DOT_ALPHA,
+                linewidths=1.2,
+            )
+
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(tick_labels, fontsize=9)
+    ax.set_title(
+        f"zstash {operation}  –  runtime distribution (all records)",
+        fontsize=10,
+        fontweight="bold",
+        pad=6,
+    )
+    ax.set_xlabel("Directory processed", fontsize=8)
+    ax.set_ylabel("Wall-clock time (s)", fontsize=8)
+    ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
+    ax.set_axisbelow(True)
+
+    hpss_patches = [
+        mpatches.Patch(color=HPSS_COLORS[h], alpha=0.75, label=HPSS_LABELS[h])
+        for h in HPSS_ORDER
+    ]
+    ax.legend(handles=hpss_patches, fontsize=7, loc="upper right")
+
+
+def build_archive_figure(df_arch: pd.DataFrame) -> plt.Figure:
+    """
+    Figure 3 – full archive overview.
+
+    Layout (2 rows × 2 cols):
+      [0,0] create  time-series  |  [0,1] update  time-series
+      [1,0] create  box plot     |  [1,1] update  box plot
+    """
+    fig = plt.figure(figsize=(15, 12))
+    fig.suptitle(
+        "zstash Performance – Full Record Archive\n"
+        "Time series: color = HPSS mode  ·  line style = directory "
+        "(solid = build/, dashed = run/, dotted = init/)\n"
+        "Box plots: every recorded runtime for each (directory, HPSS) combination",
+        fontsize=11,
+        fontweight="bold",
+        y=0.995,
+    )
+
+    gs = fig.add_gridspec(
+        2, 2, hspace=0.48, wspace=0.30, top=0.90, bottom=0.08, left=0.07, right=0.97
+    )
+
+    for col_idx, op in enumerate(["create", "update"]):
+        ax_ts = fig.add_subplot(gs[0, col_idx])
+        ax_box = fig.add_subplot(gs[1, col_idx])
+        plot_archive_timeseries(ax_ts, df_arch, op)
+        plot_archive_boxplot(ax_box, df_arch, op)
+
+    return fig
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -875,6 +1191,7 @@ def main():
     RESULTS_CSV: str = _cfg_require(cfg, "results_csv", cfg_path)
     BASELINE_RESULTS_CSV: Optional[str] = _cfg_optional(cfg, "baseline_results_csv")
     OUTPUT_PATH: Optional[str] = _cfg_optional(cfg, "output_path")
+    ARCHIVE_DIR: Optional[str] = _cfg_optional(cfg, "performance_archive_dir")
 
     results_path = Path(RESULTS_CSV)
     if not RESULTS_CSV or not results_path.is_file():
@@ -969,6 +1286,20 @@ def main():
             )
 
     # -----------------------------------------------------------------------
+    # Full archive figure (Figure 3)
+    # -----------------------------------------------------------------------
+    fig_arch = None
+    if ARCHIVE_DIR:
+        df_arch = load_archive_data(ARCHIVE_DIR)
+        if not df_arch.empty:
+            fig_arch = build_archive_figure(df_arch)
+        else:
+            print(
+                "WARNING: no archive data found; skipping Figure 3.",
+                file=sys.stderr,
+            )
+
+    # -----------------------------------------------------------------------
     # Save or show
     # -----------------------------------------------------------------------
     def save_or_show(figure, out_path_str, label):
@@ -995,6 +1326,10 @@ def main():
             p = Path(OUTPUT_PATH)
             cmp_output = str(p.with_stem(p.stem + "_vs_baseline"))
             save_or_show(fig_cmp, cmp_output, "Figure 2 (baseline comparison)")
+        if fig_arch is not None:
+            p = Path(OUTPUT_PATH)
+            arch_output = str(p.with_stem(p.stem + "_archive"))
+            save_or_show(fig_arch, arch_output, "Figure 3 (full archive)")
     else:
         plt.show()
 
