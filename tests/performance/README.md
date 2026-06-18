@@ -4,6 +4,14 @@ Performance profiling should be done on Perlmutter. We're keeping the performanc
 
 ## Setup
 
+To run the visualizer (`visualize_performance.py`), you need `matplotlib`, `numpy`, and `pandas`. The repo provides a minimal conda environment for this in `conda/perf.yml`:
+
+```bash
+conda env create -f conda/perf.yml -n zstash_perf
+conda activate zstash_perf
+python -m pip install .
+```
+
 All parameters for both scripts live in a single config file (`perf.cfg`) so you never need to edit the scripts themselves. Copy the provided template and fill in your values:
 
 ```bash

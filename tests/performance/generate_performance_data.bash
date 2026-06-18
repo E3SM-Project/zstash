@@ -63,6 +63,7 @@ cfg_get() {
 # Run from Perlmutter, so that we can do both
 # a direct transfer to HPSS & a Globus transfer to Chrysalis
 work_dir="$(cfg_require work_dir)"
+work_dir="${work_dir%/}/"
 unique_id="$(cfg_require unique_id)"
 environment_commands="$(cfg_require environment_commands)"
 
@@ -71,6 +72,7 @@ environment_commands="$(cfg_require environment_commands)"
 # but can be changed for further customization.
 
 dir_to_copy_from="$(cfg_require dir_to_copy_from)"
+dir_to_copy_from="${dir_to_copy_from%/}/"
 subdir0="$(cfg_get subdir0 none)"
 subdir1="$(cfg_get subdir1 none)"
 subdir2="$(cfg_get subdir2 none)"
@@ -196,6 +198,10 @@ validate_configuration()
 refresh_globus()
 {
     print_step "Setting up fresh Globus authentication..."
+
+    INI_PATH="${HOME}/.zstash.ini"
+    TOKEN_FILE="${HOME}/.zstash_globus_tokens.json"
+
     if ! confirm "This will delete ${INI_PATH} and ${TOKEN_FILE} to start fresh. Is that ok?"; then
         exit 1
     fi
@@ -208,9 +214,6 @@ refresh_globus()
     fi
 
     # 2. Reset authentication token files
-    INI_PATH=${HOME}/.zstash.ini
-    TOKEN_FILE=${HOME}/.zstash_globus_tokens.json
-
     if [ -f "${INI_PATH}" ]; then
         rm -f "${INI_PATH}"
         print_info "Removed ${INI_PATH}"
@@ -370,8 +373,14 @@ mkdir -p "${work_dir}${unique_id}"
 echo "test_label,create_subdir,update_subdir,hpss_label,operation,elapsed_seconds" > "${results_csv}"
 print_info "Results CSV: ${results_csv}"
 
-# Array of subdirectories
+# Array of subdirectories (the test matrix below assumes all 3 are provided)
 subdirs=("$subdir0" "$subdir1" "$subdir2")
+for s in "${subdirs[@]}"; do
+    if [ -z "$s" ] || [ "$s" = "none" ]; then
+        print_error "subdir0/subdir1/subdir2 must be set (not 'none') in ${CFG_FILE}"
+        exit 1
+    fi
+done
 
 # Define the 6 possible permutations as test configurations.
 # Each string contains two space-separated indices into the subdirs array:

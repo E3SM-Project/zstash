@@ -977,7 +977,10 @@ def main():
             out_path.parent.mkdir(parents=True, exist_ok=True)
             figure.savefig(out_path, dpi=args.dpi, bbox_inches="tight")
             print(f"{label} saved to: {out_path}")
-            os.chmod(out_path_str, 0o644)
+            try:
+                os.chmod(out_path, 0o644)
+            except OSError:
+                pass
             web_path = str(out_path).replace(
                 "/global/cfs/cdirs/e3sm/www/",
                 "https://portal.nersc.gov/cfs/e3sm/",
