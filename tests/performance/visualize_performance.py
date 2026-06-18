@@ -40,16 +40,29 @@ Figure 2 – Baseline comparison (current branch vs main):
   (current/baseline) above each pair. Ratio > 1 = regression (slower),
   ratio < 1 = improvement (faster).
 
-Figure 3 – Full record archive (all historical CSVs in performance_archive_dir):
+Figure 3 – Full record archive for create & update
+  (all historical CSVs in performance_archive_dir):
   Produced only when performance_archive_dir is set in the cfg and contains
   *results*.csv files with YYYYMMDD in their names.
   Layout: 2×2 grid (create | update) × (time-series | box plot).
   Time-series: x = record date, y = runtime, color = hpss mode,
                line style = subdir (solid=build, dashed=run, dotted=init).
-               9 lines per subplot (3 subdirs × 3 hpss modes).
   Box plots: vertical box-and-whisker for each (subdir, hpss) combination,
              with individual data-point dots overlaid.
-             9 boxes per subplot.
+
+Figure 4 – Full record archive for extract_seq & extract_par:
+  Produced only when performance_archive_dir is set and contains extract data.
+  Layout: 2×2 grid (extract_seq | extract_par) × (time-series | box plot).
+  X-axis groups for box plots: (create_subdir, update_subdir) archive config pairs.
+  Same color/line-style encoding as Figure 3.
+
+Outlier removal
+---------------
+All plotting functions apply IQR-based outlier filtering before computing
+means or drawing boxes/lines.  Values outside
+  [Q1 - 1.5 * IQR,  Q3 + 1.5 * IQR]
+are dropped silently.  This prevents a single aberrant run from dominating
+axis scales while preserving legitimate spread.
 """
 
 import argparse
@@ -58,6 +71,7 @@ import datetime
 import os
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Optional
 
@@ -137,7 +151,7 @@ DOT_ALPHA = 0.55
 DOT_SIZE = 40
 
 # ---------------------------------------------------------------------------
-# Figure 3 – per-subdir line styles (encode which directory is plotted)
+# Figure 3/4 – per-subdir line styles (encode which directory is plotted)
 # ---------------------------------------------------------------------------
 # build/ = many small files  →  solid
 # run/   = mixed             →  dashed
@@ -148,6 +162,57 @@ SUBDIR_LINESTYLES: dict[str, str] = {
     "init": "dotted",
 }
 SUBDIR_ORDER = ["build", "run", "init"]
+
+
+# ---------------------------------------------------------------------------
+# Outlier removal
+# ---------------------------------------------------------------------------
+
+
+def remove_outliers_iqr(vals: np.ndarray, k: float = 1.5) -> np.ndarray:
+    """
+    Return a copy of *vals* with IQR-based outliers removed.
+
+    Values outside [Q1 - k*IQR,  Q3 + k*IQR] are dropped.
+    Returns the original array unchanged when it has fewer than 4 elements
+    (too few to estimate quartiles reliably).
+    """
+    if len(vals) < 4:
+        return vals
+    q1, q3 = np.percentile(vals, [25, 75])
+    iqr = q3 - q1
+    lo = q1 - k * iqr
+    hi = q3 + k * iqr
+    return vals[(vals >= lo) & (vals <= hi)]
+
+
+def _filter_df_outliers(df: pd.DataFrame, group_cols: list) -> pd.DataFrame:
+    """
+    Apply IQR outlier removal to elapsed_seconds within each group defined
+    by *group_cols*.  Returns a new DataFrame with outlier rows dropped.
+    Duplicate values that survive the IQR filter are all retained; only values
+    that fall outside the fence are removed.
+    """
+    keep = []
+    for _, grp in df.groupby(group_cols, dropna=False):
+        vals = grp["elapsed_seconds"].dropna().values
+        clean = remove_outliers_iqr(vals)
+        clean_counts = Counter(clean.tolist())
+        used: Counter = Counter()
+        row_mask = []
+        for v in grp["elapsed_seconds"]:
+            if pd.isna(v):
+                row_mask.append(False)
+                continue
+            if used[v] < clean_counts[v]:
+                row_mask.append(True)
+                used[v] += 1
+            else:
+                row_mask.append(False)
+        keep.append(grp[row_mask])
+    if not keep:
+        return df.iloc[0:0]
+    return pd.concat(keep, ignore_index=True)
 
 
 # ---------------------------------------------------------------------------
@@ -206,9 +271,11 @@ def _add_dir_annotation(ax, dirs, x_positions):
             )
 
 
-def plot_operation(ax, df_op: pd.DataFrame, operation: str, dirs: list[str]):
-    """Draw grouped bars for one operation subplot."""
+def plot_operation(ax, df_op: pd.DataFrame, operation: str, dirs: list):
+    """Draw grouped bars for one operation subplot (outliers removed)."""
     dir_col = OP_DIR_COL[operation]
+    df_op = _filter_df_outliers(df_op.copy(), [dir_col, "hpss_label"])
+
     n_dirs = len(dirs)
     n_hpss = len(HPSS_ORDER)
 
@@ -260,7 +327,6 @@ def plot_operation(ax, df_op: pd.DataFrame, operation: str, dirs: list[str]):
     ax.set_xlabel("Directory processed", fontsize=8, labelpad=14)
     ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
     ax.set_axisbelow(True)
-    # Fig. 1: group centres are at integer positions 0, 1, 2, …
     _add_dir_annotation(ax, dirs, list(x_base))
 
     # Value labels on bars
@@ -278,7 +344,7 @@ def plot_operation(ax, df_op: pd.DataFrame, operation: str, dirs: list[str]):
             )
 
 
-def _extract_configs(df: pd.DataFrame) -> list[tuple[str, str]]:
+def _extract_configs(df: pd.DataFrame) -> list:
     """
     Return the sorted list of (create_subdir, update_subdir) pairs that
     actually appear in the extract rows of *df*.  These represent the
@@ -291,7 +357,6 @@ def _extract_configs(df: pd.DataFrame) -> list[tuple[str, str]]:
         .apply(tuple, axis=1)
         .tolist()
     )
-    # Sort by create_subdir first, then update_subdir
     return sorted(pairs, key=lambda p: (dir_sort_key(p[0]), dir_sort_key(p[1])))
 
 
@@ -303,9 +368,11 @@ def _extract_tick_label(create_sub: str, update_sub: str) -> str:
 def _plot_extract_single_op(ax, df: pd.DataFrame, operation: str):
     """
     Draw grouped bars for one extract operation (extract_seq or extract_par).
-    X-axis groups are the combined (create_subdir, update_subdir) archive
-    configs, since extract operates on the archive built by both operations.
+    Outliers removed per (create_subdir, update_subdir, hpss_label) group.
     """
+    df_op = df[df["operation"] == operation].copy()
+    df_op = _filter_df_outliers(df_op, ["create_subdir", "update_subdir", "hpss_label"])
+
     configs = _extract_configs(df)
     n_configs = len(configs)
     n_hpss = len(HPSS_ORDER)
@@ -317,11 +384,10 @@ def _plot_extract_single_op(ax, df: pd.DataFrame, operation: str):
         means, all_vals, xs = [], [], []
         for c_idx, (create_sub, update_sub) in enumerate(configs):
             vals = (
-                df[
-                    (df["operation"] == operation)
-                    & (df["hpss_label"] == hpss)
-                    & (df["create_subdir"] == create_sub)
-                    & (df["update_subdir"] == update_sub)
+                df_op[
+                    (df_op["hpss_label"] == hpss)
+                    & (df_op["create_subdir"] == create_sub)
+                    & (df_op["update_subdir"] == update_sub)
                 ]["elapsed_seconds"]
                 .dropna()
                 .values
@@ -381,29 +447,31 @@ def _plot_extract_single_op(ax, df: pd.DataFrame, operation: str):
 
 def plot_extract_comparison(ax, df: pd.DataFrame):
     """
-    Extra subplot: sequential vs parallel extract, grouped by
-    (archive config, hpss).  Each archive config is the *combined*
-    create+update directory pair, since extract operates on the full
-    archive assembled by both operations.
-    Uses a hatch pattern to distinguish seq/par within each hpss colour.
+    Extra subplot: sequential vs parallel extract, grouped by (archive config, hpss).
+    Outliers removed per (operation, create_subdir, update_subdir, hpss_label).
     """
+    df_ext = df[df["operation"].isin(["extract_seq", "extract_par"])].copy()
+    df_ext = _filter_df_outliers(
+        df_ext, ["operation", "create_subdir", "update_subdir", "hpss_label"]
+    )
+
     configs = _extract_configs(df)
     n_configs = len(configs)
     ops = ["extract_seq", "extract_par"]
     hatches = {"extract_seq": "", "extract_par": "////"}
     n_bars = len(HPSS_ORDER) * len(ops)
 
-    group_width = n_bars * BAR_WIDTH + 0.15  # total width per config group
+    group_width = n_bars * BAR_WIDTH + 0.15
     x_base = np.arange(n_configs) * group_width
 
     for c_idx, (create_sub, update_sub) in enumerate(configs):
         for h_idx, hpss in enumerate(HPSS_ORDER):
             for op_idx, op in enumerate(ops):
-                df_cell = df[
-                    (df["operation"] == op)
-                    & (df["hpss_label"] == hpss)
-                    & (df["create_subdir"] == create_sub)
-                    & (df["update_subdir"] == update_sub)
+                df_cell = df_ext[
+                    (df_ext["operation"] == op)
+                    & (df_ext["hpss_label"] == hpss)
+                    & (df_ext["create_subdir"] == create_sub)
+                    & (df_ext["update_subdir"] == update_sub)
                 ]
                 vals = df_cell["elapsed_seconds"].dropna().values
                 mean = vals.mean() if len(vals) > 0 else 0.0
@@ -435,7 +503,6 @@ def plot_extract_comparison(ax, df: pd.DataFrame):
     ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
     ax.set_axisbelow(True)
 
-    # Custom legend: colour = hpss, hatch = seq/par
     hpss_patches = [
         mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in HPSS_ORDER
     ]
@@ -457,9 +524,8 @@ def plot_extract_comparison(ax, df: pd.DataFrame):
 # Baseline comparison figure
 # ---------------------------------------------------------------------------
 
-# Ratio colouring thresholds
-RATIO_REGRESSION = 1.10  # >= 10% slower  → red
-RATIO_IMPROVEMENT = 0.90  # <= 10% faster  → green
+RATIO_REGRESSION = 1.10
+RATIO_IMPROVEMENT = 0.90
 RATIO_NEUTRAL_COLOR = "#333333"
 RATIO_REGRESSION_COLOR = "#CC3311"
 RATIO_IMPROVEMENT_COLOR = "#228833"
@@ -478,17 +544,20 @@ def plot_comparison_operation(
     df_cur: pd.DataFrame,
     df_bas: pd.DataFrame,
     operation: str,
-    dirs: list[str],
+    dirs: list,
 ):
-    """
-    For one operation, draw paired bars (current vs baseline) per
-    (directory, hpss_mode) cell, with a ratio annotation above each pair.
-    """
+    """Paired bars (current vs baseline) per (directory, hpss) cell. Outliers removed."""
     dir_col = OP_DIR_COL[operation]
+    df_cur = _filter_df_outliers(
+        df_cur[df_cur["operation"] == operation].copy(), [dir_col, "hpss_label"]
+    )
+    df_bas = _filter_df_outliers(
+        df_bas[df_bas["operation"] == operation].copy(), [dir_col, "hpss_label"]
+    )
+
     n_dirs = len(dirs)
     n_hpss = len(HPSS_ORDER)
 
-    # Each hpss group occupies 2 bars (current + baseline) + a small gap
     pair_width = BAR_WIDTH
     gap = BAR_WIDTH * 0.3
     group_span = n_hpss * (2 * pair_width + gap) + 0.2
@@ -499,16 +568,14 @@ def plot_comparison_operation(
         pair_offset = h_idx * (2 * pair_width + gap)
 
         for d_idx, d in enumerate(dirs):
-            x_left = x_base[d_idx] + pair_offset  # baseline bar
-            x_right = x_base[d_idx] + pair_offset + pair_width  # current bar
+            x_left = x_base[d_idx] + pair_offset
+            x_right = x_base[d_idx] + pair_offset + pair_width
 
-            def mean_for(df, _op=operation, _h=hpss, _d=d):
+            def mean_for(df, _h=hpss, _d=d):
                 v = (
-                    df[
-                        (df["operation"] == _op)
-                        & (df["hpss_label"] == _h)
-                        & (df[dir_col] == _d)
-                    ]["elapsed_seconds"]
+                    df[(df["hpss_label"] == _h) & (df[dir_col] == _d)][
+                        "elapsed_seconds"
+                    ]
                     .dropna()
                     .values
                 )
@@ -517,7 +584,6 @@ def plot_comparison_operation(
             cur_mean = mean_for(df_cur)
             bas_mean = mean_for(df_bas)
 
-            # Baseline bar (hatched, lighter) — left
             ax.bar(
                 x_left,
                 bas_mean,
@@ -528,7 +594,6 @@ def plot_comparison_operation(
                 zorder=2,
                 edgecolor=color,
             )
-            # Current bar (solid) — right
             ax.bar(
                 x_right,
                 cur_mean,
@@ -539,7 +604,6 @@ def plot_comparison_operation(
                 label=HPSS_LABELS[hpss] if d_idx == 0 else "",
             )
 
-            # Ratio annotation
             if bas_mean > 0 and cur_mean > 0:
                 ratio = cur_mean / bas_mean
                 top = max(cur_mean, bas_mean)
@@ -562,7 +626,6 @@ def plot_comparison_operation(
                 )
 
     ax.set_title(OP_TITLES[operation], fontsize=10, fontweight="bold", pad=6)
-    # Tick at the centre of each directory's group of bars
     group_centre_offset = (n_hpss * (2 * pair_width + gap) - gap) / 2
     x_ticks = x_base + group_centre_offset
     ax.set_xticks(x_ticks)
@@ -571,7 +634,6 @@ def plot_comparison_operation(
     ax.set_xlabel("Directory processed", fontsize=8, labelpad=14)
     ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
     ax.set_axisbelow(True)
-    # Pass actual tick x-positions so annotations align with tick labels
     _add_dir_annotation(ax, dirs, list(x_ticks))
 
 
@@ -581,11 +643,16 @@ def _plot_comparison_extract_single_op(
     df_bas: pd.DataFrame,
     operation: str,
 ):
-    """
-    Fig. 2 version of a single extract-op subplot (extract_seq or extract_par).
-    X-axis = combined (create, update) archive config; bars = current vs baseline
-    paired within each HPSS group.
-    """
+    """Fig. 2 extract subplot: current vs baseline, outliers removed."""
+    df_cur = _filter_df_outliers(
+        df_cur[df_cur["operation"] == operation].copy(),
+        ["create_subdir", "update_subdir", "hpss_label"],
+    )
+    df_bas = _filter_df_outliers(
+        df_bas[df_bas["operation"] == operation].copy(),
+        ["create_subdir", "update_subdir", "hpss_label"],
+    )
+
     configs = _extract_configs(df_cur)
     n_configs = len(configs)
     n_hpss = len(HPSS_ORDER)
@@ -602,11 +669,10 @@ def _plot_comparison_extract_single_op(
             x_left = x_base[c_idx] + pair_offset
             x_right = x_left + pair_width
 
-            def mean_for(df, _op=operation, _h=hpss, _cs=create_sub, _us=update_sub):
+            def mean_for(df, _h=hpss, _cs=create_sub, _us=update_sub):
                 v = (
                     df[
-                        (df["operation"] == _op)
-                        & (df["hpss_label"] == _h)
+                        (df["hpss_label"] == _h)
                         & (df["create_subdir"] == _cs)
                         & (df["update_subdir"] == _us)
                     ]["elapsed_seconds"]
@@ -618,7 +684,6 @@ def _plot_comparison_extract_single_op(
             cur_mean = mean_for(df_cur)
             bas_mean = mean_for(df_bas)
 
-            # Baseline bar (hatched, lighter) — left
             ax.bar(
                 x_left,
                 bas_mean,
@@ -629,7 +694,6 @@ def _plot_comparison_extract_single_op(
                 zorder=2,
                 edgecolor=color,
             )
-            # Current bar (solid) — right
             ax.bar(
                 x_right,
                 cur_mean,
@@ -671,27 +735,26 @@ def _plot_comparison_extract_single_op(
     ax.set_axisbelow(True)
 
 
-def plot_comparison_extract(
-    ax,
-    df_cur: pd.DataFrame,
-    df_bas: pd.DataFrame,
-):
-    """
-    Seq vs par extract comparison with current/baseline pairing, grouped by
-    the combined (create_subdir, update_subdir) archive config.
+def plot_comparison_extract(ax, df_cur: pd.DataFrame, df_bas: pd.DataFrame):
+    """Seq vs par extract, current vs baseline. Outliers removed per group."""
+    df_cur = _filter_df_outliers(
+        df_cur[df_cur["operation"].isin(["extract_seq", "extract_par"])].copy(),
+        ["operation", "create_subdir", "update_subdir", "hpss_label"],
+    )
+    df_bas = _filter_df_outliers(
+        df_bas[df_bas["operation"].isin(["extract_seq", "extract_par"])].copy(),
+        ["operation", "create_subdir", "update_subdir", "hpss_label"],
+    )
 
-    Bar order within each HPSS × op cell (innermost grouping):
-        [current/seq] [baseline/seq] ‹op_gap› [current/par] [baseline/par]
-    """
     configs = _extract_configs(df_cur)
     n_configs = len(configs)
     ops = ["extract_seq", "extract_par"]
     op_hatches = {"extract_seq": "", "extract_par": "xxxx"}
 
     pair_width = BAR_WIDTH
-    inner_gap = BAR_WIDTH * 0.15  # gap between current/baseline within a pair
-    op_gap = BAR_WIDTH * 0.55  # larger gap between seq-pair and par-pair
-    hpss_gap = BAR_WIDTH * 0.30  # gap between HPSS groups
+    inner_gap = BAR_WIDTH * 0.15
+    op_gap = BAR_WIDTH * 0.55
+    hpss_gap = BAR_WIDTH * 0.30
 
     pair_span = 2 * pair_width + inner_gap
     hpss_group_span = 2 * pair_span + op_gap
@@ -706,8 +769,8 @@ def plot_comparison_extract(
             for op_idx, op in enumerate(ops):
                 hatch = op_hatches[op]
                 op_origin = hpss_origin + op_idx * (pair_span + op_gap)
-                x_bas = op_origin  # baseline — left
-                x_cur = op_origin + pair_width + inner_gap  # current  — right
+                x_bas = op_origin
+                x_cur = op_origin + pair_width + inner_gap
 
                 def mean_for(df, _op=op, _h=hpss, _cs=create_sub, _us=update_sub):
                     v = (
@@ -725,7 +788,6 @@ def plot_comparison_extract(
                 cur_mean = mean_for(df_cur)
                 bas_mean = mean_for(df_bas)
 
-                # Baseline bar (left): op-hatch + //// to mark it as baseline
                 bas_hatch = hatch + "////"
                 ax.bar(
                     x_bas,
@@ -737,7 +799,6 @@ def plot_comparison_extract(
                     zorder=2,
                     edgecolor=color,
                 )
-                # Current bar (right): op-hatch only
                 ax.bar(
                     x_cur,
                     cur_mean,
@@ -786,7 +847,6 @@ def plot_comparison_extract(
     ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
     ax.set_axisbelow(True)
 
-    # Legend: colour=hpss, hatch=seq/par, alpha=current/baseline
     hpss_patches = [
         mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in HPSS_ORDER
     ]
@@ -813,11 +873,11 @@ def plot_comparison_extract(
 def build_comparison_figure(
     df_cur: pd.DataFrame,
     df_bas: pd.DataFrame,
-    all_dirs: list[str],
+    all_dirs: list,
     cur_label: str,
     bas_label: str,
 ) -> plt.Figure:
-    """Build and return the full baseline-comparison figure."""
+    """Build and return the full baseline-comparison figure (Figure 2)."""
     fig = plt.figure(figsize=(16, 17))
     fig.suptitle(
         f"zstash Performance: Current vs Baseline\n"
@@ -834,7 +894,6 @@ def build_comparison_figure(
     gs = fig.add_gridspec(
         3, 2, hspace=0.58, wspace=0.35, top=0.92, bottom=0.07, left=0.07, right=0.97
     )
-
     axes = {
         "create": fig.add_subplot(gs[0, 0]),
         "update": fig.add_subplot(gs[0, 1]),
@@ -849,7 +908,6 @@ def build_comparison_figure(
         else:
             _plot_comparison_extract_single_op(axes[op], df_cur, df_bas, op)
 
-    # Shared legend for solid=current, hatched=baseline
     cur_patch = mpatches.Patch(facecolor="grey", alpha=0.85, label="Current branch")
     bas_patch = mpatches.Patch(
         facecolor="grey", alpha=0.40, hatch="////", label="Baseline (main)"
@@ -858,32 +916,24 @@ def build_comparison_figure(
         mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in HPSS_ORDER
     ]
     axes["create"].legend(
-        handles=[cur_patch, bas_patch] + hpss_patches,
-        fontsize=7,
-        loc="upper right",
+        handles=[cur_patch, bas_patch] + hpss_patches, fontsize=7, loc="upper right"
     )
 
     plot_comparison_extract(ax_cmp, df_cur, df_bas)
     return fig
 
 
-# String labels used in the suptitle (avoids referencing undefined vars earlier)
 RATIO_REGRESSION_COLOR_LABEL = "red"
 RATIO_IMPROVEMENT_COLOR_LABEL = "green"
 
 
 # ---------------------------------------------------------------------------
-# Figure 3 – full record archive
+# Archive data loading
 # ---------------------------------------------------------------------------
 
 
 def _archive_date_from_path(csv_path: Path) -> Optional[datetime.date]:
-    """
-    Parse the record date from a CSV filename that contains YYYYMMDD.
-
-    E.g. ``performance_20260603_results.csv`` → ``date(2026, 6, 3)``
-    Returns *None* when no eight-digit date string is found.
-    """
+    """Parse YYYYMMDD from a CSV filename; return None if not found."""
     m = re.search(r"(\d{8})", csv_path.stem)
     if not m:
         return None
@@ -897,11 +947,7 @@ def _archive_date_from_path(csv_path: Path) -> Optional[datetime.date]:
 def load_archive_data(archive_dir: str) -> pd.DataFrame:
     """
     Load and concatenate every ``*results*.csv`` in *archive_dir*.
-
-    Adds a ``record_date`` column (pandas Timestamp) derived from the
-    filename.  Files with no parseable date are skipped with a warning.
-
-    Returns an empty DataFrame (with expected columns) on failure.
+    Adds a ``record_date`` column (pandas Timestamp) from the filename.
     """
     _empty = pd.DataFrame(
         columns=[
@@ -925,8 +971,7 @@ def load_archive_data(archive_dir: str) -> pd.DataFrame:
     csv_files = sorted(archive_path.glob("*results*.csv"))
     if not csv_files:
         print(
-            f"WARNING: no *results*.csv files found in {archive_path}",
-            file=sys.stderr,
+            f"WARNING: no *results*.csv files found in {archive_path}", file=sys.stderr
         )
         return _empty
 
@@ -935,7 +980,7 @@ def load_archive_data(archive_dir: str) -> pd.DataFrame:
         record_date = _archive_date_from_path(p)
         if record_date is None:
             print(
-                f"WARNING: cannot parse date from filename {p.name!r}, skipping.",
+                f"WARNING: cannot parse date from {p.name!r}, skipping.",
                 file=sys.stderr,
             )
             continue
@@ -955,24 +1000,20 @@ def load_archive_data(archive_dir: str) -> pd.DataFrame:
     return df_all
 
 
+# ---------------------------------------------------------------------------
+# Figure 3 – archive: create & update
+# ---------------------------------------------------------------------------
+
+
 def plot_archive_timeseries(ax, df_arch: pd.DataFrame, operation: str) -> None:
     """
-    Time-series line graph for *operation* over the full record archive.
-
-    Axes
-    ----
-    X : record date
-    Y : elapsed_seconds  (mean over all test configs sharing the same
-        subdir × hpss × date)
-
-    Visual encoding
-    ---------------
-    Color     : hpss_label  – blue (none) / orange (hpss) / green (globus)
-    Line style: subdir      – solid (build) / dashed (run) / dotted (init)
-    → 9 lines total (3 subdirs × 3 hpss modes)
+    Time-series for create/update over the full archive.
+    Outliers removed within each (date, subdir, hpss) group before aggregating.
+    Color = hpss mode; line style = subdir.
     """
     dir_col = OP_DIR_COL[operation]
     df_op = df_arch[df_arch["operation"] == operation].copy()
+    df_op = _filter_df_outliers(df_op, ["record_date", dir_col, "hpss_label"])
 
     for hpss in HPSS_ORDER:
         color = HPSS_COLORS[hpss]
@@ -1013,7 +1054,6 @@ def plot_archive_timeseries(ax, df_arch: pd.DataFrame, operation: str) -> None:
     ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
     ax.set_axisbelow(True)
 
-    # Two-section legend: top = hpss color, bottom = subdir line style
     color_handles = [
         matplotlib.lines.Line2D(
             [], [], color=HPSS_COLORS[h], linewidth=2, label=HPSS_LABELS[h]
@@ -1042,26 +1082,19 @@ def plot_archive_timeseries(ax, df_arch: pd.DataFrame, operation: str) -> None:
 
 def plot_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> None:
     """
-    Vertical box-and-whisker plots for *operation* across the full archive.
-
-    Layout
-    ------
-    X axis  : one tick-group per subdir (build, run, init); within each group
-              the three hpss modes are placed side by side.
-    Color   : hpss_label  (same palette as all other figures)
-    Overlay : individual data-point dots (jittered, matching other figures)
-    → 9 boxes total (3 subdirs × 3 hpss modes)
+    Box-and-whisker for create/update across the full archive.
+    Outliers removed per (subdir, hpss) group before drawing.
     """
     dir_col = OP_DIR_COL[operation]
     df_op = df_arch[df_arch["operation"] == operation].copy()
+    df_op = _filter_df_outliers(df_op, [dir_col, "hpss_label"])
 
     n_hpss = len(HPSS_ORDER)
     group_width = n_hpss * BAR_WIDTH + 0.10
     x_base = np.arange(len(SUBDIR_ORDER)) * group_width
     offsets = np.linspace(0, (n_hpss - 1) * BAR_WIDTH, n_hpss)
 
-    tick_positions = []
-    tick_labels = []
+    tick_positions, tick_labels = [], []
 
     for s_idx, subdir in enumerate(SUBDIR_ORDER):
         tick_positions.append(x_base[s_idx] + offsets.mean())
@@ -1071,12 +1104,9 @@ def plot_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> None:
             mask = (df_op["hpss_label"] == hpss) & (df_op[dir_col] == subdir)
             vals = df_op[mask]["elapsed_seconds"].dropna().values
             x_pos = x_base[s_idx] + offsets[h_idx]
-
             if len(vals) == 0:
                 continue
-
             color = HPSS_COLORS[hpss]
-
             ax.boxplot(
                 vals,
                 positions=[x_pos],
@@ -1091,8 +1121,6 @@ def plot_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> None:
                 capprops=dict(linewidth=0.8),
                 flierprops=dict(marker="", linestyle="none"),
             )
-
-            # Overlay individual data points
             jitter = np.random.uniform(
                 -BAR_WIDTH * 0.2, BAR_WIDTH * 0.2, size=len(vals)
             )
@@ -1119,7 +1147,6 @@ def plot_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> None:
     ax.set_ylabel("Wall-clock time (s)", fontsize=8)
     ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
     ax.set_axisbelow(True)
-
     hpss_patches = [
         mpatches.Patch(color=HPSS_COLORS[h], alpha=0.75, label=HPSS_LABELS[h])
         for h in HPSS_ORDER
@@ -1129,7 +1156,7 @@ def plot_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> None:
 
 def build_archive_figure(df_arch: pd.DataFrame) -> plt.Figure:
     """
-    Figure 3 – full archive overview.
+    Figure 3 – full archive overview for create & update.
 
     Layout (2 rows × 2 cols):
       [0,0] create  time-series  |  [0,1] update  time-series
@@ -1137,34 +1164,249 @@ def build_archive_figure(df_arch: pd.DataFrame) -> plt.Figure:
     """
     fig = plt.figure(figsize=(15, 12))
     fig.suptitle(
-        "zstash Performance – Full Record Archive\n"
+        "zstash Performance – Full Record Archive  (create & update)\n"
         "Time series: color = HPSS mode  ·  line style = directory "
         "(solid = build/, dashed = run/, dotted = init/)\n"
-        "Box plots: every recorded runtime for each (directory, HPSS) combination",
+        "Box plots: every recorded runtime per (directory, HPSS) combination\n"
+        "Outliers removed via IQR method before plotting",
         fontsize=11,
         fontweight="bold",
         y=0.995,
     )
-
     gs = fig.add_gridspec(
         2, 2, hspace=0.48, wspace=0.30, top=0.90, bottom=0.08, left=0.07, right=0.97
     )
-
     for col_idx, op in enumerate(["create", "update"]):
-        ax_ts = fig.add_subplot(gs[0, col_idx])
-        ax_box = fig.add_subplot(gs[1, col_idx])
-        plot_archive_timeseries(ax_ts, df_arch, op)
-        plot_archive_boxplot(ax_box, df_arch, op)
-
+        plot_archive_timeseries(fig.add_subplot(gs[0, col_idx]), df_arch, op)
+        plot_archive_boxplot(fig.add_subplot(gs[1, col_idx]), df_arch, op)
     return fig
 
 
 # ---------------------------------------------------------------------------
-# Main
+# Figure 4 – archive: extract_seq & extract_par
 # ---------------------------------------------------------------------------
 
 
-def main():
+def plot_extract_archive_timeseries(ax, df_arch: pd.DataFrame, operation: str) -> None:
+    """
+    Time-series for an extract operation over the full archive.
+
+    Since extract has no single directory column, lines are keyed by the
+    combined (create_subdir, update_subdir) archive config pair.
+    Color = hpss mode; line style = create_subdir.
+    Outliers removed within each (date, create_subdir, update_subdir, hpss) group.
+    """
+    df_op = df_arch[df_arch["operation"] == operation].copy()
+    df_op = _filter_df_outliers(
+        df_op, ["record_date", "create_subdir", "update_subdir", "hpss_label"]
+    )
+
+    all_pairs = sorted(
+        df_op[["create_subdir", "update_subdir"]]
+        .drop_duplicates()
+        .apply(tuple, axis=1)
+        .tolist(),
+        key=lambda p: (dir_sort_key(p[0]), dir_sort_key(p[1])),
+    )
+
+    markers = ["o", "s", "^", "D", "v", "P", "X", "*", "h"]
+
+    for hpss in HPSS_ORDER:
+        color = HPSS_COLORS[hpss]
+        for p_idx, (create_sub, update_sub) in enumerate(all_pairs):
+            ls = SUBDIR_LINESTYLES.get(create_sub, "solid")
+            marker = markers[p_idx % len(markers)]
+            mask = (
+                (df_op["hpss_label"] == hpss)
+                & (df_op["create_subdir"] == create_sub)
+                & (df_op["update_subdir"] == update_sub)
+            )
+            df_line = (
+                df_op[mask]
+                .groupby("record_date")["elapsed_seconds"]
+                .mean()
+                .reset_index()
+                .sort_values("record_date")
+            )
+            if df_line.empty:
+                continue
+            ax.plot(
+                df_line["record_date"],
+                df_line["elapsed_seconds"],
+                color=color,
+                linestyle=ls,
+                linewidth=1.6,
+                marker=marker,
+                markersize=4,
+                label=f"{HPSS_LABELS[hpss]} – create:{create_sub}/ update:{update_sub}/",
+                zorder=3,
+            )
+
+    ax.set_title(
+        f"{OP_TITLES[operation]}  –  runtime over time",
+        fontsize=10,
+        fontweight="bold",
+        pad=6,
+    )
+    ax.set_xlabel("Record date", fontsize=8)
+    ax.set_ylabel("Wall-clock time (s)", fontsize=8)
+    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%Y-%m-%d"))
+    plt.setp(ax.get_xticklabels(), rotation=30, ha="right", fontsize=7)
+    ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
+    ax.set_axisbelow(True)
+
+    color_handles = [
+        matplotlib.lines.Line2D(
+            [], [], color=HPSS_COLORS[h], linewidth=2, label=HPSS_LABELS[h]
+        )
+        for h in HPSS_ORDER
+    ]
+    style_handles = [
+        matplotlib.lines.Line2D(
+            [],
+            [],
+            color="grey",
+            linewidth=2,
+            linestyle=SUBDIR_LINESTYLES.get(s, "solid"),
+            label=f"create: {s}/",
+        )
+        for s in SUBDIR_ORDER
+        if any(p[0] == s for p in all_pairs)
+    ]
+    ax.legend(
+        handles=color_handles + style_handles,
+        fontsize=6.5,
+        loc="upper left",
+        ncol=2,
+        framealpha=0.8,
+    )
+
+
+def plot_extract_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> None:
+    """
+    Box-and-whisker for an extract operation across the full archive.
+
+    X-axis groups = (create_subdir, update_subdir) archive config pairs
+    (matching the x-axis used in Figures 1 and 2).
+    Within each group the three HPSS modes sit side by side.
+    Outliers removed per (archive config pair, hpss_label) group.
+    """
+    df_op = df_arch[df_arch["operation"] == operation].copy()
+    df_op = _filter_df_outliers(df_op, ["create_subdir", "update_subdir", "hpss_label"])
+
+    all_pairs = sorted(
+        df_op[["create_subdir", "update_subdir"]]
+        .drop_duplicates()
+        .apply(tuple, axis=1)
+        .tolist(),
+        key=lambda p: (dir_sort_key(p[0]), dir_sort_key(p[1])),
+    )
+
+    n_hpss = len(HPSS_ORDER)
+    group_width = n_hpss * BAR_WIDTH + 0.10
+    x_base = np.arange(len(all_pairs)) * group_width
+    offsets = np.linspace(0, (n_hpss - 1) * BAR_WIDTH, n_hpss)
+
+    tick_positions, tick_labels = [], []
+
+    for p_idx, (create_sub, update_sub) in enumerate(all_pairs):
+        tick_positions.append(x_base[p_idx] + offsets.mean())
+        tick_labels.append(_extract_tick_label(create_sub, update_sub))
+
+        for h_idx, hpss in enumerate(HPSS_ORDER):
+            mask = (
+                (df_op["hpss_label"] == hpss)
+                & (df_op["create_subdir"] == create_sub)
+                & (df_op["update_subdir"] == update_sub)
+            )
+            vals = df_op[mask]["elapsed_seconds"].dropna().values
+            x_pos = x_base[p_idx] + offsets[h_idx]
+            if len(vals) == 0:
+                continue
+            color = HPSS_COLORS[hpss]
+            ax.boxplot(
+                vals,
+                positions=[x_pos],
+                widths=BAR_WIDTH * 0.85,
+                patch_artist=True,
+                vert=True,
+                manage_ticks=False,
+                zorder=2,
+                boxprops=dict(facecolor=color, alpha=0.55, linewidth=0.8),
+                medianprops=dict(color="black", linewidth=1.5),
+                whiskerprops=dict(linewidth=0.8),
+                capprops=dict(linewidth=0.8),
+                flierprops=dict(marker="", linestyle="none"),
+            )
+            jitter = np.random.uniform(
+                -BAR_WIDTH * 0.2, BAR_WIDTH * 0.2, size=len(vals)
+            )
+            ax.scatter(
+                x_pos + jitter,
+                vals,
+                color="white",
+                edgecolors=color,
+                s=DOT_SIZE,
+                zorder=3,
+                alpha=DOT_ALPHA,
+                linewidths=1.2,
+            )
+
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(tick_labels, fontsize=7)
+    ax.set_title(
+        f"{OP_TITLES[operation]}  –  runtime distribution (all records)",
+        fontsize=10,
+        fontweight="bold",
+        pad=6,
+    )
+    ax.set_xlabel("Archive contents (create → update)", fontsize=8)
+    ax.set_ylabel("Wall-clock time (s)", fontsize=8)
+    ax.yaxis.grid(True, linestyle="--", alpha=0.5, zorder=0)
+    ax.set_axisbelow(True)
+    hpss_patches = [
+        mpatches.Patch(color=HPSS_COLORS[h], alpha=0.75, label=HPSS_LABELS[h])
+        for h in HPSS_ORDER
+    ]
+    ax.legend(handles=hpss_patches, fontsize=7, loc="upper right")
+
+
+def build_extract_archive_figure(df_arch: pd.DataFrame) -> plt.Figure:
+    """
+    Figure 4 – full archive overview for extract_seq & extract_par.
+
+    Layout (2 rows × 2 cols):
+      [0,0] extract_seq  time-series  |  [0,1] extract_par  time-series
+      [1,0] extract_seq  box plot     |  [1,1] extract_par  box plot
+
+    Only produced when the archive contains extract operation rows.
+    """
+    fig = plt.figure(figsize=(15, 12))
+    fig.suptitle(
+        "zstash Performance – Full Record Archive  (extract_seq & extract_par)\n"
+        "Time series: color = HPSS mode  ·  line style = create_subdir "
+        "(solid = build/, dashed = run/, dotted = init/)\n"
+        "Box plots: every recorded runtime per (archive config, HPSS) combination\n"
+        "Outliers removed via IQR method before plotting",
+        fontsize=11,
+        fontweight="bold",
+        y=0.995,
+    )
+    gs = fig.add_gridspec(
+        2, 2, hspace=0.55, wspace=0.32, top=0.90, bottom=0.10, left=0.07, right=0.97
+    )
+    for col_idx, op in enumerate(["extract_seq", "extract_par"]):
+        plot_extract_archive_timeseries(fig.add_subplot(gs[0, col_idx]), df_arch, op)
+        plot_extract_archive_boxplot(fig.add_subplot(gs[1, col_idx]), df_arch, op)
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Main – helpers
+# ---------------------------------------------------------------------------
+
+
+def _parse_args():
     parser = argparse.ArgumentParser(
         description="Visualise zstash performance results."
     )
@@ -1176,7 +1418,176 @@ def main():
     parser.add_argument(
         "--dpi", type=int, default=150, help="Output DPI (default: 150)"
     )
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def _load_results(results_csv: str) -> pd.DataFrame:
+    """Load and validate the primary results CSV; exit on error."""
+    results_path = Path(results_csv)
+    if not results_path.is_file():
+        print(f"ERROR: results_csv not found: {results_csv!r}", file=sys.stderr)
+        sys.exit(1)
+    df = load_data(str(results_path))
+    if df.empty:
+        print(
+            f"ERROR: results_csv empty or unparseable: {results_csv!r}", file=sys.stderr
+        )
+        sys.exit(1)
+    return df
+
+
+def build_overview_figure(df: pd.DataFrame, all_dirs: list) -> plt.Figure:
+    """
+    Figure 1 – performance overview.
+
+    Layout: 3 rows × 2 cols
+      Row 0: create  |  update
+      Row 1: extract_seq  |  extract_par
+      Row 2: extract seq-vs-par comparison (spans both columns)
+    """
+    fig = plt.figure(figsize=(15, 16))
+    fig.suptitle(
+        "zstash Performance Profiling\n"
+        "(bars = mean over test configs; dots = individual runs; "
+        "outliers removed via IQR)",
+        fontsize=13,
+        fontweight="bold",
+        y=0.98,
+    )
+    gs = fig.add_gridspec(
+        3, 2, hspace=0.55, wspace=0.35, top=0.93, bottom=0.07, left=0.07, right=0.97
+    )
+    axes = {
+        "create": fig.add_subplot(gs[0, 0]),
+        "update": fig.add_subplot(gs[0, 1]),
+        "extract_seq": fig.add_subplot(gs[1, 0]),
+        "extract_par": fig.add_subplot(gs[1, 1]),
+    }
+    ax_cmp = fig.add_subplot(gs[2, :])
+
+    legend_handles = None
+    for op in OP_ORDER:
+        ax = axes[op]
+        if op in OP_DIR_COL:
+            plot_operation(ax, df[df["operation"] == op], op, all_dirs)
+        else:
+            _plot_extract_single_op(ax, df, op)
+        if legend_handles is None:
+            legend_handles = [
+                mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h])
+                for h in HPSS_ORDER
+            ]
+            ax.legend(handles=legend_handles, fontsize=7, loc="upper right")
+
+    plot_extract_comparison(ax_cmp, df)
+    return fig
+
+
+def _try_build_comparison_figure(
+    df: pd.DataFrame,
+    all_dirs: list,
+    results_csv: str,
+    baseline_results_csv: Optional[str],
+) -> Optional[plt.Figure]:
+    """Figure 2 – baseline comparison. Returns None when not applicable."""
+    if not baseline_results_csv:
+        return None
+    bas_path = Path(baseline_results_csv)
+    if not bas_path.exists():
+        print(f"WARNING: baseline_results_csv not found: {bas_path}", file=sys.stderr)
+        print("Skipping baseline comparison figure.", file=sys.stderr)
+        return None
+    df_bas = load_data(str(bas_path))
+    bas_label = bas_path.parent.name
+    cur_label = Path(results_csv).parent.name
+    return build_comparison_figure(df, df_bas, all_dirs, cur_label, bas_label)
+
+
+def _try_build_archive_figures(
+    archive_dir: Optional[str],
+) -> tuple:
+    """
+    Figures 3 & 4 – full record archive.
+
+    Returns a (fig_arch, fig_arch_extract) tuple; either element may be None
+    when the corresponding data is unavailable.
+    """
+    if not archive_dir:
+        return None, None
+    df_arch = load_archive_data(archive_dir)
+    if df_arch.empty:
+        print(
+            "WARNING: no archive data found; skipping Figures 3 & 4.", file=sys.stderr
+        )
+        return None, None
+    fig_arch = build_archive_figure(df_arch)
+    has_extract = df_arch["operation"].isin(["extract_seq", "extract_par"]).any()
+    if has_extract:
+        fig_arch_extract = build_extract_archive_figure(df_arch)
+    else:
+        print("INFO: no extract data in archive; skipping Figure 4.", file=sys.stderr)
+        fig_arch_extract = None
+    return fig_arch, fig_arch_extract
+
+
+def _save_figure(figure: plt.Figure, out_path_str: str, label: str, dpi: int) -> None:
+    """Save *figure* to *out_path_str* and print the destination."""
+    out_path = Path(out_path_str)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(out_path, dpi=dpi, bbox_inches="tight")
+    print(f"{label} saved to: {out_path}")
+    try:
+        os.chmod(out_path, 0o644)
+    except OSError:
+        pass
+    web_path = str(out_path).replace(
+        "/global/cfs/cdirs/e3sm/www/",
+        "https://portal.nersc.gov/cfs/e3sm/",
+    )
+    print(f"  Accessible at: {web_path}")
+
+
+def _save_all_figures(
+    fig: plt.Figure,
+    fig_cmp: Optional[plt.Figure],
+    fig_arch: Optional[plt.Figure],
+    fig_arch_extract: Optional[plt.Figure],
+    output_path: str,
+    dpi: int,
+) -> None:
+    """Save every non-None figure to a path derived from *output_path*."""
+    p = Path(output_path)
+    _save_figure(fig, output_path, "Figure 1 (overview)", dpi)
+    if fig_cmp is not None:
+        _save_figure(
+            fig_cmp,
+            str(p.with_stem(p.stem + "_vs_baseline")),
+            "Figure 2 (baseline comparison)",
+            dpi,
+        )
+    if fig_arch is not None:
+        _save_figure(
+            fig_arch,
+            str(p.with_stem(p.stem + "_archive")),
+            "Figure 3 (full archive: create & update)",
+            dpi,
+        )
+    if fig_arch_extract is not None:
+        _save_figure(
+            fig_arch_extract,
+            str(p.with_stem(p.stem + "_archive_extract")),
+            "Figure 4 (full archive: extract_seq & extract_par)",
+            dpi,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+
+def main():
+    args = _parse_args()
 
     cfg_path = Path(args.cfg)
     if not cfg_path.is_file():
@@ -1188,148 +1599,27 @@ def main():
         sys.exit(1)
 
     cfg = _load_cfg(cfg_path)
-    RESULTS_CSV: str = _cfg_require(cfg, "results_csv", cfg_path)
-    BASELINE_RESULTS_CSV: Optional[str] = _cfg_optional(cfg, "baseline_results_csv")
-    OUTPUT_PATH: Optional[str] = _cfg_optional(cfg, "output_path")
-    ARCHIVE_DIR: Optional[str] = _cfg_optional(cfg, "performance_archive_dir")
+    results_csv: str = _cfg_require(cfg, "results_csv", cfg_path)
+    baseline_results_csv: Optional[str] = _cfg_optional(cfg, "baseline_results_csv")
+    output_path: Optional[str] = _cfg_optional(cfg, "output_path")
+    archive_dir: Optional[str] = _cfg_optional(cfg, "performance_archive_dir")
 
-    results_path = Path(RESULTS_CSV)
-    if not RESULTS_CSV or not results_path.is_file():
-        print(f"ERROR: results_csv not found: {RESULTS_CSV!r}", file=sys.stderr)
-        sys.exit(1)
-    df = load_data(str(results_path))
-    if df.empty:
-        print(
-            f"ERROR: results_csv is empty or could not be parsed: {RESULTS_CSV!r}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    # Determine the sorted list of directories that actually appear in the data
+    df = _load_results(results_csv)
     all_dirs = sorted(
         set(df["create_subdir"].dropna()) | set(df["update_subdir"].dropna()),
         key=dir_sort_key,
     )
 
-    # -----------------------------------------------------------------------
-    # Figure layout: 3 rows × 2 cols
-    #   Row 0: create  |  update
-    #   Row 1: extract_seq  |  extract_par
-    #   Row 2: extract seq-vs-par comparison (spans both columns)
-    # -----------------------------------------------------------------------
-    fig = plt.figure(figsize=(15, 16))
-    fig.suptitle(
-        "zstash Performance Profiling\n"
-        "(bars = mean over test configs; dots = individual runs)",
-        fontsize=13,
-        fontweight="bold",
-        y=0.98,
+    fig = build_overview_figure(df, all_dirs)
+    fig_cmp = _try_build_comparison_figure(
+        df, all_dirs, results_csv, baseline_results_csv
     )
+    fig_arch, fig_arch_extract = _try_build_archive_figures(archive_dir)
 
-    gs = fig.add_gridspec(
-        3, 2, hspace=0.55, wspace=0.35, top=0.93, bottom=0.07, left=0.07, right=0.97
-    )
-
-    axes = {
-        "create": fig.add_subplot(gs[0, 0]),
-        "update": fig.add_subplot(gs[0, 1]),
-        "extract_seq": fig.add_subplot(gs[1, 0]),
-        "extract_par": fig.add_subplot(gs[1, 1]),
-    }
-    ax_cmp = fig.add_subplot(gs[2, :])
-
-    # -----------------------------------------------------------------------
-    # Draw the four single-operation subplots
-    # -----------------------------------------------------------------------
-    legend_handles = None
-    for op in OP_ORDER:
-        ax = axes[op]
-        if op in OP_DIR_COL:
-            df_op = df[df["operation"] == op]
-            plot_operation(ax, df_op, op, all_dirs)
-        else:
-            # extract_seq / extract_par each get a dedicated single-op view
-            # that still uses the combined archive config as the x-axis.
-            _plot_extract_single_op(ax, df, op)
-
-        if legend_handles is None:
-            legend_handles = [
-                mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h])
-                for h in HPSS_ORDER
-            ]
-            ax.legend(handles=legend_handles, fontsize=7, loc="upper right")
-
-    # -----------------------------------------------------------------------
-    # Draw the sequential vs parallel comparison subplot
-    # -----------------------------------------------------------------------
-    plot_extract_comparison(ax_cmp, df)
-
-    # -----------------------------------------------------------------------
-    # Baseline comparison figure (Figure 2)
-    # -----------------------------------------------------------------------
-    fig_cmp = None
-    if BASELINE_RESULTS_CSV:
-        bas_path = Path(BASELINE_RESULTS_CSV)
-        if not bas_path.exists():
-            print(
-                f"WARNING: baseline_results_csv not found: {bas_path}", file=sys.stderr
-            )
-            print("Skipping baseline comparison figure.", file=sys.stderr)
-        else:
-            df_bas = load_data(str(bas_path))
-            # Derive a short label from the CSV path for titles,
-            # e.g. ".../performance_20260101/results.csv" → "performance_20260101"
-            bas_label = bas_path.parent.name
-            cur_label = Path(RESULTS_CSV).parent.name
-            fig_cmp = build_comparison_figure(
-                df, df_bas, all_dirs, cur_label, bas_label
-            )
-
-    # -----------------------------------------------------------------------
-    # Full archive figure (Figure 3)
-    # -----------------------------------------------------------------------
-    fig_arch = None
-    if ARCHIVE_DIR:
-        df_arch = load_archive_data(ARCHIVE_DIR)
-        if not df_arch.empty:
-            fig_arch = build_archive_figure(df_arch)
-        else:
-            print(
-                "WARNING: no archive data found; skipping Figure 3.",
-                file=sys.stderr,
-            )
-
-    # -----------------------------------------------------------------------
-    # Save or show
-    # -----------------------------------------------------------------------
-    def save_or_show(figure, out_path_str, label):
-        if out_path_str:
-            out_path = Path(out_path_str)
-            out_path.parent.mkdir(parents=True, exist_ok=True)
-            figure.savefig(out_path, dpi=args.dpi, bbox_inches="tight")
-            print(f"{label} saved to: {out_path}")
-            try:
-                os.chmod(out_path, 0o644)
-            except OSError:
-                pass
-            web_path = str(out_path).replace(
-                "/global/cfs/cdirs/e3sm/www/",
-                "https://portal.nersc.gov/cfs/e3sm/",
-            )
-            print(f"  Accessible at: {web_path}")
-        else:
-            plt.show()
-
-    if OUTPUT_PATH:
-        save_or_show(fig, OUTPUT_PATH, "Figure 1 (overview)")
-        if fig_cmp is not None:
-            p = Path(OUTPUT_PATH)
-            cmp_output = str(p.with_stem(p.stem + "_vs_baseline"))
-            save_or_show(fig_cmp, cmp_output, "Figure 2 (baseline comparison)")
-        if fig_arch is not None:
-            p = Path(OUTPUT_PATH)
-            arch_output = str(p.with_stem(p.stem + "_archive"))
-            save_or_show(fig_arch, arch_output, "Figure 3 (full archive)")
+    if output_path:
+        _save_all_figures(
+            fig, fig_cmp, fig_arch, fig_arch_extract, output_path, args.dpi
+        )
     else:
         plt.show()
 
