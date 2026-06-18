@@ -1,0 +1,17 @@
+name: zstash_perf
+channels:
+  - conda-forge
+dependencies:
+  # Base (minimal subset needed to run zstash)
+  # =================
+  - pip
+  - python >=3.11,<3.15
+  - setuptools
+  - sqlite
+  - six >=1.16.0
+  - globus-sdk >=3.15.0,<4.0
+  # Performance profiling
+  # =================
+  - matplotlib-base
+  - pandas
+  - numpy

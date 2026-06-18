@@ -11,22 +11,69 @@ set -o pipefail
 # We will also compare `zstash extract` in sequential-mode and parallel-mode
 
 ###############################################################################
-# Manually edit parameters here:
+# Configuration file loader
+#
+# Reads a key=value file (default: perf.cfg in the same directory as this
+# script, or the path given as the first argument).
+# Lines starting with '#' and blank lines are ignored.
+# Multi-word values (e.g. HPSS_OPTIONS) are stored as bash arrays.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CFG_FILE="${1:-${SCRIPT_DIR}/perf.cfg}"
+
+if [ ! -f "${CFG_FILE}" ]; then
+    echo "ERROR: config file not found: ${CFG_FILE}"
+    echo "Usage: $0 [path/to/config.cfg]"
+    echo "Copy ${SCRIPT_DIR}/perf.cfg and edit it for your run."
+    exit 1
+fi
+
+# Parse key=value pairs; skip comments and blank lines.
+declare -A _cfg
+while IFS='=' read -r key value; do
+    # Strip leading/trailing whitespace from key
+    key="${key//[[:space:]]/}"
+    # Strip leading whitespace from value
+    value="${value#"${value%%[![:space:]]*}"}"
+    # Strip trailing whitespace from value
+    value="${value%"${value##*[![:space:]]}"}"
+    [[ -z "$key" || "$key" == \#* ]] && continue
+    _cfg["$key"]="$value"
+done < <(grep -v '^[[:space:]]*#' "${CFG_FILE}" | grep -v '^[[:space:]]*$')
+
+# Helper: get a required value or exit
+cfg_require() {
+    local k="$1"
+    if [[ -z "${_cfg[$k]+_}" ]]; then
+        echo "ERROR: required key '${k}' is missing from ${CFG_FILE}"
+        exit 1
+    fi
+    printf '%s' "${_cfg[$k]}"
+}
+
+# Helper: get an optional value with a default
+cfg_get() {
+    local k="$1" default="$2"
+    printf '%s' "${_cfg[$k]:-$default}"
+}
+
+###############################################################################
+# Load parameters from cfg file
 
 # Run from Perlmutter, so that we can do both
 # a direct transfer to HPSS & a Globus transfer to Chrysalis
-work_dir=/pscratch/sd/f/forsyth/zstash_performance/
-unique_id=performance_20260603
-environment_commands="source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_pm-cpu.sh"
+work_dir="$(cfg_require work_dir)"
+unique_id="$(cfg_require unique_id)"
+environment_commands="$(cfg_require environment_commands)"
 
 ###############################################################################
 # These parameters don't usually need to be changed,
 # but can be changed for further customization.
 
-dir_to_copy_from=/global/cfs/cdirs/e3sm/forsyth/E3SMv2/v2.LR.historical_0201/
-subdir0=build/
-subdir1=run/
-subdir2=init/
+dir_to_copy_from="$(cfg_require dir_to_copy_from)"
+subdir0="$(cfg_get subdir0 none)"
+subdir1="$(cfg_get subdir1 none)"
+subdir2="$(cfg_get subdir2 none)"
 ###
 # For reference, these files have these sizes and number of files
 # (Paths are from Chrysalis, but the data is identical on Perlmutter)
@@ -46,24 +93,28 @@ subdir2=init/
 # => A few large files
 ###
 
-
 # For `--hpss=...`
-# Which HPSS options to run. Comment out any you want to skip.
+# Which HPSS options to run. Space-separated in the cfg file -> bash array here.
 # Options: "none"  "hpss"  "globus"
-HPSS_OPTIONS=("none" "hpss" "globus")
+IFS=' ' read -r -a HPSS_OPTIONS <<< "$(cfg_require HPSS_OPTIONS)"
 
-dst_hpss_path=/home/f/forsyth/zstash_performance
+dst_hpss_path="$(cfg_get dst_hpss_path "")"
 
 # For `--hpss=globus...`
-fresh_globus=true
+fresh_globus="$(cfg_get fresh_globus false)"
 # ENDPOINT UUIDS:
 # LCRC_IMPROV_DTN_ENDPOINT=15288284-7006-4041-ba1a-6b52501e49f1
 # NERSC_PERLMUTTER_ENDPOINT=6bdc7956-fc0f-4ad2-989c-7aa5ee643a79
 # NERSC_HPSS_ENDPOINT=9cd89cfd-6d04-11e5-ba46-22000b92c6ec
 # PIC_COMPY_DTN_ENDPOINT=68fbd2fa-83d7-11e9-8e63-029d279f7e24
 # GLOBUS_TUTORIAL_COLLECTION_1_ENDPOINT=6c54cade-bde5-45c1-bdea-f4bd71dba2cc
-dst_endpoint_uuid=15288284-7006-4041-ba1a-6b52501e49f1
-dst_endpoint_archive_dir=/lcrc/group/e3sm/ac.forsyth2/zstash_performance_dst_dir/
+dst_endpoint_uuid="$(cfg_get dst_endpoint_uuid "")"
+dst_endpoint_archive_dir="$(cfg_get dst_endpoint_archive_dir "")"
+
+performance_archive_dir="$(cfg_require performance_archive_dir)"
+
+echo "[INFO] Loaded configuration from: ${CFG_FILE}"
+echo "[INFO] work_dir=${work_dir}  unique_id=${unique_id}"
 
 ###############################################################################
 # Utility functions
@@ -145,6 +196,9 @@ validate_configuration()
 refresh_globus()
 {
     print_step "Setting up fresh Globus authentication..."
+    if ! confirm "This will delete ${INI_PATH} and ${TOKEN_FILE} to start fresh. Is that ok?"; then
+        exit 1
+    fi
 
     # 1. Activate endpoints
     echo "Go to https://app.globus.org/file-manager?two_pane=true > For 'Collection', choose the endpoints you're using, and authenticate if needed:"
@@ -412,8 +466,9 @@ done
 
 print_success "All tests completed. Results saved to: ${results_csv}"
 
-performance_archive_path=/global/homes/f/forsyth/zstash_performance_records/${unique_id}_results.csv
+mkdir -p "${performance_archive_dir}"
+performance_archive_path="${performance_archive_dir}/${unique_id}_results.csv"
 cp "${results_csv}" "${performance_archive_path}"
 print_success "Results copied to: ${performance_archive_path}"
 
-print_info "Now edit IO paths and run: python visualize_performance.py"
+print_info "Now run: python visualize_performance.py --cfg ${CFG_FILE}"

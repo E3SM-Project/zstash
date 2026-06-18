@@ -3,12 +3,14 @@
 visualize_performance.py  –  Plot zstash performance profiling results.
 
 Usage:
-    python visualize_performance.py
+    python visualize_performance.py [--cfg path/to/perf.cfg] [--dpi 150]
 
-Edit the constants at the top of this file to point at the CSV(s) to plot.
+Pass --cfg <file> (default: perf.cfg next to this script) instead of editing
+hard-coded constants.  The cfg file uses the same key=value format as
+generate_performance_data.bash and can be shared between both scripts.
 
- The CSV is produced by generate_performance_data.bash and has columns:
-    test_label, create_subdir, update_subdir, hpss_label, operation, elapsed_seconds
+The CSV is produced by generate_performance_data.bash and has columns:
+   test_label, create_subdir, update_subdir, hpss_label, operation, elapsed_seconds
 
 Visualization strategy
 ----------------------
@@ -32,7 +34,7 @@ Figure 1 – Performance overview:
   to make the parallelism speed-up immediately visible.
 
 Figure 2 – Baseline comparison (current branch vs main):
-  Produced only when BASELINE_RESULTS_CSV is set to a valid path.
+  Produced only when baseline_results_csv is set to a valid path in the cfg.
   Same 2×2 + comparison layout, but each cell shows two bars
   (current = solid, baseline = hatched) with a ratio annotation
   (current/baseline) above each pair. Ratio > 1 = regression (slower),
@@ -40,6 +42,7 @@ Figure 2 – Baseline comparison (current branch vs main):
 """
 
 import argparse
+import configparser
 import os
 import sys
 from pathlib import Path
@@ -51,28 +54,47 @@ import numpy as np
 import pandas as pd
 
 # ---------------------------------------------------------------------------
-# ← EDIT THESE for each new run
+# Cfg-file helpers
 # ---------------------------------------------------------------------------
 
-# The results to show in Fig. 1
-RESULTS_CSV: str = (
-    "/pscratch/sd/f/forsyth/zstash_performance/performance_20260603/results.csv"
-)
+_SCRIPT_DIR = Path(__file__).parent
 
-# The results to compare against in Fig. 2.
-# Set to None to skip Fig. 2.
-BASELINE_RESULTS_CSV: Optional[str] = (
-    "/pscratch/sd/f/forsyth/zstash_performance/performance_20260414/results.csv"
-)
 
-# Output path for the saved figures.
-# Set to None to display interactively instead of saving.
-OUTPUT_PATH: Optional[str] = (
-    "/global/cfs/cdirs/e3sm/www/forsyth/zstash_performance/performance_pr427_20260603_run2.png"
-)
+def _load_cfg(cfg_path: Path) -> dict:
+    """
+    Parse a key=value cfg file (same format used by generate_performance_data.bash).
+    Returns a plain dict.  Section headers are not required; if present they are
+    ignored so the same file can be shared between the bash script and this one.
+    """
+    # configparser needs at least one section header; inject a fake one.
+    text = "[run]\n" + cfg_path.read_text()
+    cp = configparser.ConfigParser(
+        inline_comment_prefixes=("#",),
+        strict=False,
+    )
+    cp.read_string(text)
+    return dict(cp["run"])
+
+
+def _cfg_optional(cfg: dict, key: str) -> Optional[str]:
+    """Return the value for *key*, or None if missing / blank."""
+    v = cfg.get(key, "").strip()
+    return v if v else None
+
+
+def _cfg_require(cfg: dict, key: str, cfg_path: Path) -> str:
+    v = _cfg_optional(cfg, key)
+    if v is None:
+        print(
+            f"ERROR: required key '{key}' is missing from {cfg_path}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return v
+
 
 # ---------------------------------------------------------------------------
-# Config
+# Config  (styling – not user-configurable)
 # ---------------------------------------------------------------------------
 
 HPSS_ORDER = ["none", "hpss", "globus"]
@@ -707,7 +729,7 @@ def plot_comparison_extract(
                         else ("▼" if ratio <= RATIO_IMPROVEMENT else "")
                     )
                     ax.text(
-                        (x_cur + x_bas) / 2 + pair_width / 2,
+                        (x_cur + x_bas) / 2,
                         top * 1.03,
                         f"{arrow}{ratio:.2f}×",
                         ha="center",
@@ -831,18 +853,37 @@ def main():
         description="Visualise zstash performance results."
     )
     parser.add_argument(
+        "--cfg",
+        default=str(_SCRIPT_DIR / "perf.cfg"),
+        help="Path to the key=value config file (default: perf.cfg next to this script).",
+    )
+    parser.add_argument(
         "--dpi", type=int, default=150, help="Output DPI (default: 150)"
     )
     args = parser.parse_args()
 
+    cfg_path = Path(args.cfg)
+    if not cfg_path.is_file():
+        print(f"ERROR: config file not found: {cfg_path}", file=sys.stderr)
+        print(
+            f"Copy {_SCRIPT_DIR / 'perf.cfg'} and edit it for your run.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    cfg = _load_cfg(cfg_path)
+    RESULTS_CSV: str = _cfg_require(cfg, "results_csv", cfg_path)
+    BASELINE_RESULTS_CSV: Optional[str] = _cfg_optional(cfg, "baseline_results_csv")
+    OUTPUT_PATH: Optional[str] = _cfg_optional(cfg, "output_path")
+
     results_path = Path(RESULTS_CSV)
     if not RESULTS_CSV or not results_path.is_file():
-        print(f"ERROR: RESULTS_CSV not found: {RESULTS_CSV!r}", file=sys.stderr)
+        print(f"ERROR: results_csv not found: {RESULTS_CSV!r}", file=sys.stderr)
         sys.exit(1)
     df = load_data(str(results_path))
     if df.empty:
         print(
-            f"ERROR: RESULTS_CSV is empty or could not be parsed: {RESULTS_CSV!r}",
+            f"ERROR: results_csv is empty or could not be parsed: {RESULTS_CSV!r}",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -914,7 +955,7 @@ def main():
         bas_path = Path(BASELINE_RESULTS_CSV)
         if not bas_path.exists():
             print(
-                f"WARNING: BASELINE_RESULTS_CSV not found: {bas_path}", file=sys.stderr
+                f"WARNING: baseline_results_csv not found: {bas_path}", file=sys.stderr
             )
             print("Skipping baseline comparison figure.", file=sys.stderr)
         else:
