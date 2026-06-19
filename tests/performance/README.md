@@ -12,14 +12,16 @@ conda activate zstash_perf
 python -m pip install .
 ```
 
-All parameters for both scripts live in a single config file (`perf.cfg`) so you never need to edit the scripts themselves. Copy the provided template and fill in your values:
+All parameters for both scripts can live in a single config file (`key=value`) so you never need to edit the scripts themselves. Start by copying the generator template and fill in your values:
 
 ```bash
-cd tests/performance/
+cd tests/performance/generate
 cp perf.cfg my_run.cfg  # or just edit perf.cfg in place
 ```
 
 The config file uses a simple `key=value` format (lines starting with `#` are comments). It is shared between the bash script and the Python visualizer.
+
+To visualize, add the visualizer keys from `visualize/perf.cfg` into the same file.
 
 > **Perlmutter path convention:** home and scratch directories follow the pattern
 > `/global/homes/u/username/...` and `/pscratch/sd/u/username/...`
@@ -70,8 +72,8 @@ dst_endpoint_archive_dir=/lcrc/group/e3sm/username/zstash_performance_dst_dir/
 Once you have the parameters set up, run:
 
 ```bash
-cd tests/performance/
-./generate_performance_data.bash my_run.cfg
+cd tests/performance/generate/
+./generate_performance_data.bash ../my_run.cfg
 ```
 
 If no cfg file argument is given, the script looks for `perf.cfg` in the same directory.
@@ -95,7 +97,7 @@ baseline_results_csv=/pscratch/sd/u/username/zstash_performance/performance_2026
 # Output path for the saved figures.
 # Leave blank to display interactively instead of saving.
 # Make sure to use the web server path, i.e., /global/cfs/cdirs/e3sm/www/...
-output_path=/global/cfs/cdirs/e3sm/www/username/zstash_performance/
+output_path=/global/cfs/cdirs/e3sm/www/username/zstash_performance/performance_20260603.png
 ```
 
 The following options are available for finer control over the visualizer output:
@@ -137,7 +139,7 @@ Once you have the parameters set up, run:
 
 ```bash
 cd tests/performance/visualize/
-python visualize_performance.py --cfg my_run.cfg
+python visualize_performance.py --cfg ../my_run.cfg
 ```
 
 If `--cfg` is omitted, the script looks for `perf.cfg` in the same directory.
