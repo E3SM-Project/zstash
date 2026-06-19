@@ -6,8 +6,8 @@ Usage:
     python visualize_performance.py [--cfg path/to/perf.cfg] [--dpi 150]
 
 Pass --cfg <file> (default: perf.cfg next to this script) instead of editing
-hard-coded constants.  The cfg file uses the same key=value format as
-generate_performance_data.bash and can be shared between both scripts.
+hard-coded constants. The cfg file uses the same key=value *format* as
+generate_performance_data.bash (see tests/performance/README.md for templates).
 
 The CSV is produced by generate_performance_data.bash and has columns:
    test_label, create_subdir, update_subdir, hpss_label, operation, elapsed_seconds

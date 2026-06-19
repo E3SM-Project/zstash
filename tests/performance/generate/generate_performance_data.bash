@@ -480,4 +480,4 @@ performance_archive_path="${performance_archive_dir}/${gen_run_id}_results.csv"
 cp "${results_csv}" "${performance_archive_path}"
 print_success "Results copied to: ${performance_archive_path}"
 
-print_info "Now run: python ${SCRIPT_DIR}/../visualize/visualize_performance.py --cfg ${CFG_FILE}"
+print_info "Now run: python ${SCRIPT_DIR}/../visualize/visualize_performance.py --cfg ${SCRIPT_DIR}/../visualize/perf.cfg  (copy/edit this cfg to point at ${results_csv})"
