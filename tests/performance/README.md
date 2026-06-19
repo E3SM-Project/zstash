@@ -12,16 +12,17 @@ conda activate zstash_perf
 python -m pip install .
 ```
 
-All parameters for both scripts can live in a single config file (`key=value`) so you never need to edit the scripts themselves. Start by copying the generator template and fill in your values:
+Each script has its own config file (`key=value`) so you never need to edit the scripts themselves. Start by copying the templates and filling in your values:
 
 ```bash
-cd tests/performance/generate
-cp perf.cfg my_run.cfg  # or just edit perf.cfg in place
+# Generator config
+cp tests/performance/generate/perf.cfg tests/performance/generate/my_run.cfg
+
+# Visualizer config
+cp tests/performance/visualize/perf.cfg tests/performance/visualize/my_run.cfg
 ```
 
-The config file uses a simple `key=value` format (lines starting with `#` are comments). It is shared between the bash script and the Python visualizer.
-
-To visualize, add the visualizer keys from `visualize/perf.cfg` into the same file.
+The config files use a simple `key=value` format (lines starting with `#` are comments).
 
 > **Perlmutter path convention:** home and scratch directories follow the pattern
 > `/global/homes/u/username/...` and `/pscratch/sd/u/username/...`
@@ -30,7 +31,7 @@ To visualize, add the visualizer keys from `visualize/perf.cfg` into the same fi
 
 ## Generate performance data
 
-Edit the run metadata section of your cfg file:
+Edit the run metadata section of `generate/my_run.cfg`:
 
 ```ini
 # Use /pscratch since a lot of data will be transferred.
@@ -73,7 +74,7 @@ Once you have the parameters set up, run:
 
 ```bash
 cd tests/performance/generate/
-./generate_performance_data.bash ../my_run.cfg
+./generate_performance_data.bash my_run.cfg
 ```
 
 If no cfg file argument is given, the script looks for `perf.cfg` in the same directory.
@@ -82,7 +83,7 @@ Results will be saved to `${work_dir}${gen_run_id}/results.csv`. To keep all rec
 
 ## Visualize performance
 
-The visualizer lives in `tests/performance/visualize/`. Edit the visualizer section of your cfg file:
+The visualizer lives in `tests/performance/visualize/`. Edit `visualize/my_run.cfg`:
 
 ```ini
 # Path to the results CSV to show in Figure 1.
@@ -139,7 +140,7 @@ Once you have the parameters set up, run:
 
 ```bash
 cd tests/performance/visualize/
-python visualize_performance.py --cfg ../my_run.cfg
+python visualize_performance.py --cfg my_run.cfg
 ```
 
 If `--cfg` is omitted, the script looks for `perf.cfg` in the same directory.
