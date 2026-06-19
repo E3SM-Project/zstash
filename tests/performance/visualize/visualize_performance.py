@@ -34,7 +34,8 @@ Figure 1 – Performance overview:
   to make the parallelism speed-up immediately visible.
 
 Figure 2 – Baseline comparison (current branch vs main):
-  Produced only when baseline_results_csv is set to a valid path in the cfg.
+  Produced only when baseline_results_csv is set to a valid path in the cfg
+  AND figure 2 is included in the figures list.
   Same 2×2 + comparison layout, but each cell shows two bars
   (current = solid, baseline = hatched) with a ratio annotation
   (current/baseline) above each pair. Ratio > 1 = regression (slower),
@@ -43,7 +44,8 @@ Figure 2 – Baseline comparison (current branch vs main):
 Figure 3 – Full record archive for create & update
   (all historical CSVs in performance_archive_dir):
   Produced only when performance_archive_dir is set in the cfg and contains
-  *results*.csv files with YYYYMMDD in their names.
+  *results*.csv files with YYYYMMDD in their names, AND figure 3 is included
+  in the figures list.
   Layout: 2×2 grid (create | update) × (time-series | box plot).
   Time-series: x = record date, y = runtime, color = hpss mode,
                line style = subdir (solid=build, dashed=run, dotted=init).
@@ -51,7 +53,8 @@ Figure 3 – Full record archive for create & update
              with individual data-point dots overlaid.
 
 Figure 4 – Full record archive for extract_seq & extract_par:
-  Produced only when performance_archive_dir is set and contains extract data.
+  Produced only when performance_archive_dir is set and contains extract data,
+  AND figure 4 is included in the figures list.
   Layout: 2×2 grid (extract_seq | extract_par) × (time-series | box plot).
   X-axis groups for box plots: (create_subdir, update_subdir) archive config pairs.
   Same color/line-style encoding as Figure 3.
@@ -63,6 +66,44 @@ means or drawing boxes/lines.  Values outside
   [Q1 - 1.5 * IQR,  Q3 + 1.5 * IQR]
 are dropped silently.  This prevents a single aberrant run from dominating
 axis scales while preserving legitimate spread.
+
+New cfg options
+---------------
+hpss_filter
+    Comma-separated list of HPSS modes to include in every figure.
+    Valid values: none, hpss, globus  (case-insensitive).
+    Leave blank or omit to include all three.
+    Example: hpss_filter=none,hpss
+
+viz_run_id
+    A short identifier string used as a top-level subdirectory for all output
+    files.  When set (together with most_recent_gen_run_id), figures are placed
+    under <output_dir>/<viz_run_id>/.
+    When blank, the existing behaviour (stem of output_path as filename stem,
+    parent directory of output_path as output directory) is used.
+    Example: viz_run_id=pr427_20260603
+
+most_recent_gen_run_id
+    Identifier for the most recent generate_performance_data.bash run.
+    Used as the filename stem for Figures 1 & 2 and as a subdirectory under
+    viz_run_id/.  Requires viz_run_id to also be set.
+    Example: most_recent_gen_run_id=performance_20260603
+
+Output file layout when both viz_run_id and most_recent_gen_run_id are set:
+    <output_dir>/<viz_run_id>/<most_recent_gen_run_id>.png
+    <output_dir>/<viz_run_id>/<most_recent_gen_run_id>_vs_baseline.png
+    <output_dir>/<viz_run_id>/record_create_and_update.png
+    <output_dir>/<viz_run_id>/record_extract.png
+
+figures
+    Comma-separated list of figure numbers to produce.
+    Valid values: 1, 2, 3, 4.
+    Leave blank or omit to produce all applicable figures.
+    Specifying a figure number does not override data requirements:
+    Figure 2 still needs baseline_results_csv; Figures 3/4 still need
+    performance_archive_dir.  But figures NOT in this list are skipped
+    entirely (data is not even loaded for them).
+    Example: figures=1,2
 """
 
 import argparse
@@ -123,12 +164,74 @@ def _cfg_require(cfg: dict, key: str, cfg_path: Path) -> str:
 
 
 # ---------------------------------------------------------------------------
+# New cfg option parsers
+# ---------------------------------------------------------------------------
+
+_ALL_HPSS = ["none", "hpss", "globus"]
+_ALL_FIGURES = {1, 2, 3, 4}
+
+
+def _parse_hpss_filter(raw: Optional[str]) -> list:
+    """
+    Parse the hpss_filter cfg value into an ordered list of HPSS mode strings.
+
+    Validates each token against the known set.  Preserves the canonical order
+    (none → hpss → globus) regardless of the order given in the cfg.  Returns
+    the full list when *raw* is None or blank.
+    """
+    if not raw:
+        return list(_ALL_HPSS)
+    tokens = [t.strip().lower() for t in raw.split(",") if t.strip()]
+    invalid = [t for t in tokens if t not in _ALL_HPSS]
+    if invalid:
+        print(
+            f"ERROR: hpss_filter contains unknown mode(s): {invalid}\n"
+            f"  Valid values: {_ALL_HPSS}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    # Return in canonical order so plots are always consistent.
+    return [h for h in _ALL_HPSS if h in tokens]
+
+
+def _parse_figures(raw: Optional[str]) -> set:
+    """
+    Parse the figures cfg value into a set of integer figure numbers.
+
+    Validates each token.  Returns the full set {1,2,3,4} when *raw* is None
+    or blank.
+    """
+    if not raw:
+        return set(_ALL_FIGURES)
+    tokens = [t.strip() for t in raw.split(",") if t.strip()]
+    result = set()
+    for t in tokens:
+        if not t.isdigit() or int(t) not in _ALL_FIGURES:
+            print(
+                f"ERROR: figures contains invalid value: {t!r}\n"
+                f"  Valid values: 1, 2, 3, 4",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        result.add(int(t))
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Config  (styling – not user-configurable)
 # ---------------------------------------------------------------------------
 
+# HPSS_ORDER and HPSS_COLORS / HPSS_LABELS remain the full canonical sets.
+# The active subset selected by hpss_filter is stored in the module-level
+# variable ACTIVE_HPSS, set once in main() before any plotting begins.
 HPSS_ORDER = ["none", "hpss", "globus"]
 HPSS_COLORS = {"none": "#4C72B0", "hpss": "#DD8452", "globus": "#55A868"}
 HPSS_LABELS = {"none": "No HPSS", "hpss": "Direct HPSS", "globus": "Globus"}
+
+# Module-level active HPSS list; overwritten in main() from cfg.
+# All plotting functions reference ACTIVE_HPSS instead of HPSS_ORDER directly
+# so a single assignment here propagates everywhere.
+ACTIVE_HPSS: list = list(HPSS_ORDER)
 
 OP_ORDER = ["create", "update", "extract_seq", "extract_par"]
 OP_TITLES = {
@@ -277,12 +380,12 @@ def plot_operation(ax, df_op: pd.DataFrame, operation: str, dirs: list):
     df_op = _filter_df_outliers(df_op.copy(), [dir_col, "hpss_label"])
 
     n_dirs = len(dirs)
-    n_hpss = len(HPSS_ORDER)
+    n_hpss = len(ACTIVE_HPSS)
 
     x_base = np.arange(n_dirs)
     offsets = np.linspace(-(n_hpss - 1) / 2, (n_hpss - 1) / 2, n_hpss) * BAR_WIDTH
 
-    for h_idx, hpss in enumerate(HPSS_ORDER):
+    for h_idx, hpss in enumerate(ACTIVE_HPSS):
         df_h = df_op[df_op["hpss_label"] == hpss]
         means, all_vals, xs = [], [], []
 
@@ -375,12 +478,12 @@ def _plot_extract_single_op(ax, df: pd.DataFrame, operation: str):
 
     configs = _extract_configs(df)
     n_configs = len(configs)
-    n_hpss = len(HPSS_ORDER)
+    n_hpss = len(ACTIVE_HPSS)
 
     x_base = np.arange(n_configs, dtype=float)
     offsets = np.linspace(-(n_hpss - 1) / 2, (n_hpss - 1) / 2, n_hpss) * BAR_WIDTH
 
-    for h_idx, hpss in enumerate(HPSS_ORDER):
+    for h_idx, hpss in enumerate(ACTIVE_HPSS):
         means, all_vals, xs = [], [], []
         for c_idx, (create_sub, update_sub) in enumerate(configs):
             vals = (
@@ -459,13 +562,13 @@ def plot_extract_comparison(ax, df: pd.DataFrame):
     n_configs = len(configs)
     ops = ["extract_seq", "extract_par"]
     hatches = {"extract_seq": "", "extract_par": "////"}
-    n_bars = len(HPSS_ORDER) * len(ops)
+    n_bars = len(ACTIVE_HPSS) * len(ops)
 
     group_width = n_bars * BAR_WIDTH + 0.15
     x_base = np.arange(n_configs) * group_width
 
     for c_idx, (create_sub, update_sub) in enumerate(configs):
-        for h_idx, hpss in enumerate(HPSS_ORDER):
+        for h_idx, hpss in enumerate(ACTIVE_HPSS):
             for op_idx, op in enumerate(ops):
                 df_cell = df_ext[
                     (df_ext["operation"] == op)
@@ -504,7 +607,7 @@ def plot_extract_comparison(ax, df: pd.DataFrame):
     ax.set_axisbelow(True)
 
     hpss_patches = [
-        mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in HPSS_ORDER
+        mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in ACTIVE_HPSS
     ]
     seq_patch = mpatches.Patch(
         facecolor="grey", hatch="", label="Sequential (1 worker)"
@@ -556,14 +659,14 @@ def plot_comparison_operation(
     )
 
     n_dirs = len(dirs)
-    n_hpss = len(HPSS_ORDER)
+    n_hpss = len(ACTIVE_HPSS)
 
     pair_width = BAR_WIDTH
     gap = BAR_WIDTH * 0.3
     group_span = n_hpss * (2 * pair_width + gap) + 0.2
     x_base = np.arange(n_dirs) * group_span
 
-    for h_idx, hpss in enumerate(HPSS_ORDER):
+    for h_idx, hpss in enumerate(ACTIVE_HPSS):
         color = HPSS_COLORS[hpss]
         pair_offset = h_idx * (2 * pair_width + gap)
 
@@ -655,14 +758,14 @@ def _plot_comparison_extract_single_op(
 
     configs = _extract_configs(df_cur)
     n_configs = len(configs)
-    n_hpss = len(HPSS_ORDER)
+    n_hpss = len(ACTIVE_HPSS)
 
     pair_width = BAR_WIDTH
     gap = BAR_WIDTH * 0.3
     group_span = n_hpss * (2 * pair_width + gap) + 0.2
     x_base = np.arange(n_configs) * group_span
 
-    for h_idx, hpss in enumerate(HPSS_ORDER):
+    for h_idx, hpss in enumerate(ACTIVE_HPSS):
         color = HPSS_COLORS[hpss]
         pair_offset = h_idx * (2 * pair_width + gap)
         for c_idx, (create_sub, update_sub) in enumerate(configs):
@@ -759,11 +862,11 @@ def plot_comparison_extract(ax, df_cur: pd.DataFrame, df_bas: pd.DataFrame):
     pair_span = 2 * pair_width + inner_gap
     hpss_group_span = 2 * pair_span + op_gap
 
-    group_span = len(HPSS_ORDER) * (hpss_group_span + hpss_gap) + 0.3
+    group_span = len(ACTIVE_HPSS) * (hpss_group_span + hpss_gap) + 0.3
     x_base = np.arange(n_configs) * group_span
 
     for c_idx, (create_sub, update_sub) in enumerate(configs):
-        for h_idx, hpss in enumerate(HPSS_ORDER):
+        for h_idx, hpss in enumerate(ACTIVE_HPSS):
             color = HPSS_COLORS[hpss]
             hpss_origin = x_base[c_idx] + h_idx * (hpss_group_span + hpss_gap)
             for op_idx, op in enumerate(ops):
@@ -829,7 +932,7 @@ def plot_comparison_extract(ax, df_cur: pd.DataFrame, df_bas: pd.DataFrame):
                         zorder=4,
                     )
 
-    group_total_bar_span = len(HPSS_ORDER) * (hpss_group_span + hpss_gap) - hpss_gap
+    group_total_bar_span = len(ACTIVE_HPSS) * (hpss_group_span + hpss_gap) - hpss_gap
     x_ticks = x_base + group_total_bar_span / 2
     ax.set_xticks(x_ticks)
     ax.set_xticklabels([_extract_tick_label(c, u) for c, u in configs], fontsize=7.5)
@@ -848,7 +951,7 @@ def plot_comparison_extract(ax, df_cur: pd.DataFrame, df_bas: pd.DataFrame):
     ax.set_axisbelow(True)
 
     hpss_patches = [
-        mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in HPSS_ORDER
+        mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in ACTIVE_HPSS
     ]
     seq_patch = mpatches.Patch(
         facecolor="grey", hatch="", alpha=0.85, label="Sequential, current"
@@ -913,7 +1016,7 @@ def build_comparison_figure(
         facecolor="grey", alpha=0.40, hatch="////", label="Baseline (main)"
     )
     hpss_patches = [
-        mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in HPSS_ORDER
+        mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h]) for h in ACTIVE_HPSS
     ]
     axes["create"].legend(
         handles=[cur_patch, bas_patch] + hpss_patches, fontsize=7, loc="upper right"
@@ -1015,7 +1118,7 @@ def plot_archive_timeseries(ax, df_arch: pd.DataFrame, operation: str) -> None:
     df_op = df_arch[df_arch["operation"] == operation].copy()
     df_op = _filter_df_outliers(df_op, ["record_date", dir_col, "hpss_label"])
 
-    for hpss in HPSS_ORDER:
+    for hpss in ACTIVE_HPSS:
         color = HPSS_COLORS[hpss]
         for subdir in SUBDIR_ORDER:
             ls = SUBDIR_LINESTYLES.get(subdir, "solid")
@@ -1058,7 +1161,7 @@ def plot_archive_timeseries(ax, df_arch: pd.DataFrame, operation: str) -> None:
         matplotlib.lines.Line2D(
             [], [], color=HPSS_COLORS[h], linewidth=2, label=HPSS_LABELS[h]
         )
-        for h in HPSS_ORDER
+        for h in ACTIVE_HPSS
     ]
     style_handles = [
         matplotlib.lines.Line2D(
@@ -1089,7 +1192,7 @@ def plot_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> None:
     df_op = df_arch[df_arch["operation"] == operation].copy()
     df_op = _filter_df_outliers(df_op, [dir_col, "hpss_label"])
 
-    n_hpss = len(HPSS_ORDER)
+    n_hpss = len(ACTIVE_HPSS)
     group_width = n_hpss * BAR_WIDTH + 0.10
     x_base = np.arange(len(SUBDIR_ORDER)) * group_width
     offsets = np.linspace(0, (n_hpss - 1) * BAR_WIDTH, n_hpss)
@@ -1100,7 +1203,7 @@ def plot_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> None:
         tick_positions.append(x_base[s_idx] + offsets.mean())
         tick_labels.append(f"{subdir}/")
 
-        for h_idx, hpss in enumerate(HPSS_ORDER):
+        for h_idx, hpss in enumerate(ACTIVE_HPSS):
             mask = (df_op["hpss_label"] == hpss) & (df_op[dir_col] == subdir)
             vals = df_op[mask]["elapsed_seconds"].dropna().values
             x_pos = x_base[s_idx] + offsets[h_idx]
@@ -1112,7 +1215,7 @@ def plot_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> None:
                 positions=[x_pos],
                 widths=BAR_WIDTH * 0.85,
                 patch_artist=True,
-                vert=True,
+                orientation="vertical",
                 manage_ticks=False,
                 zorder=2,
                 boxprops=dict(facecolor=color, alpha=0.55, linewidth=0.8),
@@ -1149,7 +1252,7 @@ def plot_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> None:
     ax.set_axisbelow(True)
     hpss_patches = [
         mpatches.Patch(color=HPSS_COLORS[h], alpha=0.75, label=HPSS_LABELS[h])
-        for h in HPSS_ORDER
+        for h in ACTIVE_HPSS
     ]
     ax.legend(handles=hpss_patches, fontsize=7, loc="upper right")
 
@@ -1211,7 +1314,7 @@ def plot_extract_archive_timeseries(ax, df_arch: pd.DataFrame, operation: str) -
 
     markers = ["o", "s", "^", "D", "v", "P", "X", "*", "h"]
 
-    for hpss in HPSS_ORDER:
+    for hpss in ACTIVE_HPSS:
         color = HPSS_COLORS[hpss]
         for p_idx, (create_sub, update_sub) in enumerate(all_pairs):
             ls = SUBDIR_LINESTYLES.get(create_sub, "solid")
@@ -1259,7 +1362,7 @@ def plot_extract_archive_timeseries(ax, df_arch: pd.DataFrame, operation: str) -
         matplotlib.lines.Line2D(
             [], [], color=HPSS_COLORS[h], linewidth=2, label=HPSS_LABELS[h]
         )
-        for h in HPSS_ORDER
+        for h in ACTIVE_HPSS
     ]
     style_handles = [
         matplotlib.lines.Line2D(
@@ -1302,7 +1405,7 @@ def plot_extract_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> N
         key=lambda p: (dir_sort_key(p[0]), dir_sort_key(p[1])),
     )
 
-    n_hpss = len(HPSS_ORDER)
+    n_hpss = len(ACTIVE_HPSS)
     group_width = n_hpss * BAR_WIDTH + 0.10
     x_base = np.arange(len(all_pairs)) * group_width
     offsets = np.linspace(0, (n_hpss - 1) * BAR_WIDTH, n_hpss)
@@ -1313,7 +1416,7 @@ def plot_extract_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> N
         tick_positions.append(x_base[p_idx] + offsets.mean())
         tick_labels.append(_extract_tick_label(create_sub, update_sub))
 
-        for h_idx, hpss in enumerate(HPSS_ORDER):
+        for h_idx, hpss in enumerate(ACTIVE_HPSS):
             mask = (
                 (df_op["hpss_label"] == hpss)
                 & (df_op["create_subdir"] == create_sub)
@@ -1329,7 +1432,7 @@ def plot_extract_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> N
                 positions=[x_pos],
                 widths=BAR_WIDTH * 0.85,
                 patch_artist=True,
-                vert=True,
+                orientation="vertical",
                 manage_ticks=False,
                 zorder=2,
                 boxprops=dict(facecolor=color, alpha=0.55, linewidth=0.8),
@@ -1366,7 +1469,7 @@ def plot_extract_archive_boxplot(ax, df_arch: pd.DataFrame, operation: str) -> N
     ax.set_axisbelow(True)
     hpss_patches = [
         mpatches.Patch(color=HPSS_COLORS[h], alpha=0.75, label=HPSS_LABELS[h])
-        for h in HPSS_ORDER
+        for h in ACTIVE_HPSS
     ]
     ax.legend(handles=hpss_patches, fontsize=7, loc="upper right")
 
@@ -1475,7 +1578,7 @@ def build_overview_figure(df: pd.DataFrame, all_dirs: list) -> plt.Figure:
         if legend_handles is None:
             legend_handles = [
                 mpatches.Patch(color=HPSS_COLORS[h], label=HPSS_LABELS[h])
-                for h in HPSS_ORDER
+                for h in ACTIVE_HPSS
             ]
             ax.legend(handles=legend_handles, fontsize=7, loc="upper right")
 
@@ -1491,6 +1594,7 @@ def _try_build_comparison_figure(
 ) -> Optional[plt.Figure]:
     """Figure 2 – baseline comparison. Returns None when not applicable."""
     if not baseline_results_csv:
+        print("INFO: baseline_results_csv not set; skipping Figure 2.", file=sys.stderr)
         return None
     bas_path = Path(baseline_results_csv)
     if not bas_path.exists():
@@ -1505,14 +1609,21 @@ def _try_build_comparison_figure(
 
 def _try_build_archive_figures(
     archive_dir: Optional[str],
+    want_fig3: bool,
+    want_fig4: bool,
 ) -> tuple:
     """
     Figures 3 & 4 – full record archive.
 
+    *want_fig3* and *want_fig4* gate whether each figure is actually built.
     Returns a (fig_arch, fig_arch_extract) tuple; either element may be None
-    when the corresponding data is unavailable.
+    when the corresponding data is unavailable or the figure was not requested.
     """
     if not archive_dir:
+        print(
+            "INFO: performance_archive_dir not set; skipping Figures 3 & 4.",
+            file=sys.stderr,
+        )
         return None, None
     df_arch = load_archive_data(archive_dir)
     if df_arch.empty:
@@ -1520,20 +1631,80 @@ def _try_build_archive_figures(
             "WARNING: no archive data found; skipping Figures 3 & 4.", file=sys.stderr
         )
         return None, None
-    fig_arch = build_archive_figure(df_arch)
-    has_extract = df_arch["operation"].isin(["extract_seq", "extract_par"]).any()
-    if has_extract:
-        fig_arch_extract = build_extract_archive_figure(df_arch)
+
+    fig_arch = build_archive_figure(df_arch) if want_fig3 else None
+    if not want_fig3:
+        print("INFO: Figure 3 not in figures list; skipping.", file=sys.stderr)
+
+    fig_arch_extract = None
+    if want_fig4:
+        has_extract = df_arch["operation"].isin(["extract_seq", "extract_par"]).any()
+        if has_extract:
+            fig_arch_extract = build_extract_archive_figure(df_arch)
+        else:
+            print(
+                "INFO: no extract data in archive; skipping Figure 4.", file=sys.stderr
+            )
     else:
-        print("INFO: no extract data in archive; skipping Figure 4.", file=sys.stderr)
-        fig_arch_extract = None
+        print("INFO: Figure 4 not in figures list; skipping.", file=sys.stderr)
+
     return fig_arch, fig_arch_extract
+
+
+def _output_paths(
+    output_path: str,
+    viz_run_id: Optional[str],
+    most_recent_gen_run_id: Optional[str],
+) -> tuple:
+    """
+    Return the four output file paths as a tuple: (fig1, fig2, fig3, fig4).
+
+    When both *viz_run_id* and *most_recent_gen_run_id* are set, the new
+    directory-based layout is used:
+      <out_dir>/<viz_run_id>/<most_recent_gen_run_id>.png
+      <out_dir>/<viz_run_id>/<most_recent_gen_run_id>_vs_baseline.png
+      <out_dir>/<viz_run_id>/record_create_and_update.png
+      <out_dir>/<viz_run_id>/record_extract.png
+
+    Otherwise the legacy flat layout is used (all files in the parent
+    directory of output_path, stem from viz_run_id or output_path):
+      <out_dir>/<stem>.png
+      <out_dir>/<stem>_vs_baseline.png
+      <out_dir>/<stem>_archive.png
+      <out_dir>/<stem>_archive_extract.png
+    """
+    p = Path(output_path)
+    suffix = p.suffix or ".png"
+
+    if viz_run_id and most_recent_gen_run_id:
+        out_dir = p.parent / viz_run_id
+        stem = most_recent_gen_run_id
+        return (
+            str(out_dir / (stem + suffix)),
+            str(out_dir / (stem + "_vs_baseline" + suffix)),
+            str(out_dir / ("record_create_and_update" + suffix)),
+            str(out_dir / ("record_extract" + suffix)),
+        )
+
+    # Legacy behaviour: flat files in the parent directory of output_path.
+    out_dir = p.parent
+    stem = viz_run_id if viz_run_id else p.stem
+    return (
+        str(out_dir / (stem + suffix)),
+        str(out_dir / (stem + "_vs_baseline" + suffix)),
+        str(out_dir / (stem + "_archive" + suffix)),
+        str(out_dir / (stem + "_archive_extract" + suffix)),
+    )
 
 
 def _save_figure(figure: plt.Figure, out_path_str: str, label: str, dpi: int) -> None:
     """Save *figure* to *out_path_str* and print the destination."""
     out_path = Path(out_path_str)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(out_path.parent, 0o755)
+    except OSError:
+        pass
     figure.savefig(out_path, dpi=dpi, bbox_inches="tight")
     print(f"{label} saved to: {out_path}")
     try:
@@ -1548,34 +1719,32 @@ def _save_figure(figure: plt.Figure, out_path_str: str, label: str, dpi: int) ->
 
 
 def _save_all_figures(
-    fig: plt.Figure,
+    fig: Optional[plt.Figure],
     fig_cmp: Optional[plt.Figure],
     fig_arch: Optional[plt.Figure],
     fig_arch_extract: Optional[plt.Figure],
     output_path: str,
+    viz_run_id: Optional[str],
+    most_recent_gen_run_id: Optional[str],
     dpi: int,
 ) -> None:
-    """Save every non-None figure to a path derived from *output_path*."""
-    p = Path(output_path)
-    _save_figure(fig, output_path, "Figure 1 (overview)", dpi)
+    """
+    Save every non-None figure using paths from _output_paths().
+    """
+    path1, path2, path3, path4 = _output_paths(
+        output_path, viz_run_id, most_recent_gen_run_id
+    )
+
+    if fig is not None:
+        _save_figure(fig, path1, "Figure 1 (overview)", dpi)
     if fig_cmp is not None:
-        _save_figure(
-            fig_cmp,
-            str(p.with_stem(p.stem + "_vs_baseline")),
-            "Figure 2 (baseline comparison)",
-            dpi,
-        )
+        _save_figure(fig_cmp, path2, "Figure 2 (baseline comparison)", dpi)
     if fig_arch is not None:
-        _save_figure(
-            fig_arch,
-            str(p.with_stem(p.stem + "_archive")),
-            "Figure 3 (full archive: create & update)",
-            dpi,
-        )
+        _save_figure(fig_arch, path3, "Figure 3 (full archive: create & update)", dpi)
     if fig_arch_extract is not None:
         _save_figure(
             fig_arch_extract,
-            str(p.with_stem(p.stem + "_archive_extract")),
+            path4,
             "Figure 4 (full archive: extract_seq & extract_par)",
             dpi,
         )
@@ -1604,21 +1773,78 @@ def main():
     output_path: Optional[str] = _cfg_optional(cfg, "output_path")
     archive_dir: Optional[str] = _cfg_optional(cfg, "performance_archive_dir")
 
+    # --- New options --------------------------------------------------------
+    # hpss_filter: subset of HPSS modes to plot (default: all three)
+    global ACTIVE_HPSS
+    ACTIVE_HPSS = _parse_hpss_filter(_cfg_optional(cfg, "hpss_filter"))
+    if ACTIVE_HPSS != HPSS_ORDER:
+        print(
+            f"INFO: hpss_filter active — plotting only: {ACTIVE_HPSS}", file=sys.stderr
+        )
+
+    # viz_run_id: top-level subdirectory for output files
+    viz_run_id: Optional[str] = _cfg_optional(cfg, "viz_run_id")
+    if viz_run_id:
+        print(f"INFO: viz_run_id = {viz_run_id!r}", file=sys.stderr)
+
+    # most_recent_gen_run_id: stem for Figures 1 & 2, subdir under viz_run_id/
+    most_recent_gen_run_id: Optional[str] = _cfg_optional(cfg, "most_recent_gen_run_id")
+    if most_recent_gen_run_id:
+        print(
+            f"INFO: most_recent_gen_run_id = {most_recent_gen_run_id!r}",
+            file=sys.stderr,
+        )
+    if viz_run_id and not most_recent_gen_run_id:
+        print(
+            "WARNING: viz_run_id is set but most_recent_gen_run_id is not; "
+            "falling back to legacy flat filename layout.",
+            file=sys.stderr,
+        )
+
+    # figures: which figures to produce (default: all applicable)
+    figures_set: set = _parse_figures(_cfg_optional(cfg, "figures"))
+    if figures_set != _ALL_FIGURES:
+        print(
+            f"INFO: figures filter active — producing only: {sorted(figures_set)}",
+            file=sys.stderr,
+        )
+    # ------------------------------------------------------------------------
+
     df = _load_results(results_csv)
     all_dirs = sorted(
         set(df["create_subdir"].dropna()) | set(df["update_subdir"].dropna()),
         key=dir_sort_key,
     )
 
-    fig = build_overview_figure(df, all_dirs)
-    fig_cmp = _try_build_comparison_figure(
-        df, all_dirs, results_csv, baseline_results_csv
+    # Build only the requested figures.
+    fig = build_overview_figure(df, all_dirs) if 1 in figures_set else None
+    if 1 not in figures_set:
+        print("INFO: Figure 1 not in figures list; skipping.", file=sys.stderr)
+
+    fig_cmp = (
+        _try_build_comparison_figure(df, all_dirs, results_csv, baseline_results_csv)
+        if 2 in figures_set
+        else None
     )
-    fig_arch, fig_arch_extract = _try_build_archive_figures(archive_dir)
+    if 2 not in figures_set:
+        print("INFO: Figure 2 not in figures list; skipping.", file=sys.stderr)
+
+    fig_arch, fig_arch_extract = _try_build_archive_figures(
+        archive_dir,
+        want_fig3=3 in figures_set,
+        want_fig4=4 in figures_set,
+    )
 
     if output_path:
         _save_all_figures(
-            fig, fig_cmp, fig_arch, fig_arch_extract, output_path, args.dpi
+            fig,
+            fig_cmp,
+            fig_arch,
+            fig_arch_extract,
+            output_path,
+            viz_run_id,
+            most_recent_gen_run_id,
+            args.dpi,
         )
     else:
         plt.show()

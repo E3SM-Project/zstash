@@ -64,7 +64,7 @@ cfg_get() {
 # a direct transfer to HPSS & a Globus transfer to Chrysalis
 work_dir="$(cfg_require work_dir)"
 work_dir="${work_dir%/}/"
-unique_id="$(cfg_require unique_id)"
+gen_run_id="$(cfg_require gen_run_id)"
 environment_commands="$(cfg_require environment_commands)"
 
 ###############################################################################
@@ -116,7 +116,7 @@ dst_endpoint_archive_dir="$(cfg_get dst_endpoint_archive_dir "")"
 performance_archive_dir="$(cfg_require performance_archive_dir)"
 
 echo "[INFO] Loaded configuration from: ${CFG_FILE}"
-echo "[INFO] work_dir=${work_dir}  unique_id=${unique_id}"
+echo "[INFO] work_dir=${work_dir}  gen_run_id=${gen_run_id}"
 
 ###############################################################################
 # Utility functions
@@ -338,7 +338,7 @@ run_extract()
 # Results tracking
 
 # CSV file to collect all runtimes for later visualization
-results_csv="${work_dir}${unique_id}/results.csv"
+results_csv="${work_dir}${gen_run_id}/results.csv"
 
 record_result()
 {
@@ -369,7 +369,7 @@ if [ "${fresh_globus}" == "true" ] && [[ " ${HPSS_OPTIONS[*]} " == *" globus "* 
 fi
 
 # Create the top-level results directory and CSV header
-mkdir -p "${work_dir}${unique_id}"
+mkdir -p "${work_dir}${gen_run_id}"
 echo "test_label,create_subdir,update_subdir,hpss_label,operation,elapsed_seconds" > "${results_csv}"
 print_info "Results CSV: ${results_csv}"
 
@@ -416,13 +416,13 @@ for test_idx in 0 1 2 3 4 5; do
     print_step "=========================================="
 
     # Create unique work directories for this test
-    work_subdir="${work_dir}${unique_id}/test${test_label}/"
+    work_subdir="${work_dir}${gen_run_id}/test${test_label}/"
     mkdir -p "${work_subdir}"
 
     log_dir="${work_subdir}logs/"
     mkdir -p "${log_dir}"
 
-    dst_globus_path="globus://${dst_endpoint_uuid}/${dst_endpoint_archive_dir}${unique_id}/test${test_label}/"
+    dst_globus_path="globus://${dst_endpoint_uuid}/${dst_endpoint_archive_dir}${gen_run_id}/test${test_label}/"
 
     # Iterate over the three HPSS modes
     declare -A hpss_path_map=(
@@ -476,7 +476,7 @@ done
 print_success "All tests completed. Results saved to: ${results_csv}"
 
 mkdir -p "${performance_archive_dir}"
-performance_archive_path="${performance_archive_dir}/${unique_id}_results.csv"
+performance_archive_path="${performance_archive_dir}/${gen_run_id}_results.csv"
 cp "${results_csv}" "${performance_archive_path}"
 print_success "Results copied to: ${performance_archive_path}"
 

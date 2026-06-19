@@ -34,7 +34,7 @@ Edit the run metadata section of your cfg file:
 # Use /pscratch since a lot of data will be transferred.
 # The results csv alone will be copied to a long-term directory at the end.
 work_dir=/pscratch/sd/u/username/zstash_performance/
-unique_id=performance_20260603
+gen_run_id=performance_20260603
 
 # The environment that zstash will be run in.
 # Using Unified environment:
@@ -76,11 +76,11 @@ cd tests/performance/
 
 If no cfg file argument is given, the script looks for `perf.cfg` in the same directory.
 
-Results will be saved to `${work_dir}${unique_id}/results.csv`. To keep all records together in a non-scratch space, the results csv is also copied to `${performance_archive_dir}/${unique_id}_results.csv`.
+Results will be saved to `${work_dir}${gen_run_id}/results.csv`. To keep all records together in a non-scratch space, the results csv is also copied to `${performance_archive_dir}/${gen_run_id}_results.csv`.
 
 ## Visualize performance
 
-Edit the visualizer section of your cfg file:
+The visualizer lives in `tests/performance/visualize/`. Edit the visualizer section of your cfg file:
 
 ```ini
 # Path to the results CSV to show in Figure 1.
@@ -95,13 +95,48 @@ baseline_results_csv=/pscratch/sd/u/username/zstash_performance/performance_2026
 # Output path for the saved figures.
 # Leave blank to display interactively instead of saving.
 # Make sure to use the web server path, i.e., /global/cfs/cdirs/e3sm/www/...
-output_path=/global/cfs/cdirs/e3sm/www/username/zstash_performance/performance_pr427_20260603.png
+output_path=/global/cfs/cdirs/e3sm/www/username/zstash_performance/
+```
+
+The following options are available for finer control over the visualizer output:
+
+```ini
+# Subset of HPSS modes to include in every figure (comma-separated).
+# Valid values: none, hpss, globus. Leave blank to include all three.
+# Example: hpss_filter=none,hpss
+hpss_filter=
+
+# Top-level subdirectory for all output files.
+# When set (together with most_recent_gen_run_id), figures are placed under
+# <output_dir>/<viz_run_id>/.
+# When blank, the existing behaviour (stem of output_path as filename stem) is used.
+viz_run_id=pr427_20260603
+
+# Identifier for the most recent generate run; used as the filename stem for
+# Figures 1 & 2 and as a subdirectory under viz_run_id/.
+# Requires viz_run_id to also be set.
+most_recent_gen_run_id=performance_20260603
+
+# Which figures to produce (comma-separated). Valid values: 1, 2, 3, 4.
+# Leave blank to produce all applicable figures.
+# Note: Figure 2 still requires baseline_results_csv; Figures 3/4 still require
+# performance_archive_dir, regardless of this setting.
+figures=1,2,3,4
+```
+
+When both `viz_run_id` and `most_recent_gen_run_id` are set, output files are laid out as:
+
+```
+<output_dir>/<viz_run_id>/<most_recent_gen_run_id>.png
+<output_dir>/<viz_run_id>/<most_recent_gen_run_id>_vs_baseline.png
+<output_dir>/<viz_run_id>/record_create_and_update.png
+<output_dir>/<viz_run_id>/record_extract.png
 ```
 
 Once you have the parameters set up, run:
 
 ```bash
-cd tests/performance/
+cd tests/performance/visualize/
 python visualize_performance.py --cfg my_run.cfg
 ```
 
@@ -109,14 +144,25 @@ If `--cfg` is omitted, the script looks for `perf.cfg` in the same directory.
 
 The script will print both the file path and the URL to access the plots.
 
+### Figures produced
+
+**Figure 1 – Performance overview** (`results_csv` required): A 2×2 grid of subplots (one per operation: create, update, extract_seq, extract_par) plus a 5th subplot comparing sequential vs parallel extract side-by-side. Bars represent HPSS mode (none / hpss / globus); individual data points are overlaid as dots when multiple test configs share the same directory.
+
+**Figure 2 – Baseline comparison** (`baseline_results_csv` required): Same layout as Figure 1, but each cell shows two bars (current = solid, baseline = hatched) with a current/baseline ratio annotation. Ratio > 1 indicates a regression (slower); ratio < 1 indicates an improvement (faster).
+
+**Figure 3 – Historical archive for create & update** (`performance_archive_dir` required): A 2×2 grid of time-series and box plots for create and update operations across all historical CSVs in the archive directory.
+
+**Figure 4 – Historical archive for extract** (`performance_archive_dir` required): Same layout as Figure 3, for extract_seq and extract_par operations.
+
 ## For reference
 
 Records made before the long-term record space was made have been copied to it via:
 ```bash
-SCRATCH_SPACE=/pscratch/sd/f/forsyth/zstash_performance
-RECORDS_SPACE=/global/homes/f/forsyth/zstash_performance_records
+SCRATCH_SPACE=/pscratch/sd/u/username/zstash_performance
+RECORDS_SPACE=/global/homes/u/username/zstash_performance_records
 
-for unique_id in \
+# Example:
+for gen_run_id in \
   performance_20260225 \
   performance_20260226_pr402 \
   performance_20260226_pr424 \
@@ -126,6 +172,6 @@ for unique_id in \
   performance_pr416_20260403 \
   performance_pr416_20260406
 do
-  cp "${SCRATCH_SPACE}/${unique_id}/results.csv" "${RECORDS_SPACE}/${unique_id}_results.csv"
+  cp "${SCRATCH_SPACE}/${gen_run_id}/results.csv" "${RECORDS_SPACE}/${gen_run_id}_results.csv"
 done
 ```
