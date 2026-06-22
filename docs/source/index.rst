@@ -79,7 +79,7 @@ The contributor and maintainer documentation is organized under
   mode
 * :doc:`dev_guide/testing` for the test layout and execution guidance
 * :doc:`dev_guide/release_testing` for release validation steps
-* :doc:`dev_guide/release` for the release process
+* :doc:`dev_guide/releases` for the release process
 * :doc:`dev_guide/contributing_to_docs` for development environment setup and contribution
   workflow
 

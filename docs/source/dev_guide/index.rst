@@ -13,5 +13,5 @@ implementation details that are mainly useful to contributors.
    tar_tracking_modes
    testing
    release_testing
-   release
+   releases
    contributing_to_docs
