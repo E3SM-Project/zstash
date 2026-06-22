@@ -275,7 +275,7 @@ Furthermore, the dev environment includes quality assurance (QA) tools such as c
 
         git commit -m "commit-message"
 
-    .. figure:: _static/pre-commit-passing.png
+    .. figure:: _static/figures/pre-commit-passing.png
        :alt: pre-commit Output
 
        ``pre-commit`` Output

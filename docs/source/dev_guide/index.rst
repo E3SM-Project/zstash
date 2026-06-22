@@ -8,11 +8,10 @@ implementation details that are mainly useful to contributors.
 .. toctree::
    :maxdepth: 2
 
-   ../contributing
-   ../design
-   project-standards
+   project_standards
+   ci
    tar_tracking_modes
    testing
-   ci
    release_testing
    release
+   contributing_to_docs

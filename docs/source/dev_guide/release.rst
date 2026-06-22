@@ -69,6 +69,9 @@ Releasing on GitHub: release candidates
 Releasing on GitHub: production releases
 ----------------------------------------
 
+.. figure:: /_static/figures/github_release.png
+   :alt: GitHub Release Diagram
+
 1. Draft a new release `here <https://github.com/E3SM-Project/zstash/releases>`_. You can save this and come back to it later, if need be.
 2. Set `Tag version` to ``v<version>``, **including the "v"**. `@Target` should be ``main``.
 3. Set `Release title` to ``v<version>``, **including the "v"**.

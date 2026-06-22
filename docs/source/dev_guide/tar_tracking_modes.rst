@@ -103,5 +103,5 @@ Graphviz source
 The following ``.dot`` file summarizes the relationships between local tar
 creation, database updates, and transfer handling in each mode:
 
-.. literalinclude:: tar_tracking_modes.dot
+.. literalinclude:: /_static/code_snippets/tar_tracking_modes.dot
    :language: dot

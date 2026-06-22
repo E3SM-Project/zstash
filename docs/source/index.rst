@@ -57,14 +57,15 @@ User Guide pages
 The user-facing documentation is organized under :doc:`user_guide/index` and
 includes:
 
-* :doc:`getting_started` for installation and first-time setup
-* :doc:`user_guide/globus` for Globus account setup and transfer workflows
-* :doc:`user_guide/configuration` for ``.zstash.ini`` configuration details
-* :doc:`tutorial` for a full archive creation and extraction walkthrough
-* :doc:`usage` for command-line usage details
-* :doc:`best_practices` for archive management recommendations
-* :doc:`database` for the archive index database layout
-* :doc:`support` for where to ask questions or report issues
+* :doc:`user_guide/design` for the high-level architecture and implementation overview
+* :doc:`user_guide/getting_started` for installation and first-time setup
+* :doc:`user_guide/usage` for command-line usage details
+* :doc:`user_guide/globus` for Globus account setup and transfer workflows and ``.zstash.ini`` configuration details
+* :doc:`user_guide/best_practices` for archive management recommendations
+* :doc:`user_guide/database` for the archive index database layout
+* :doc:`user_guide/support` for where to ask questions or report issues
+* :doc:`user_guide/archived_documentation` for a full archive creation and extraction walkthrough
+
 
 Developer Guide pages
 =====================
@@ -72,16 +73,15 @@ Developer Guide pages
 The contributor and maintainer documentation is organized under
 :doc:`dev_guide/index` and includes:
 
-* :doc:`contributing` for development environment setup and contribution
-  workflow
-* :doc:`design` for the high-level architecture and implementation overview
-* :doc:`dev_guide/project-standards` for coding standards and conventions
+* :doc:`dev_guide/project_standards` for coding standards and conventions
+* :doc:`dev_guide/ci` for continuous integration details
 * :doc:`dev_guide/tar_tracking_modes` for tar tracking behavior in each storage
   mode
 * :doc:`dev_guide/testing` for the test layout and execution guidance
-* :doc:`dev_guide/ci` for continuous integration details
 * :doc:`dev_guide/release_testing` for release validation steps
 * :doc:`dev_guide/release` for the release process
+* :doc:`dev_guide/contributing_to_docs` for development environment setup and contribution
+  workflow
 
 .. toctree::
    :maxdepth: 2

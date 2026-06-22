@@ -166,7 +166,7 @@ Transfer all zstash files to NERSC HPSS using Globus.
 * On the leftmost pane, select 'ENDPOINT'
 * Search for 'NERSC HPSS'. Click on Green power button to activate endpoint.
 
-.. image:: globus/Globus_Screenshot_1.png
+.. image:: /_static/figures/Globus_Screenshot_1.png
    :scale: 50%
    :alt: Globus screenshot, NERSC HPSS endpoint
 
@@ -174,14 +174,14 @@ Transfer all zstash files to NERSC HPSS using Globus.
 * Search for 'compy-dtn'. Click on Green power button to activate endpoint. Login
   using your compy credentials (username, PIN+RSA).
 
-.. image:: globus/Globus_Screenshot_2.png
+.. image:: /_static/figures/Globus_Screenshot_2.png
    :scale: 50%
    :alt: Globus screenshot, compy-dtn endpoint
 
 * In the file manager, navigate to your local zstash directory.
 * Click on 'Transfer or Sync...'
 
-.. image:: globus/Globus_Screenshot_3.png
+.. image:: /_static/figures/Globus_Screenshot_3.png
    :scale: 50%
    :alt: Globus screenshot, file manager
 
@@ -198,7 +198,7 @@ Transfer all zstash files to NERSC HPSS using Globus.
 
 * Click 'Start ->'.
 
-.. image:: globus/Globus_Screenshot_4.png
+.. image:: /_static/figures/Globus_Screenshot_4.png
    :scale: 50%
    :alt: Globus screenshot, sync
 

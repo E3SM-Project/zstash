@@ -72,7 +72,7 @@ using Sphinx, you can refer to
     $ # Check the `_build/html` folder for all generated versioned docs
     $ # Open `_build/html/<your-branch>/index.html` to view in browser
 
-   .. figure:: _static/docs-version-selector.png
+   .. figure:: _static/figures/docs-version-selector.png
       :alt: Docs version selector
 
       Docs version selector dropdown in the bottom left-hand corner

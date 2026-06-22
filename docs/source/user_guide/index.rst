@@ -8,11 +8,11 @@ working with HPSS or Globus in day-to-day workflows.
 .. toctree::
    :maxdepth: 2
 
-   ../getting_started
+   design
+   getting_started
+   usage
    globus
-   configuration
-   ../tutorial
-   ../usage
-   ../best_practices
-   ../database
-   ../support
+   best_practices
+   database
+   support
+   archived_documentation

@@ -11,7 +11,7 @@ Version Control (VC)
 
 The repository uses a fork-based Git workflow with tag releases.
 
-.. figure:: git-flow.svg
+.. figure:: /_static/figures/git-flow.svg
    :alt: Git Flow Diagram
 
 Guidelines for VC
@@ -39,7 +39,7 @@ The repository uses the ``pre-commit`` package to manage pre-commit hooks.
 These hooks help enforce quality assurance standards and identify simple issues
 at the commit level before submitting code reviews.
 
-.. figure:: pre-commit-flow.svg
+.. figure:: /_static/figures/pre-commit-flow.svg
    :alt: Pre-commit Flow Diagram
 
    ``pre-commit`` Flow
@@ -57,7 +57,7 @@ Automatically run all pre-commit hooks (just commit) ::
     # Tip: If there is an issue with pre-commit, you can bypass with the `--no-verify` flag. Please do NOT use this on a regular basis.
     git commit -m '...'
 
-.. figure:: ../_static/pre-commit-passing.png
+.. figure:: ../_static/figures/pre-commit-passing.png
    :alt: pre-commit Output
 
    ``pre-commit`` Output

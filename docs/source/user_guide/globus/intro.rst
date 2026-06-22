@@ -1,6 +1,6 @@
-############
-Globus Guide
-############
+###################
+Globus Introduction
+###################
 
 This page is intended for users who want to run ``zstash`` on a machine that
 does not have direct HPSS access, or who prefer to move zstash archives through
