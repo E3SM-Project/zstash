@@ -44,18 +44,17 @@ For documentation not included in the version selector (<= ``v1.0.1``):
 * `v1.0.1 <https://e3sm-project.github.io/zstash/_build_old/html-v1-0-1/index.html>`_
 * `v1.0.0 <https://e3sm-project.github.io/zstash/_build_old/html-v1-0-0/index.html>`_
 
+The documentation is organized into two major sections:
+
+* :doc:`User Guide <user_guide/index>` for installation, day-to-day usage,
+  Globus setup, and archive management
+* :doc:`Developer Guide <dev_guide/index>` for contributing, testing, release
+  work, and internal implementation details
+
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Guides:
 
    self
-   getting_started
-   tutorial
-   usage
-   best_practices
-   design
-   database
-   support
+   user_guide/index
    dev_guide/index
-   contributing
-
