@@ -51,6 +51,38 @@ The documentation is organized into two major sections:
 * :doc:`Developer Guide <dev_guide/index>` for contributing, testing, release
   work, and internal implementation details
 
+User Guide pages
+================
+
+The user-facing documentation is organized under :doc:`user_guide/index` and
+includes:
+
+* :doc:`getting_started` for installation and first-time setup
+* :doc:`user_guide/globus` for Globus account setup and transfer workflows
+* :doc:`user_guide/configuration` for ``.zstash.ini`` configuration details
+* :doc:`tutorial` for a full archive creation and extraction walkthrough
+* :doc:`usage` for command-line usage details
+* :doc:`best_practices` for archive management recommendations
+* :doc:`database` for the archive index database layout
+* :doc:`support` for where to ask questions or report issues
+
+Developer Guide pages
+=====================
+
+The contributor and maintainer documentation is organized under
+:doc:`dev_guide/index` and includes:
+
+* :doc:`contributing` for development environment setup and contribution
+  workflow
+* :doc:`design` for the high-level architecture and implementation overview
+* :doc:`dev_guide/project-standards` for coding standards and conventions
+* :doc:`dev_guide/tar_tracking_modes` for tar tracking behavior in each storage
+  mode
+* :doc:`dev_guide/testing` for the test layout and execution guidance
+* :doc:`dev_guide/ci` for continuous integration details
+* :doc:`dev_guide/release_testing` for release validation steps
+* :doc:`dev_guide/release` for the release process
+
 .. toctree::
    :maxdepth: 2
    :caption: Guides:
