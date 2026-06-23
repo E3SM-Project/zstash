@@ -14,7 +14,7 @@ The file uses an INI format such as:
 .. code-block:: ini
 
    [local]
-   globus_endpoint_uuid = 6bdc7956-fc0f-4ad2-989c-7aa5ee643a79
+   globus_endpoint_uuid = 6bdc7956-fc0f-4ad2-989c-7aa5ee643a79 # NERSC_PERLMUTTER_ENDPOINT
 
 If the file does not exist, zstash creates it the first time it needs Globus
 configuration.

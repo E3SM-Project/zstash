@@ -17,7 +17,7 @@ Examples include:
 
 * ``globus://nersc/~/my_archive``
 * ``globus://alcf/~/my_archive``
-* ``globus://9cd89cfd-6d04-11e5-ba46-22000b92c6ec/~/my_archive``
+* ``globus://9cd89cfd-6d04-11e5-ba46-22000b92c6ec/~/my_archive`` (NERSC HPSS Globus endpoint)
 
 The names ``nersc`` and ``alcf`` are built-in shortcuts for the NERSC HPSS and
 ALCF HPSS Globus endpoints.
@@ -50,7 +50,7 @@ Authentication flow
 The first time zstash needs Globus credentials, it will print an authorization
 URL and ask you to paste back the returned code. After a successful login,
 zstash stores refresh-token state in ``~/.zstash_globus_tokens.json`` so future
-commands usually do not need another interactive login.
+Globus transfers between the same machines usually do not need another interactive login.
 
 zstash also checks ``~/.zstash.ini`` for the local endpoint UUID. See
 :doc:`configuration` for details on when that file needs to be created or

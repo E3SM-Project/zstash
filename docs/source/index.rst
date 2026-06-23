@@ -64,7 +64,7 @@ includes:
 * :doc:`user_guide/best_practices` for archive management recommendations
 * :doc:`user_guide/database` for the archive index database layout
 * :doc:`user_guide/support` for where to ask questions or report issues
-* :doc:`user_guide/archived_documentation` for a full archive creation and extraction walkthrough
+* :doc:`user_guide/archived_documentation` for older documentation that may still be useful as a reference.
 
 
 Developer Guide pages
