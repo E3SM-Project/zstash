@@ -47,12 +47,16 @@ at the commit level before submitting code reviews.
 Helpful ``pre-commit`` Commands
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Install into your cloned repo ::
+Install into your cloned repo
 
-    conda activate zstash_dev
-    pre-commit install
+    .. code-block:: bash
 
-Automatically run all pre-commit hooks (just commit) ::
+        conda activate zstash_dev
+        pre-commit install
+
+Automatically run all pre-commit hooks (just commit)
+
+  .. code-block:: bash
 
     # Tip: If there is an issue with pre-commit, you can bypass with the `--no-verify` flag. Please do NOT use this on a regular basis.
     git commit -m '...'
@@ -62,14 +66,18 @@ Automatically run all pre-commit hooks (just commit) ::
 
    ``pre-commit`` Output
 
-Manually run all pre-commit hooks ::
+Manually run all pre-commit hooks
 
-    pre-commit run --all-files
+    .. code-block:: bash
 
-Run individual hook ::
+        pre-commit run --all-files
 
-    # Available hook ids: trailing-whitespace, end-of-file-fixer, check-yaml, black, isort, flake8, mypy
-    pre-commit run <hook_id>
+Run individual hook
+
+    .. code-block:: bash
+
+        # Available hook ids: trailing-whitespace, end-of-file-fixer, check-yaml, black, isort, flake8, mypy
+        pre-commit run <hook_id>
 
 Squash and Rebase Commits
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -93,36 +101,44 @@ How to squash and rebase commits
 
 Assuming that you followed :ref:`"(b) Development Environment" <dev-env>`:
 
-1. Sync ``main`` with the main repo's ``main`` ::
+1. Sync ``main`` with the main repo's ``main``
 
-    git checkout main
-    git rebase <upstream-origin>/main
-    git push -f <fork-origin> main
+    .. code-block:: bash
 
-2. Get the SHA of the commit OR number of commits to rebase to ::
+        git checkout main
+        git rebase <upstream-origin>/main
+        git push -f <fork-origin> main
 
-    git log --graph --decorate --pretty=oneline --abbrev-commit
+2. Get the SHA of the commit OR number of commits to rebase to
 
-3. Squash commits::
+    .. code-block:: bash
 
-    git rebase -i [SHA]
+        git log --graph --decorate --pretty=oneline --abbrev-commit
 
-    # OR
+3. Squash commits
 
-    git rebase -i HEAD~[NUMBER OF COMMITS]
+    .. code-block:: bash
+
+        git rebase -i [SHA]
+        # OR:
+        git rebase -i HEAD~[NUMBER OF COMMITS]
 
 4. Make sure your squashed commit messages are refined
 
-5. Rebase branch onto ``main`` ::
+5. Rebase branch onto ``main``
 
-    git checkout <branch-name>
-    git rebase main
-    git push -f <fork-origin> <branch-name>
+    .. code-block:: bash
 
-6. Force push to remote branch ::
+        git checkout <branch-name>
+        git rebase main
+        git push -f <fork-origin> <branch-name>
 
-    # You have to force push because the rebase rewrites the commit SHAs
-    git push -f <fork-origin> <branch-name>
+6. Force push to remote branch
+
+    .. code-block:: bash
+
+        # You have to force push because the rebase rewrites the commit SHAs
+        git push -f <fork-origin> <branch-name>
 
 Source:
 https://blog.carbonfive.com/always-squash-and-rebase-your-git-commits/
@@ -142,10 +158,11 @@ Helpful Commands
 ~~~~~~~~~~~~~~~~
 
 Run a tool
-    ::
 
-       # Available tool names: black, flake8, isort, mypy
-       <tool_name> .
+    .. code-block:: bash
+
+        # Available tool names: black, flake8, isort, mypy
+        <tool_name> .
 
 .. _ci-cd:
 

@@ -35,9 +35,11 @@ For a first Globus-based archive, the safest approach is:
 4. Start with a small archive so you can confirm that authentication, endpoint
    activation, and path selection are correct.
 
-If you are creating a new archive, a minimal first test looks like::
+If you are creating a new archive, a minimal first test looks like
 
-   zstash create --hpss=globus://nersc/~/test/my_archive .
+  .. code-block:: bash
+
+      zstash create --hpss=globus://nersc/~/test/my_archive .
 
 After the transfer completes, verify it with ``zstash check`` or retrieve a
 small file with ``zstash extract``.

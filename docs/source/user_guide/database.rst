@@ -59,20 +59,26 @@ Exploring content
 Direct interaction with the database can be useful to explore content
 of an archive, beyond what might be available with :ref:`zstash list<zstash-list>`.
 
-To list **all the files** in an archive: ::
+To list **all the files** in an archive:
 
-   $ cd <mydir>
-   $ sqlite3 zstash/index.db "select * from files;"
+  .. code-block:: bash
+
+      cd <mydir>
+      sqlite3 zstash/index.db "select * from files;"
 
 For each file, the following information will be printed ::
 
    file # | path | size | modification time |md5 checksum |tar archive | offset (within tar)
 
-To list **files matching a specified pattern** (for example \*/run/\*.nc): ::
+To list **files matching a specified pattern** (for example \*/run/\*.nc):
 
-   $ sqlite3 zstash/index.db "select * from files where name glob '*/run/*.nc';"
+  .. code-block:: bash
 
-To list **all the files in a specific tar fole** (for example 00000a.tar): ::
+      sqlite3 zstash/index.db "select * from files where name glob '*/run/*.nc';"
 
-   $ sqlite3 zstash/index.db "select * from files where tar is '00000a.tar';"
+To list **all the files in a specific tar fole** (for example 00000a.tar):
+
+  .. code-block:: bash
+
+      sqlite3 zstash/index.db "select * from files where tar is '00000a.tar';"
 
