@@ -109,4 +109,4 @@ Note: if you'd like to contribute to ``zstash`` rather than just using the lates
 Running
 =======
 
-To run ``zstash``, refer to :doc:`user_guide/usage`.
+To run ``zstash``, refer to :doc:`usage`.
