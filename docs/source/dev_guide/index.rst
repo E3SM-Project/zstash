@@ -12,6 +12,5 @@ implementation details that are mainly useful to contributors.
    ci
    tar_tracking_modes
    testing
-   release_testing
-   releases
+   releases/index
    contributing_to_docs

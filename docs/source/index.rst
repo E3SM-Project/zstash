@@ -60,11 +60,11 @@ includes:
 * :doc:`user_guide/design` for the high-level architecture and implementation overview
 * :doc:`user_guide/getting_started` for installation and first-time setup
 * :doc:`user_guide/usage` for command-line usage details
-* :doc:`user_guide/globus` for Globus account setup and transfer workflows and ``.zstash.ini`` configuration details
+* :doc:`user_guide/globus/index` for Globus account setup and transfer workflows and ``.zstash.ini`` configuration details
 * :doc:`user_guide/best_practices` for archive management recommendations
 * :doc:`user_guide/database` for the archive index database layout
 * :doc:`user_guide/support` for where to ask questions or report issues
-* :doc:`user_guide/archived_documentation` for older documentation that may still be useful as a reference.
+* :doc:`user_guide/archived_documentation/index` for older documentation that may still be useful as a reference.
 
 
 Developer Guide pages
@@ -78,7 +78,7 @@ The contributor and maintainer documentation is organized under
 * :doc:`dev_guide/tar_tracking_modes` for tar tracking behavior in each storage
   mode
 * :doc:`dev_guide/testing` for the test layout and execution guidance
-* :doc:`dev_guide/releases` for the release process
+* :doc:`dev_guide/releases/index` for the release process
 * :doc:`dev_guide/contributing_to_docs` for development environment setup and contribution
   workflow
 

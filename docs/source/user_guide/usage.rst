@@ -42,7 +42,7 @@ where
   Then zstash will use `Globus <https://globus.org/>`_ to store a new zstash archive on a Globus endpoint.
   Names ``alcf`` and ``nersc`` are recognized as referring to the ALCF HPSS and NERSC HPSS endpoints,
   e.g. ``globus://nersc/~/my_archive``.
-  See :doc:`user_guide/globus` and :doc:`user_guide/configuration` for first-time Globus setup details.
+  See :doc:`user_guide/globus/intro` and :doc:`user_guide/globus/configuration` for first-time Globus setup details.
 * ``<local path>`` specifies the path to the local directory that should be archived.
 
 Additional optional arguments:
@@ -85,8 +85,8 @@ Once done, you should see the archive files on hsi:
   .. code-block:: bash
 
     hsi
-    cd test/E3SM_simulations/20170731.F20TR.ne30_ne30.edison
-    ls 
+    hsi> cd test/E3SM_simulations/20170731.F20TR.ne30_ne30.edison
+    hsi> ls 
     # 000000.tar   index.db
 
 The data from this test simulation is small, so in this case there is only a single tar 
@@ -144,7 +144,7 @@ If you want to store zstash archive on these two remote HPSS file systems, you c
     Always activate Globus endpoints via the Globus web interface before running ``zstash``.
 
 For a more complete first-time Globus workflow, including ``~/.zstash.ini``,
-see :doc:`user_guide/globus` and :doc:`user_guide/configuration`.
+see :doc:`user_guide/globus/intro` and :doc:`user_guide/globus/configuration`.
 
 Check
 =====
@@ -554,7 +554,7 @@ Example 2 -- updating the HPSS archive:
     rm -rf zstash                                      # Delete the cache. (You could instead change to another directory).
     zstash ls --hpss=hpss_archive                      # `new_file.txt` will be shown.
 
-Example 3 -- changing the HPSS archive, running ``zstash_ls`` from the source directory:
+Example 3 -- changing the HPSS archive, running ``zstash ls`` from the source directory:
 
   .. code-block:: bash
 
@@ -565,9 +565,9 @@ Example 3 -- changing the HPSS archive, running ``zstash_ls`` from the source di
     cd ..
     zstash create --hpss=different_hpss_archive source_directory # Create a different HPSS archive of the source directory. This overwrites the local archive (cache) `source_directory/zstash`.
     cd source_directory
-    zstash ls --hpss=different_archive                           # `new_file.txt` will be shown.
+    zstash ls --hpss=different_hpss_archive                           # `new_file.txt` will be shown.
 
-Example 4 -- updating the HPSS archive, running ``zstash_ls`` from the source directory:
+Example 4 -- updating the HPSS archive, running ``zstash ls`` from the source directory:
 
   .. code-block:: bash
 

@@ -11,8 +11,8 @@ working with HPSS or Globus in day-to-day workflows.
    design
    getting_started
    usage
-   globus
+   globus/index
    best_practices
    database
    support
-   archived_documentation
+   archived_documentation/index

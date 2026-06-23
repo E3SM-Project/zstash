@@ -76,7 +76,7 @@ To list **files matching a specified pattern** (for example \*/run/\*.nc):
 
       sqlite3 zstash/index.db "select * from files where name glob '*/run/*.nc';"
 
-To list **all the files in a specific tar fole** (for example 00000a.tar):
+To list **all the files in a specific tar file** (for example 00000a.tar):
 
   .. code-block:: bash
 
