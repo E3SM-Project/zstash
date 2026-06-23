@@ -78,7 +78,6 @@ The contributor and maintainer documentation is organized under
 * :doc:`dev_guide/tar_tracking_modes` for tar tracking behavior in each storage
   mode
 * :doc:`dev_guide/testing` for the test layout and execution guidance
-* :doc:`dev_guide/release_testing` for release validation steps
 * :doc:`dev_guide/releases` for the release process
 * :doc:`dev_guide/contributing_to_docs` for development environment setup and contribution
   workflow
