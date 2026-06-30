@@ -1,4 +1,4 @@
-name: zstash_dev
+name: zstash_perf
 channels:
   - conda-forge
 dependencies:
@@ -31,3 +31,8 @@ dependencies:
   - sphinx-multiversion >=0.2.4
   - sphinx_rtd_theme >=1.0.0
   - docutils >=0.17.1
+  # Performance profiling
+  # =================
+  - matplotlib-base
+  - pandas
+  - numpy
