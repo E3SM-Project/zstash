@@ -52,9 +52,7 @@ Available zstash commands:
 
 For help with a specific command
   zstash command --help
-""".format(
-            __version__
-        )
+""".format(__version__)
     )
     parser.add_argument("command", help="command to run (create, update, extract, ...)")
     # parse_args defaults to [1:] for args, but you need to

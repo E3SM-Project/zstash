@@ -228,19 +228,16 @@ def create_database(
     cur: sqlite3.Cursor = con.cursor()
 
     # Create 'config' table
-    cur.execute(
-        """
+    cur.execute("""
 create table config (
   arg text primary key,
   value text
 );
-    """
-    )
+    """)
     con.commit()
 
     # Create 'files' table
-    cur.execute(
-        """
+    cur.execute("""
 create table files (
   id integer primary key,
   name text,
@@ -250,8 +247,7 @@ create table files (
   tar text,
   offset integer
 );
-    """
-    )
+    """)
     con.commit()
 
     if not args.no_tars_md5:
