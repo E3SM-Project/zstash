@@ -1,0 +1,92 @@
+name: Pre-commit auto-update
+
+on:
+  schedule:
+    # Cron syntax:
+    # 1. Entry: Minute when the process will be started [0-59]
+    # 2. Entry: Hour when the process will be started [0-23]
+    # 3. Entry: Day of the month when the process will be started [1-28/29/30/31]
+    # 4. Entry: Month of the year when the process will be started [1-12]
+    # 5. Entry: Weekday when the process will be started [0-6] [0 is Sunday]
+    - cron: '0 8 1 * *'
+  # Allow manual triggering of the workflow
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  UP_TO_DATE: false
+  PYTHON_VERSION: "3.14"
+  REVIEWERS: "xylar,forsyth2"
+jobs:
+  auto-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Conda Environment
+        uses: mamba-org/setup-micromamba@v3
+        with:
+          environment-name: pre_commit_dev
+          init-shell: bash
+          condarc: |
+            channel_priority: strict
+            channels:
+                - conda-forge
+          create-args: >-
+            python=${{ env.PYTHON_VERSION }}
+
+      - name: Install pre-commit, pre-commit-update and gh
+        run: |
+          eval "$(micromamba shell hook --shell bash)"
+          micromamba activate pre_commit_dev
+          # permissions issue with gh 2.76.0
+          micromamba install -y --override-channels -c conda-forge \
+            pre-commit pyyaml "gh !=2.76.0"
+          python -m pip install pre-commit-update
+          gh --version
+
+      - name: Apply and commit updates
+        run: |
+          eval "$(micromamba shell hook --shell bash)"
+          micromamba activate pre_commit_dev
+          git clone https://github.com/E3SM-Project/zstash.git update-pre-commit-deps
+          cd update-pre-commit-deps
+          # Configure git using GitHub Actions credentials.
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git checkout -b update-pre-commit-deps
+          # pre-commit-update doesn't try to include non-release versions
+          pre-commit-update
+          # Propagate the new versions to conda/dev.yml and the `qa` extra in
+          # pyproject.toml
+          python scripts/sync_pre_commit_versions.py
+          git add .
+          # The second command will fail if no changes were present, so we ignore it
+          git commit -m "Update pre-commit dependencies" || ( echo "UP_TO_DATE=true" >> "$GITHUB_ENV")
+
+      - name: Push Changes
+        if: ${{ env.UP_TO_DATE == 'false' }}
+        uses: ad-m/github-push-action@v1.1.0
+        with:
+          branch: update-pre-commit-deps
+          directory: update-pre-commit-deps
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Make PR and add reviewers and labels
+        if: ${{ env.UP_TO_DATE == 'false' }}
+        run: |
+          cd update-pre-commit-deps
+          gh pr create \
+          --title "Update pre-commit and its dependencies" \
+          --body "This PR was auto-generated to update pre-commit and its dependencies." \
+          --head update-pre-commit-deps \
+          --reviewer ${{ env.REVIEWERS }} \
+          --label DevOps
+        env:
+          GH_TOKEN: ${{ github.token }}

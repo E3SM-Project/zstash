@@ -56,7 +56,7 @@ class PrintMonitor(object):
         workers_curr_tar: str,
         indef_wait: bool = True,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """
         While a worker's current tar isn't the one
@@ -85,7 +85,7 @@ class PrintMonitor(object):
         worker,
         workers_curr_tar: str,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """
         A worker has finished printing the output for workers_curr_tar
@@ -120,7 +120,7 @@ class ExtractWorker(object):
         # TODO: failure_queue has type `multiprocessing.Queue[FilesRow]`
         failure_queue,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """
         print_monitor is used to determine if it's this worker's turn to print.

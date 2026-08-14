@@ -12,9 +12,13 @@ dependencies:
   - globus-sdk >=3.15.0,<4.0
   # Developer Tools
   # =================
-  # If versions are updated, also update 'rev' in `.pre-commit-config.yaml`
+  # Run `pre-commit autoupdate` to get the latest pinned versions of 'rev' in
+  # `.pre-commit-config.yaml`, then run
+  # `python scripts/sync_pre_commit_versions.py` to update the pinned versions
+  # here and in the `qa` extra of pyproject.toml.
   - black ==25.1.0
   - flake8 ==7.3.0
+  - flake8-isort ==6.1.2
   - isort ==6.0.1
   - mypy ==1.18.2
   - pre-commit ==4.3.0
