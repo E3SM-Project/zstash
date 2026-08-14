@@ -570,15 +570,13 @@ def mock_database():
     cur = conn.cursor()
 
     # Create files table
-    cur.execute(
-        """
+    cur.execute("""
         CREATE TABLE files (
             name TEXT,
             size INTEGER,
             mtime TIMESTAMP
         )
-    """
-    )
+    """)
 
     yield cur
 

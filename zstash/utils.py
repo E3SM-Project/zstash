@@ -161,7 +161,7 @@ def run_command(command: str, error_str: str) -> None:
     )
     stdout: bytes
     stderr: bytes
-    (stdout, stderr) = p1.communicate()
+    stdout, stderr = p1.communicate()
     status: int = p1.returncode
     if status != 0:
         error_str = "Error={}, Command was `{}`".format(error_str, command)
@@ -255,16 +255,14 @@ def update_config(cur: sqlite3.Cursor):
 
 def create_tars_table(cur: sqlite3.Cursor, con: sqlite3.Connection):
     # Create 'tars' table
-    cur.execute(
-        """
+    cur.execute("""
 create table tars (
 id integer primary key,
 name text,
 size integer,
 md5 text
 );
-    """
-    )
+    """)
     con.commit()
 
 
