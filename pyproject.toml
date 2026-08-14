@@ -23,7 +23,7 @@ zstash = "zstash.main:main"
 # (run `python scripts/sync_pre_commit_versions.py` to sync them)
 [project.optional-dependencies]
 qa = [
-  "black==25.1.0",
+  "black==26.3.1",
   "flake8==7.3.0",
   "flake8-isort==6.1.2",
   "isort==6.0.1",
