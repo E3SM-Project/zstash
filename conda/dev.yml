@@ -16,11 +16,11 @@ dependencies:
   # `.pre-commit-config.yaml`, then run
   # `python scripts/sync_pre_commit_versions.py` to update the pinned versions
   # here and in the `qa` extra of pyproject.toml.
-  - black ==25.1.0
+  - black ==26.5.1
   - flake8 ==7.3.0
   - flake8-isort ==6.1.2
-  - isort ==6.0.1
-  - mypy ==1.18.2
+  - isort ==8.0.1
+  - mypy ==2.3.0
   - pre-commit ==4.3.0
   - pyyaml
   - tbump >=6.9.0
