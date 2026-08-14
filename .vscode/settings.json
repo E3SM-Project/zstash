@@ -9,7 +9,7 @@
   },
   "python.formatting.provider": "black",
   "python.linting.flake8Enabled": true,
-  "python.linting.flake8Args": ["--config=setup.cfg"],
+  "python.linting.flake8Args": ["--config=.flake8"],
   "python.linting.mypyEnabled": true,
   "python.pythonPath": "/opt/miniconda3/envs/zstash_dev/bin/python"
 }

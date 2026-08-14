@@ -23,7 +23,7 @@ tag_template = "v{new_version}"
 # section containing the path of the file, relative to the
 # tbump.toml location.
 [[file]]
-src = "setup.py"
+src = "pyproject.toml"
 
 [[file]]
 src = "zstash/__init__.py"
