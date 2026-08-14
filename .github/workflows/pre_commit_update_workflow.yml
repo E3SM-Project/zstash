@@ -19,7 +19,7 @@ permissions:
 env:
   UP_TO_DATE: false
   PYTHON_VERSION: "3.14"
-  REVIEWERS: "xylar,forsyth2"
+  REVIEWERS: "forsyth2"
 jobs:
   auto-update:
     runs-on: ubuntu-latest
@@ -64,8 +64,11 @@ jobs:
           # pyproject.toml
           python scripts/sync_pre_commit_versions.py
           git add .
-          # The second command will fail if no changes were present, so we ignore it
-          git commit -m "Update pre-commit dependencies" || ( echo "UP_TO_DATE=true" >> "$GITHUB_ENV")
+          if git diff --cached --quiet; then
+            echo "UP_TO_DATE=true" >> "$GITHUB_ENV"
+          else
+            git commit -m "Update pre-commit dependencies"
+          fi
 
       - name: Push Changes
         if: ${{ env.UP_TO_DATE == 'false' }}
