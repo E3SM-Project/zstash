@@ -5,7 +5,7 @@ import logging
 import os
 import sqlite3
 import sys
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 from .hpss import hpss_get
 from .settings import (
@@ -36,7 +36,8 @@ def ls():
     print_matches(args, matches)
 
     if args.tars:
-        tar_matches: List[TarsRow] = ls_tars_database(args, cache)
+        tar_names: List[str] = sorted(set(m.tar for m in matches))
+        tar_matches: List[TarsRow] = ls_tars_database(args, cache, tar_names)
         print_matches(args, tar_matches)
 
 
@@ -165,7 +166,9 @@ def ls_database(args: argparse.Namespace, cache: str) -> List[FilesRow]:
     return matches
 
 
-def ls_tars_database(args: argparse.Namespace, cache: str) -> List[TarsRow]:
+def ls_tars_database(
+    args: argparse.Namespace, cache: str, tar_names: Optional[List[str]] = None
+) -> List[TarsRow]:
     con: sqlite3.Connection = sqlite3.connect(
         get_db_filename(cache), detect_types=sqlite3.PARSE_DECLTYPES
     )
@@ -175,8 +178,14 @@ def ls_tars_database(args: argparse.Namespace, cache: str) -> List[TarsRow]:
         print("\ntars table does not exist")
         return []
 
-    # Find matching files
-    cur.execute("select * from tars")
+    # Find matching tars
+    if tar_names is not None:
+        placeholders = ",".join("?" * len(tar_names))
+        cur.execute(
+            "select * from tars where name in ({})".format(placeholders), tar_names
+        )
+    else:
+        cur.execute("select * from tars")
     matches_: List[TupleTarsRow] = cur.fetchall()
 
     # Remove duplicates

@@ -437,7 +437,10 @@ where
 * ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system,
 * ``-l`` an optional argument to display more information.
 * ``--cache`` to use a cache other than the default of ``zstash``.
-* ``--tars`` to list the tars in addition to the files.
+* ``--tars`` to list the tars containing the matched files.
+  When combined with a ``[files]`` pattern, only the tars that hold those
+  matching files are shown — making it easy to identify the subset of tar
+  archives to download.
 * ``-v`` increases output verbosity.
 * ``[files]`` is a list of files to be listed (standard wildcards supported).
 
@@ -475,6 +478,26 @@ Below is an example of using ``ls`` to look at the tars in addition to the files
 
     Tars:
     000000.tar
+
+When combined with a file pattern, ``--tars`` shows only the tars that contain
+the matching files. This is useful for downloading a subset of the archive —
+for example, to find which tars hold files from 1850–1900 of a historical
+simulation::
+
+    $ zstash ls --hpss=hpss_archive --tars "*historical*185[0-9]*" "*historical*18[6-9][0-9]*" "*historical*190[0]*"
+
+    archive/run/historical.cam.h0.1850-01.nc
+    archive/run/historical.cam.h0.1851-06.nc
+    ...
+    archive/run/historical.cam.h0.1900-12.nc
+
+    Tars:
+    000000.tar
+    000001.tar
+    000007.tar
+
+You can then pass these tar names to ``zstash extract --tars`` to download only
+that subset.
 
 .. warning::
     Running ``zstash ls`` outside the source directory (the directory you're archiving)
