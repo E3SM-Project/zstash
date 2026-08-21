@@ -2,10 +2,15 @@
 Developer Guide
 ###############
 
+Use this guide for repository conventions, testing, release work, and
+implementation details that are mainly useful to contributors.
+
 .. toctree::
    :maxdepth: 2
 
-   project-standards
+   project_standards
    ci
-   release_testing
-   release
+   tar_tracking_modes
+   testing
+   releases/index
+   contributing_to_docs
