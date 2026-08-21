@@ -1,8 +1,9 @@
 import datetime
+import os
 import sqlite3
 import tempfile
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import patch
 
 from zstash.ls import ls_tars_database
 from zstash.settings import FilesRow
@@ -32,7 +33,12 @@ class TestLsTarsDatabase(unittest.TestCase):
         con.commit()
         con.close()
 
+    def tearDown(self):
+        os.unlink(self.db_path)
+
     def _make_args(self, long: bool = False):
+        from unittest.mock import MagicMock
+
         args = MagicMock()
         args.long = long
         return args
@@ -40,15 +46,8 @@ class TestLsTarsDatabase(unittest.TestCase):
     def test_ls_tars_database_filtered(self):
         """Only tars containing matched files should be returned."""
         args = self._make_args()
-        # Patch get_db_filename to return our temp db
-        import zstash.ls as ls_module
-
-        original = ls_module.get_db_filename
-        ls_module.get_db_filename = lambda cache: self.db_path
-        try:
+        with patch("zstash.ls.get_db_filename", return_value=self.db_path):
             result = ls_tars_database(args, "zstash", ["000000.tar", "000002.tar"])
-        finally:
-            ls_module.get_db_filename = original
 
         names = [r.name for r in result]
         self.assertIn("000000.tar", names)
@@ -58,14 +57,8 @@ class TestLsTarsDatabase(unittest.TestCase):
     def test_ls_tars_database_unfiltered(self):
         """When tar_names is None, all tars should be returned."""
         args = self._make_args()
-        import zstash.ls as ls_module
-
-        original = ls_module.get_db_filename
-        ls_module.get_db_filename = lambda cache: self.db_path
-        try:
+        with patch("zstash.ls.get_db_filename", return_value=self.db_path):
             result = ls_tars_database(args, "zstash", None)
-        finally:
-            ls_module.get_db_filename = original
 
         names = [r.name for r in result]
         self.assertIn("000000.tar", names)
