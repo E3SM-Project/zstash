@@ -1,5 +1,6 @@
 from __future__ import absolute_import, print_function
 
+import _hashlib
 import hashlib
 import os
 import os.path
@@ -8,8 +9,6 @@ import tarfile
 import traceback
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
-
-import _hashlib
 
 from .hpss import hpss_put
 from .settings import TupleFilesRowNoId, TupleTarsRowNoId, config, logger

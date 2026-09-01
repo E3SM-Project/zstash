@@ -1,5 +1,7 @@
 from __future__ import absolute_import, print_function
 
+import _hashlib
+import _io
 import argparse
 import collections
 import hashlib
@@ -14,9 +16,6 @@ import tarfile
 import traceback
 from datetime import datetime
 from typing import DefaultDict, List, Optional, Set, Tuple
-
-import _hashlib
-import _io
 
 from . import parallel
 from .hpss import hpss_get
