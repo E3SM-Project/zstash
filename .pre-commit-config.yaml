@@ -18,7 +18,7 @@ repos:
       - id: black
 
   - repo: https://github.com/PyCQA/isort
-    rev: 6.0.1
+    rev: 9.0.1
     hooks:
       - id: isort
 
@@ -33,7 +33,7 @@ repos:
         exclude: analysis_data_preprocess
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.3.0
+    rev: v2.3.1
     hooks:
       - id: mypy
         args: ["--config=pyproject.toml", "--install-types", "--non-interactive"]
