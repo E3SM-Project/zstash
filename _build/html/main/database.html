@@ -102,7 +102,7 @@ two tables, one to store configuration parameters (<code class="docutils literal
 and the other one for metadata for each archived file (<code class="docutils literal notranslate"><span class="pre">files</span></code>).</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db
 SQLite version 3.34.0 2020-12-01 16:14:00
-Enter &quot;.help&quot; for usage hints.
+Enter ".help" for usage hints.
 sqlite&gt; .schema
 CREATE TABLE config (
   arg text primary key,
@@ -142,7 +142,7 @@ sqlite&gt; .quit
 of an archive, beyond what might be available with <a class="reference internal" href="usage.html#zstash-list"><span class="std std-ref">zstash list</span></a>.</p>
 <p>To list <strong>all the files</strong> in an archive:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ cd &lt;mydir&gt;
-$ sqlite3 zstash/index.db &quot;select * from files;&quot;
+$ sqlite3 zstash/index.db "select * from files;"
 </pre></div>
 </div>
 <p>For each file, the following information will be printed</p>
@@ -150,11 +150,11 @@ $ sqlite3 zstash/index.db &quot;select * from files;&quot;
 </pre></div>
 </div>
 <p>To list <strong>files matching a specified pattern</strong> (for example */run/*.nc):</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db &quot;select * from files where name glob &#39;*/run/*.nc&#39;;&quot;
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db "select * from files where name glob '*/run/*.nc';"
 </pre></div>
 </div>
 <p>To list <strong>all the files in a specific tar fole</strong> (for example 00000a.tar):</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db &quot;select * from files where tar is &#39;00000a.tar&#39;;&quot;
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ sqlite3 zstash/index.db "select * from files where tar is '00000a.tar';"
 </pre></div>
 </div>
 </section>
@@ -213,6 +213,7 @@ $ sqlite3 zstash/index.db &quot;select * from files;&quot;
       <dd><a href="../add-tutorial-materials/database.html">add-tutorial-materials</a></dd>
       <dd><a href="../codex/create-diagram-transferbatch-evolution/database.html">codex/create-diagram-transferbatch-evolution</a></dd>
       <dd><a href="../copilot/add-python-3-14-support/database.html">copilot/add-python-3-14-support</a></dd>
+      <dd><a href="../copilot/add-tar-association-feature/database.html">copilot/add-tar-association-feature</a></dd>
       <dd><a href="../copilot/crc-check-implementation/database.html">copilot/crc-check-implementation</a></dd>
       <dd><a href="../copilot/fix-performance-bottlenecks-zstash-check/database.html">copilot/fix-performance-bottlenecks-zstash-check</a></dd>
       <dd><a href="../copilot/fix-python-3-14-test-failures/database.html">copilot/fix-python-3-14-test-failures</a></dd>
@@ -223,7 +224,6 @@ $ sqlite3 zstash/index.db &quot;select * from files;&quot;
       <dd><a href="../copilot/sub-pr-402-yet-again/database.html">copilot/sub-pr-402-yet-again</a></dd>
       <dd><a href="../copilot/sub-pr-416/database.html">copilot/sub-pr-416</a></dd>
       <dd><a href="../copilot/update-documentation-comprehensive/index.html">copilot/update-documentation-comprehensive</a></dd>
-      <dd><a href="../dependabot/pip/black-26.3.1/database.html">dependabot/pip/black-26.3.1</a></dd>
       <dd><a href="../devops/fix-docs-tags/database.html">devops/fix-docs-tags</a></dd>
       <dd><a href="../increase-docs-clarity/database.html">increase-docs-clarity</a></dd>
       <dd><a href="../issue-290/database.html">issue-290</a></dd>

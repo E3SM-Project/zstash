@@ -257,8 +257,8 @@ Instead, the developer will <code class="docutils literal notranslate"><span cla
 <li><p>Clone your fork and keep it in sync with the main repo’s <code class="docutils literal notranslate"><span class="pre">main</span></code></p>
 <blockquote>
 <div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span># Go to https://github.com/E3SM-Project/zstash
-# Click &quot;Fork&quot; in the upper right hand corner. This will fork the main repo.
-# Click the green &quot;Code&quot; button
+# Click "Fork" in the upper right hand corner. This will fork the main repo.
+# Click the green "Code" button
 # Choose the HTTPS or SSH option.
 # (To use the SSH option, you need to have a SSH connection to GitHub set up).
 # Click the clipboard icon to copy the path.
@@ -272,18 +272,18 @@ git remote -v
 <p>or if you already have a clone of your fork, rebase your fork on the main repo’s <code class="docutils literal notranslate"><span class="pre">main</span></code> to keep it in sync:</p>
 <blockquote>
 <div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span># Add the main repo as a remote.
-# You can call it anything but &quot;upstream&quot; is recommended.
-# We&#39;ll use `&lt;upstream-origin&gt;` here.
-git remote add &lt;upstream-origin&gt; &lt;path from the green &quot;Code&quot; button mentioned above&gt;
+# You can call it anything but "upstream" is recommended.
+# We'll use `&lt;upstream-origin&gt;` here.
+git remote add &lt;upstream-origin&gt; &lt;path from the green "Code" button mentioned above&gt;
 
 # Fetch all the branches of that remote into remote-tracking branches
 git fetch &lt;upstream-origin&gt;
 
-# Make sure that you&#39;re on your main branch:
+# Make sure that you're on your main branch:
 git checkout main
 
 # Rewrite your main branch so that any of your commits that
-# aren&#39;t already in &lt;upstream-origin&gt;/main are replayed on top of that branch:
+# aren't already in &lt;upstream-origin&gt;/main are replayed on top of that branch:
 git rebase &lt;upstream-origin&gt;/main
 
 # Push your main branch to your GitHub fork:
@@ -342,7 +342,7 @@ conda activate zstash_dev
 </li>
 <li><p>Commit changes and make sure <code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> checks pass</p>
 <blockquote>
-<div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>git commit -m &quot;commit-message&quot;
+<div><div class="highlight-none notranslate"><div class="highlight"><pre><span></span>git commit -m "commit-message"
 </pre></div>
 </div>
 <figure class="align-default" id="id2">
@@ -415,6 +415,7 @@ conda activate zstash_dev
       <dd><a href="../add-tutorial-materials/getting_started.html">add-tutorial-materials</a></dd>
       <dd><a href="../codex/create-diagram-transferbatch-evolution/getting_started.html">codex/create-diagram-transferbatch-evolution</a></dd>
       <dd><a href="../copilot/add-python-3-14-support/getting_started.html">copilot/add-python-3-14-support</a></dd>
+      <dd><a href="../copilot/add-tar-association-feature/getting_started.html">copilot/add-tar-association-feature</a></dd>
       <dd><a href="../copilot/crc-check-implementation/getting_started.html">copilot/crc-check-implementation</a></dd>
       <dd><a href="../copilot/fix-performance-bottlenecks-zstash-check/getting_started.html">copilot/fix-performance-bottlenecks-zstash-check</a></dd>
       <dd><a href="../copilot/fix-python-3-14-test-failures/getting_started.html">copilot/fix-python-3-14-test-failures</a></dd>
@@ -425,7 +426,6 @@ conda activate zstash_dev
       <dd><a href="../copilot/sub-pr-402-yet-again/getting_started.html">copilot/sub-pr-402-yet-again</a></dd>
       <dd><a href="../copilot/sub-pr-416/getting_started.html">copilot/sub-pr-416</a></dd>
       <dd><a href="../copilot/update-documentation-comprehensive/index.html">copilot/update-documentation-comprehensive</a></dd>
-      <dd><a href="../dependabot/pip/black-26.3.1/getting_started.html">dependabot/pip/black-26.3.1</a></dd>
       <dd><a href="../devops/fix-docs-tags/getting_started.html">devops/fix-docs-tags</a></dd>
       <dd><a href="../increase-docs-clarity/getting_started.html">increase-docs-clarity</a></dd>
       <dd><a href="../issue-290/getting_started.html">issue-290</a></dd>
