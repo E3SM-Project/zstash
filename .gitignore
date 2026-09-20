@@ -3,6 +3,7 @@ dist/
 tests/utils/test_follow_symlinks
 tests/utils/test_follow_symlinks_non_archived
 tests/utils/globus_tar_deletion
+tests/utils/selective_tar_retrieval
 zstash.egg-info/
 *.pyc
 *~

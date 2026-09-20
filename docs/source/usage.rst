@@ -66,6 +66,174 @@ under ``<local path>/zstash``.
 **After you run** ``zstash create`` **it's highly recommended that you
 run** ``zstash check``, **detailed in the section below. This will allow you to check that your archival completed successfully. Do not delete any data until you've run** ``zstash check``.
 
+Restarting After Interruption
+------------------------------
+
+If ``zstash create`` is interrupted (due to timeout, authentication failure, network issues, etc.), you have two options for resuming. **They behave differently:**
+
+**Recommended: Use** ``zstash update``
+
+Using ``zstash update`` is the efficient way to resume an interrupted archive: ::
+
+  $ cd source_dir
+  $ zstash update --hpss=globus://nersc/~/my_archive
+
+This will:
+
+* Open the existing ``index.db`` database
+* Compare local files against the database
+* Archive only files that are new or modified since the interruption
+* Preserve existing tar files (does not recreate them)
+* Continue tar numbering from where it left off
+
+**Alternative: Re-run** ``zstash create`` **(works but wasteful)**
+
+Re-running the original ``zstash create`` command will also work: ::
+
+  $ zstash create --hpss=globus://nersc/~/my_archive source_dir
+
+However, this approach is less efficient because it:
+
+* Deletes the existing ``index.db`` database
+* Creates a fresh database from scratch
+* Re-scans all files in the source directory
+* **Recreates all tar files** (even for files already archived)
+* Overwrites existing tar files with identical content
+
+The end result is the same archive, but ``create`` does unnecessary work by recreating tars that were already complete.
+
+**Why the difference?**
+
+When ``zstash create`` runs, it:
+
+1. Creates a new database (deleting any existing one)
+2. Scans all files
+3. Creates tar archives
+4. Transfers everything to HPSS
+
+If interrupted during step 4 (HPSS transfer), the local cache has complete tar files but HPSS may be incomplete. Re-running ``create`` starts over from step 1, recreating work already done in steps 1-3.
+
+In contrast, ``zstash update``:
+
+1. Opens the existing database
+2. Compares files against database
+3. Creates tar archives only for new/changed files
+4. Transfers only new archives to HPSS
+
+This avoids recreating tars for files already in the database.
+
+**Specific scenario: Globus authentication timeout**
+
+If you see: ::
+
+  ERROR: Exception: Failed to get an auth_code from Globus Auth.
+
+This means tar creation completed but HPSS transfer failed due to authentication timeout. In this case:
+
+* Local cache has complete ``index.db`` and all tar files
+* HPSS has partial or no files
+* **Use** ``zstash update`` **to efficiently transfer missing files**
+* Or re-run ``create`` (works but recreates all tars unnecessarily)
+
+**Performance comparison:**
+
+Example with 100 GB of data split into 5 tar files:
+
+* **Using** ``update`` **after interruption**: Only transfers missing tars to HPSS (~minutes)
+* **Re-running** ``create`` **after interruption**: Recreates all 5 tars, then transfers (~hours)
+
+The time difference grows with archive size.
+
+**Example of interrupted and resumed archive:** ::
+
+  # Initial attempt - completes local archival but fails during HPSS transfer
+  $ zstash create --hpss=globus://nersc/~/my_archive source_dir
+  INFO: Creating new tar archive 000000.tar
+  INFO: Creating new tar archive 000001.tar  
+  INFO: Creating new tar archive 000002.tar
+  INFO: Transferring file to HPSS: zstash/000000.tar
+  ERROR: Exception: Failed to get an auth_code from Globus Auth.
+  # Local cache now has: index.db, 000000.tar, 000001.tar, 000002.tar
+  # HPSS may have: 000000.tar only (or nothing)
+  
+  # Efficient resume with update
+  $ cd source_dir
+  $ zstash update --hpss=globus://nersc/~/my_archive
+  INFO: Nothing to update  # No new/changed files
+  INFO: Transferring file to HPSS: zstash/000001.tar  # Transfers missing tars
+  INFO: Transferring file to HPSS: zstash/000002.tar
+  # Does NOT recreate tars, only transfers missing ones
+  
+  # Alternative: re-run create (works but wasteful)
+  $ zstash create --hpss=globus://nersc/~/my_archive source_dir
+  INFO: Creating index database
+  INFO: Creating new tar archive 000000.tar  # Recreates tar unnecessarily
+  INFO: Creating new tar archive 000001.tar  # Recreates tar unnecessarily
+  INFO: Creating new tar archive 000002.tar  # Recreates tar unnecessarily
+  INFO: Transferring file to HPSS: zstash/000000.tar
+  # Recreates all tars even though they were already complete
+
+**Summary:**
+
+* ✅ **Best practice**: Use ``zstash update`` to resume interrupted archives
+* ⚠️ **Acceptable but inefficient**: Re-run ``zstash create`` (recreates all tars)
+* Both produce the same final archive, but ``update`` is significantly faster
+
+What Happens If: Create Scenarios
+----------------------------------
+
+**Q: What happens to tar files after they're created?**
+
+A: It depends on your ``--hpss`` and ``--keep`` settings:
+
+* **With HPSS transfer (default)**: Tar files are created in the local cache, transferred to HPSS, then deleted from the local cache
+* **With HPSS transfer + ``--keep``**: Tar files remain in the local cache after transfer
+* **With ``--hpss=none``**: Tar files always remain in the local cache (``--keep`` is automatically enabled)
+
+Example showing the difference: ::
+
+  $ zstash create --hpss=my_archive source_dir
+  # After completion: source_dir/zstash/ contains only index.db
+  
+  $ zstash create --hpss=my_archive --keep source_dir
+  # After completion: source_dir/zstash/ contains index.db and all tar files
+
+**Q: What happens if I use ``--follow-symlinks``?**
+
+A: The behavior of symlinks depends on this flag:
+
+* **Without ``--follow-symlinks`` (default)**: Symlinks are preserved as symlinks in the archive
+* **With ``--follow-symlinks``**: Symlinks are dereferenced and the actual file content is archived
+* **Broken symlinks without ``--follow-symlinks``**: The broken symlink is preserved in the archive
+* **Broken symlinks with ``--follow-symlinks``**: Archive creation fails with a ``FileNotFoundError``
+
+Example: ::
+
+  $ ln -s /path/to/original.txt source_dir/link.txt
+  $ zstash create --hpss=none source_dir
+  # link.txt remains a symlink in the archive
+  
+  $ zstash create --hpss=none --follow-symlinks source_dir
+  # Contents of original.txt are archived, link.txt becomes a regular file
+  
+  $ rm /path/to/original.txt  # Break the symlink
+  $ zstash create --hpss=none --follow-symlinks source_dir
+  # ERROR: FileNotFoundError - archive creation fails
+
+**Q: What happens if I specify a custom cache location?**
+
+A: Using ``--cache=my_cache`` changes where zstash stores its working files:
+
+* Default: ``source_dir/zstash/`` contains ``index.db`` and temporary tar files
+* Custom: ``source_dir/my_cache/`` contains ``index.db`` and temporary tar files
+* You must use the same ``--cache`` value for all operations on that archive
+
+Example: ::
+
+  $ zstash create --hpss=none --cache=my_custom_cache source_dir
+  $ ls source_dir/my_custom_cache/
+  index.db  000000.tar
+
 Basic example
 -------------
 
@@ -127,6 +295,12 @@ If you want to store zstash archive on these two remote HPSS file systems, you c
 
 .. note::
     Always activate Globus endpoints via the Globus web interface before running ``zstash``.
+
+.. note::
+    Globus authentication is required once per endpoint. After the first authentication, tokens are saved locally and reused for subsequent operations.
+
+.. note::
+    If authentication times out during ``zstash create`` (you didn't paste the authentication code in time), use ``zstash update`` to efficiently resume. This will transfer only the missing files to HPSS without recreating tar files. See "Restarting After Interruption" above for details. Re-running ``zstash create`` also works but will wastefully recreate all tar archives.
 
 Check
 =====
@@ -195,6 +369,81 @@ You may need to reupload it via ``zstash create``.
 Please contact the zstash development team, we're working on
 identifying what causes these issues.
 
+What Happens If: Check Scenarios
+---------------------------------
+
+**Q: What happens if I run check with ``--hpss=none``?**
+
+A: ``zstash check --hpss=none`` checks files against the local cache without accessing HPSS. This requires:
+
+* The local cache must contain both ``index.db`` and the tar files
+* Useful for verifying local archives or testing without HPSS access
+* Tar files will be deleted after checking unless ``--keep`` is specified
+
+Example: ::
+
+  $ zstash create --hpss=none --keep source_dir
+  $ cd source_dir
+  $ zstash check --hpss=none
+  # Checks files against local tar files in source_dir/zstash/
+
+**Q: What happens with ``--keep`` during check?**
+
+A: The ``--keep`` flag determines whether tar files remain in the cache after checking:
+
+* **Without ``--keep``**: Tar files are downloaded, checked, then deleted
+* **With ``--keep``**: Tar files remain in the local cache after checking
+* **With ``--hpss=none``**: Tar files are never deleted (``--keep`` is implicit)
+
+Example: ::
+
+  $ zstash check --hpss=my_archive --keep
+  # After completion: zstash/ directory contains index.db and all checked tar files
+
+**Q: What happens with parallel checking (``--workers``)?**
+
+A: Using ``--workers=N`` processes multiple tar files concurrently:
+
+* Faster overall checking time
+* Each worker processes complete tar files (tars are not split)
+* Tars are processed in sorted order even with parallel execution
+* High worker counts may slow individual downloads due to bandwidth limits
+
+Example: ::
+
+  $ zstash check --hpss=my_archive --workers=3
+  # Three tar files are checked concurrently
+
+**Q: What does ``--tars`` do?**
+
+A: The ``--tars`` option limits checking to specific tar archives:
+
+* Cannot be combined with the ``[files]`` argument
+* Supports ranges, individual files, and combinations
+* Useful for checking specific subsets of large archives
+
+See "Example usage of ``--tars``" below for syntax examples.
+
+**Q: What happens if duplicate tar entries exist in the database?**
+
+A: This indicates database corruption. Behavior depends on your flags:
+
+* **With ``--error-on-duplicate-tar``**: Check exits immediately with an error
+* **Without ``--error-on-duplicate-tar`` (default)**: Check validates against the most recent entry
+* If most recent entry's size matches the actual file: Check passes
+* If most recent entry's size doesn't match: Check fails and reports the mismatch
+
+Example: ::
+
+  $ zstash check --hpss=my_archive
+  WARNING: Database corruption detected! Found 2 database entries for 000001.tar
+  INFO: 000001.tar: The most recent database entry has the same size as the actual file
+  # Check continues
+  
+  $ zstash check --hpss=my_archive --error-on-duplicate-tar
+  ERROR: Database corruption detected! Found 2 database entries for 000001.tar
+  # Check exits immediately
+
 Example using ``--hpss=none``::
 
   $ mkdir zstash_demo
@@ -254,6 +503,65 @@ file versions will still be listed with the ``zstash ls`` and ``zstash ls -l`` c
 Starting with ``zstash v1.1.0`` the md5 hash for the tars will be computed on ``zstash create``.
 If you're using an existing database, then ``zstash update`` will begin keeping track
 of the tars automatically.
+
+What Happens If: Update Scenarios
+----------------------------------
+
+**Q: What happens if I run update with no changes?**
+
+A: If no files have been added, modified, or deleted since the last archive operation: ::
+
+  $ zstash update --hpss=my_archive
+  INFO: Nothing to update
+
+**Q: What happens to modified files?**
+
+A: Modified files are archived again with their new content:
+
+* The new version is added to a new tar file
+* The old version remains in its original tar file
+* ``zstash extract`` will extract only the latest version
+* ``zstash ls`` will show all versions of the file
+
+Example: ::
+
+  $ echo "original content" > source_dir/file.txt
+  $ zstash create --hpss=my_archive source_dir
+  # file.txt is in 000000.tar
+  
+  $ echo "modified content" > source_dir/file.txt
+  $ cd source_dir && zstash update --hpss=my_archive
+  # New version of file.txt is in 000001.tar
+  
+  $ zstash ls --hpss=my_archive -l
+  # Both versions are listed
+
+**Q: Why are new tar files created instead of appending to existing ones?**
+
+A: This is a design choice for data safety:
+
+* New and modified files always go into new tar archives
+* Existing tar files are never modified, reducing risk of corruption
+* Even if an existing tar has space available, new files create a new tar
+
+Example: ::
+
+  $ zstash create --hpss=my_archive --maxsize 1.0 source_dir
+  # Creates 000000.tar (10 MB, well under 1 GB limit)
+  
+  $ echo "new file" > source_dir/new.txt
+  $ cd source_dir && zstash update --hpss=my_archive
+  # Creates 000001.tar for new.txt (doesn't append to 000000.tar)
+
+**Q: What happens with ``--dry-run``?**
+
+A: The ``--dry-run`` flag shows what would be updated without making changes: ::
+
+  $ cd source_dir && zstash update --hpss=my_archive --dry-run
+  INFO: List of files to be updated
+  INFO: new_file.txt
+  INFO: modified_file.txt
+  # No actual changes are made
 
 Example
 -------
@@ -351,6 +659,71 @@ the desired file can be extracted.
     * The sixth column is the tar archive that the file is in.
     * Please see the List documentation below for more information.
 
+What Happens If: Extract Scenarios
+-----------------------------------
+
+**Q: What happens if I extract files that already exist locally?**
+
+A: Files that already exist and match the archived version are skipped: ::
+
+  $ zstash extract --hpss=my_archive
+  INFO: Extracting file1.txt
+  INFO: Extracting file2.txt
+  
+  $ zstash extract --hpss=my_archive
+  INFO: Not extracting file1.txt
+  INFO: Not extracting file2.txt
+  # Files are skipped because they already exist
+
+**Q: What happens with ``--keep`` during extract?**
+
+A: The ``--keep`` flag determines whether tar files remain in the cache after extraction:
+
+* **Without ``--keep``**: Tar files are downloaded, extracted, then deleted
+* **With ``--keep``**: Tar files remain in the local cache for potential reuse
+* **With ``--hpss=none``**: Requires existing local cache with tar files
+
+Example: ::
+
+  $ zstash extract --hpss=my_archive --keep
+  # After completion: zstash/ directory contains index.db and all extracted tar files
+  
+  $ zstash extract --hpss=my_archive
+  # After completion: zstash/ directory contains only index.db
+
+**Q: How do I extract from a local cache without HPSS?**
+
+A: Use ``--hpss=none`` and specify the cache location: ::
+
+  $ zstash extract --hpss=none --cache=/path/to/cache
+  # Extracts from local cache without accessing HPSS
+
+**Q: What happens with parallel extraction (``--workers``)?**
+
+A: Using ``--workers=N`` processes multiple tar files concurrently:
+
+* Faster overall extraction time
+* Each worker processes complete tar files
+* Tars are processed in sorted order even with parallel execution
+* Files within each tar are still extracted sequentially
+
+Example: ::
+
+  $ zstash extract --hpss=my_archive --workers=3
+  # Three tar files are extracted concurrently
+
+**Q: What does ``--tars`` do during extraction?**
+
+A: The ``--tars`` option limits extraction to files within specific tar archives:
+
+* Only files from the specified tars are extracted
+* Cannot be combined with the ``[files]`` argument
+* Useful for partial restoration of large archives
+
+Example: ::
+
+  $ zstash extract --hpss=my_archive --tars="000001,000003"
+  # Only extracts files from 000001.tar and 000003.tar
 
 Examples
 --------
@@ -476,6 +849,77 @@ Below is an example of using ``ls`` to look at the tars in addition to the files
     Tars:
     000000.tar
 
+What Happens If: List Scenarios
+--------------------------------
+
+**Q: What happens if I run ls from outside the source directory?**
+
+A: ``zstash ls`` uses the local cache if available, otherwise downloads ``index.db`` from HPSS:
+
+* **If local cache exists**: Uses the local ``index.db`` (may be outdated)
+* **If no local cache**: Downloads ``index.db`` from HPSS to a new ``zstash/`` directory
+* **Warning**: The local cache may not reflect recent updates if you've switched directories
+
+Example: ::
+
+  $ zstash create --hpss=my_archive source_dir
+  # Creates source_dir/zstash/index.db
+  
+  $ cd /different/directory
+  $ zstash ls --hpss=my_archive
+  # Creates /different/directory/zstash/ and downloads index.db there
+
+**Q: What happens with ``--tars`` option?**
+
+A: The ``--tars`` flag shows which tar files are in the archive:
+
+* Lists all tar files in the archive
+* Can be combined with file patterns to show which tars contain matching files
+* Useful for understanding archive structure
+
+Example: ::
+
+  $ zstash ls --hpss=my_archive --tars
+  file0.txt
+  file1.txt
+  
+  Tars:
+  000000.tar
+  
+  $ zstash ls --hpss=my_archive --tars "*.txt"
+  file0.txt
+  file1.txt
+  
+  Tars:
+  000000.tar
+
+**Q: What happens if I update the archive and then run ls?**
+
+A: The behavior depends on your location and cache:
+
+* **From source directory after update**: ``ls`` shows the updated files immediately
+* **From different directory with old cache**: ``ls`` shows outdated information
+* **Solution**: Delete the old cache or run from the source directory
+
+Example: ::
+
+  $ zstash create --hpss=my_archive source_dir
+  $ cd /different/directory
+  $ zstash ls --hpss=my_archive  # Downloads index.db to ./zstash/
+  
+  # Add files and update
+  $ cd source_dir
+  $ echo "new content" > new_file.txt
+  $ zstash update --hpss=my_archive  # Updates source_dir/zstash/index.db
+  
+  $ cd /different/directory
+  $ zstash ls --hpss=my_archive  # Still uses old cache!
+  # new_file.txt is NOT shown
+  
+  $ rm -rf zstash  # Delete old cache
+  $ zstash ls --hpss=my_archive  # Downloads fresh index.db
+  # new_file.txt is now shown
+
 .. warning::
     Running ``zstash ls`` outside the source directory (the directory you're archiving)
     is not advised. ``zstash`` will only retrieve ``index.db`` from the HPSS archive
@@ -531,3 +975,35 @@ Starting with version 0.3, you can check the version of zstash from the command 
    $ zstash version
    v0.3.0
 
+Change Group
+============
+
+To change the HPSS group ownership of the tar archives and index.db: ::
+
+   $ zstash chgrp -R <group> --hpss=<path to HPSS>
+
+where
+
+* ``-R`` recursively changes the group ownership
+* ``<group>`` specifies the new group name
+* ``--hpss=<path to HPSS>`` specifies the destination path on the HPSS file system
+
+Note: This command is only available for HPSS archives. It uses the ``hsi chgrp`` command internally.
+
+What Happens If: Change Group Scenarios
+----------------------------------------
+
+**Q: What happens if HPSS is unavailable?**
+
+A: The command will report that HPSS is unavailable: ::
+
+  $ zstash chgrp -R my_group --hpss=none
+  chgrp: HPSS is unavailable
+
+**Q: What happens with verbose output?**
+
+A: Use the ``-v`` flag to see detailed progress: ::
+
+  $ zstash chgrp -R my_group -v --hpss=my_archive
+  Running zstash chgrp
+  # Shows detailed output of group changes
