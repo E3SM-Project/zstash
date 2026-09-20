@@ -12,6 +12,85 @@ from .transfer_tracking import GlobusConfig, TaskStatus, TransferBatch, Transfer
 from .utils import run_command, ts_utc
 
 
+def ensure_transfer_batch(transfer_manager: TransferManager, scheme: str):
+    # Create a new batch if needed (before we start adding files)
+    if not transfer_manager.batches or transfer_manager.batches[-1].task_id:
+        # Either no batches exist, or the last batch was already submitted
+        new_batch = TransferBatch()
+        new_batch.is_globus = scheme == "globus"
+        transfer_manager.batches.append(new_batch)
+        logger.debug(
+            f"{ts_utc()}: Created new TransferBatch, total batches: {len(transfer_manager.batches)}"
+        )
+
+
+def local_put(file_path: str, cache: str):
+    if file_path != get_db_filename(cache):
+        # We are adding a file (that is not the cache) to the local non-HPSS archive
+        logger.info("put: Keeping tar files locally and removing write permissions")
+        # https://unix.stackexchange.com/questions/46915/get-the-chmod-numerical-value-for-a-file
+        display_mode_command: List[str] = "stat --format '%a' {}".format(
+            file_path
+        ).split()
+        display_mode_output: bytes = subprocess.check_output(
+            display_mode_command
+        ).strip()
+        logger.info("{!r} original mode={!r}".format(file_path, display_mode_output))
+        # https://www.washington.edu/doit/technology-tips-chmod-overview
+        # Remove write-permission from user, group, and others,
+        # without changing read or execute permissions for any.
+        change_mode_command: List[str] = "chmod ugo-w {}".format(file_path).split()
+        # An error will be raised if this line fails.
+        subprocess.check_output(change_mode_command)
+        new_display_mode_output: bytes = subprocess.check_output(
+            display_mode_command
+        ).strip()
+        logger.info("{!r} new mode={!r}".format(file_path, new_display_mode_output))
+    # else: no action needed
+
+
+def run_hpss_put(hpss: str, name: str):
+    command: str = f'hsi -q "cd {hpss}; put {name}"'
+    error_str: str = f"Transferring file to HPSS: {name}"
+    run_command(command, error_str)
+
+
+def run_hpss_get(hpss: str, name: str):
+    command: str = f'hsi -q "cd {hpss}; get {name}"'
+    error_str: str = f"Transferring file from HPSS: {name}"
+    run_command(command, error_str)
+
+
+def globus_transfer_wrapper(
+    transfer_manager: TransferManager,
+    endpoint: str,
+    url_path: str,
+    name: str,
+    transfer_type: str,
+    non_blocking: bool,
+):
+    if not transfer_manager.globus_config:
+        transfer_manager.globus_config = GlobusConfig()
+    # Transfer file using the Globus Transfer Service
+    logger.info(f"{ts_utc()}: DIVING: hpss calls globus_transfer(name={name})")
+    task_status: TaskStatus = globus_transfer(
+        transfer_manager, endpoint, url_path, name, transfer_type, non_blocking
+    )
+    logger.info(
+        f"{ts_utc()}: SURFACE: hpss globus_transfer(name={name}) returned task_status={task_status}"
+    )
+    mrb: Optional[TransferBatch] = transfer_manager.get_most_recent_batch()
+    if mrb and mrb.task_status:
+        globus_status: TaskStatus = mrb.task_status
+        logger.info(
+            f"{ts_utc()}: Most recent globus_transfer returned task_status={globus_status}"
+        )
+    # NOTE: Here, the status could be "EXHAUSTED_TIMEOUT_RETRIES", meaning a very long transfer
+    # or perhaps transfer is hanging. We should decide whether to ignore it, or cancel it, but
+    # we'd need the task_id to issue a cancellation.  Perhaps we should have globus_transfer
+    # return a tuple (task_id, status).
+
+
 def hpss_transfer(
     hpss: str,
     file_path: str,
@@ -28,55 +107,19 @@ def hpss_transfer(
     url = urlparse(hpss)
     scheme = url.scheme
 
-    # Create a new batch if needed (before we start adding files)
-    if not transfer_manager.batches or transfer_manager.batches[-1].task_id:
-        # Either no batches exist, or the last batch was already submitted
-        new_batch = TransferBatch()
-        new_batch.is_globus = scheme == "globus"
-        transfer_manager.batches.append(new_batch)
-        logger.debug(
-            f"{ts_utc()}: Created new TransferBatch, total batches: {len(transfer_manager.batches)}"
-        )
+    ensure_transfer_batch(transfer_manager, scheme)
 
     if hpss == "none":
         logger.info("{}: HPSS is unavailable".format(transfer_type))
-        if transfer_type == "put" and file_path != get_db_filename(cache):
-            # We are adding a file (that is not the cache) to the local non-HPSS archive
-            logger.info(
-                "{}: Keeping tar files locally and removing write permissions".format(
-                    transfer_type
-                )
-            )
-            # https://unix.stackexchange.com/questions/46915/get-the-chmod-numerical-value-for-a-file
-            display_mode_command: List[str] = "stat --format '%a' {}".format(
-                file_path
-            ).split()
-            display_mode_output: bytes = subprocess.check_output(
-                display_mode_command
-            ).strip()
-            logger.info(
-                "{!r} original mode={!r}".format(file_path, display_mode_output)
-            )
-            # https://www.washington.edu/doit/technology-tips-chmod-overview
-            # Remove write-permission from user, group, and others,
-            # without changing read or execute permissions for any.
-            change_mode_command: List[str] = "chmod ugo-w {}".format(file_path).split()
-            # An error will be raised if this line fails.
-            subprocess.check_output(change_mode_command)
-            new_display_mode_output: bytes = subprocess.check_output(
-                display_mode_command
-            ).strip()
-            logger.info("{!r} new mode={!r}".format(file_path, new_display_mode_output))
+        if transfer_type == "put":
+            local_put(file_path, cache)
         # else: no action needed
     else:
         transfer_word: str
-        transfer_command: str
         if transfer_type == "put":
             transfer_word = "to"
-            transfer_command = "put"
         elif transfer_type == "get":
             transfer_word = "from"
-            transfer_command = "get"
         else:
             raise ValueError("Invalid transfer_type={}".format(transfer_type))
         logger.info("Transferring file {} HPSS: {}".format(transfer_word, file_path))
@@ -108,33 +151,16 @@ def hpss_transfer(
             # For `get`, this directory is where the file we get from HPSS will go.
             os.chdir(path)
 
-        globus_status: TaskStatus = TaskStatus.UNKNOWN
         if scheme == "globus":
-            if not transfer_manager.globus_config:
-                transfer_manager.globus_config = GlobusConfig()
-            # Transfer file using the Globus Transfer Service
-            logger.info(f"{ts_utc()}: DIVING: hpss calls globus_transfer(name={name})")
-            task_status: TaskStatus = globus_transfer(
+            globus_transfer_wrapper(
                 transfer_manager, endpoint, url_path, name, transfer_type, non_blocking
             )
-            logger.info(
-                f"{ts_utc()}: SURFACE: hpss globus_transfer(name={name}) returned task_status={task_status}"
-            )
-            mrb: Optional[TransferBatch] = transfer_manager.get_most_recent_batch()
-            if mrb and mrb.task_status:
-                globus_status = mrb.task_status
-                logger.info(
-                    f"{ts_utc()}: Most recent globus_transfer returned task_status={globus_status}"
-                )
-            # NOTE: Here, the status could be "EXHAUSTED_TIMEOUT_RETRIES", meaning a very long transfer
-            # or perhaps transfer is hanging. We should decide whether to ignore it, or cancel it, but
-            # we'd need the task_id to issue a cancellation.  Perhaps we should have globus_transfer
-            # return a tuple (task_id, status).
         else:
             # Transfer file using `hsi`
-            command: str = 'hsi -q "cd {}; {} {}"'.format(hpss, transfer_command, name)
-            error_str: str = "Transferring file {} HPSS: {}".format(transfer_word, name)
-            run_command(command, error_str)
+            if transfer_type == "put":
+                run_hpss_put(hpss, name)
+            else:
+                run_hpss_get(hpss, name)
 
         # Return to original working directory
         if path != "":
