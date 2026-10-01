@@ -24,8 +24,8 @@ zstash = "zstash.main:main"
 [project.optional-dependencies]
 qa = [
   "black==26.5.1",
-  "flake8==7.3.0",
-  "isort==9.0.1",
+  "flake8==7.4.1",
+  "isort==9.0.2",
   "mypy==2.3.1",
   "pre-commit==4.3.0",
   "pyyaml",
