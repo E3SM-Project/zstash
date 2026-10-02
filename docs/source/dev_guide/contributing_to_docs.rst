@@ -72,7 +72,7 @@ using Sphinx, you can refer to
     $ # Check the `_build/html` folder for all generated versioned docs
     $ # Open `_build/html/<your-branch>/index.html` to view in browser
 
-   .. figure:: _static/docs-version-selector.png
+   .. figure:: _static/figures/docs-version-selector.png
       :alt: Docs version selector
 
       Docs version selector dropdown in the bottom left-hand corner
@@ -106,20 +106,26 @@ for a new repository. (Adapted from `Sphinx documentation on GitHub
 
 Create Sphinx conda environment (see above).
 
-Create a new git branch (gh-pages): ::
+Create a new git branch (gh-pages): 
 
-  $ git branch gh-pages
-  $ git checkout gh-pages
+  .. code-block:: bash
 
-Clear out anything from the main branch and start fresh ::
+    git branch gh-pages
+    git checkout gh-pages
 
-  $ git symbolic-ref HEAD refs/heads/gh-pages
-  $ rm .git/index
-  $ git clean -fdx
+Clear out anything from the main branch and start fresh
 
-Create documentation ::
+  .. code-block:: bash
 
-  $ sphinx-quickstart
+    git symbolic-ref HEAD refs/heads/gh-pages
+    rm .git/index
+    git clean -fdx
+
+Create documentation
+
+  .. code-block:: bash
+
+    sphinx-quickstart
 
 accept suggested default options, except ::
 
@@ -129,40 +135,54 @@ Edit Makefile and change BUILDIR ::
 
   BUILDDIR = docs
 
-Remove old build directory ::
+Remove old build directory
 
-  $ rmdir build
+  .. code-block:: bash
 
-Change the Sphinx theme to 'ReadTheDocs'. Edit 'source/conf.py and change ::
+    rmdir build
 
-  html_theme = 'alabaster'
+Change the Sphinx theme to 'ReadTheDocs'. Edit 'source/conf.py and change
 
-to ::
+  .. code-block:: python
 
-  import sphinx_rtd_theme
-  html_theme = "sphinx_rtd_theme"
-  html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+    html_theme = 'alabaster'
 
-Try building documentation ::
+to
 
-  $ make html
+  .. code-block:: python
+
+    import sphinx_rtd_theme
+    html_theme = "sphinx_rtd_theme"
+    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+
+Try building documentation
+
+  .. code-block:: bash
+
+    make html
 
 Create an empty .nojekyll file to indicate to Github.com that this
-is not a Jekyll static website: ::
+is not a Jekyll static website:
 
-  $ touch .nojekyll
+  .. code-block:: bash
 
-Create a top-level re-direction file: ::
+    touch .nojekyll
 
-  $ vi index.html
+Create a top-level re-direction file:
+
+  .. code-block:: bash
+
+    vi index.html
 
 with the following: ::
 
   <meta http-equiv="refresh" content="0; url=./docs/html/index.html" />
 
-Commit and push back to Github: ::
+Commit and push back to Github:
 
-  $ git add .
-  $ git commit
-  $ git push origin gh-pages
+  .. code-block:: bash
+
+    git add .
+    git commit
+    git push origin gh-pages
 

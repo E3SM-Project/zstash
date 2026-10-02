@@ -44,18 +44,48 @@ For documentation not included in the version selector (<= ``v1.0.1``):
 * `v1.0.1 <https://e3sm-project.github.io/zstash/_build_old/html-v1-0-1/index.html>`_
 * `v1.0.0 <https://e3sm-project.github.io/zstash/_build_old/html-v1-0-0/index.html>`_
 
+The documentation is organized into two major sections:
+
+* :doc:`User Guide <user_guide/index>` for installation, day-to-day usage,
+  Globus setup, and archive management
+* :doc:`Developer Guide <dev_guide/index>` for contributing, testing, release
+  work, and internal implementation details
+
+User Guide pages
+================
+
+The user-facing documentation is organized under :doc:`user_guide/index` and
+includes:
+
+* :doc:`user_guide/design` for the high-level architecture and implementation overview
+* :doc:`user_guide/getting_started` for installation and first-time setup
+* :doc:`user_guide/usage` for command-line usage details
+* :doc:`user_guide/globus/index` for Globus account setup and transfer workflows and ``.zstash.ini`` configuration details
+* :doc:`user_guide/best_practices` for archive management recommendations
+* :doc:`user_guide/database` for the archive index database layout
+* :doc:`user_guide/support` for where to ask questions or report issues
+* :doc:`user_guide/archived_documentation/index` for older documentation that may still be useful as a reference.
+
+
+Developer Guide pages
+=====================
+
+The contributor and maintainer documentation is organized under
+:doc:`dev_guide/index` and includes:
+
+* :doc:`dev_guide/project_standards` for coding standards and conventions
+* :doc:`dev_guide/ci` for continuous integration details
+* :doc:`dev_guide/tar_tracking_modes` for tar tracking behavior in each storage
+  mode
+* :doc:`dev_guide/testing` for the test layout and execution guidance
+* :doc:`dev_guide/releases/index` for the release process
+* :doc:`dev_guide/contributing_to_docs` for development environment setup and contribution
+  workflow
+
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Guides:
 
    self
-   getting_started
-   tutorial
-   usage
-   best_practices
-   design
-   database
-   support
+   user_guide/index
    dev_guide/index
-   contributing
-
