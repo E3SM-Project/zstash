@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zstash"
-version = "1.6.0"
+version = "1.6.1rc1"
 description = "Long term HPSS archiving software for E3SM"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
