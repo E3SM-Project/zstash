@@ -58,50 +58,65 @@ class TaskStatus(Enum):
 
 
 class TransferBatch:
-    """Represents one batch of files being transferred"""
+    """
+    Represents one batch of files submitted (or to be submitted) as a single
+    Globus transfer task.
+
+    Lifecycle:
+      1. Created in hpss_transfer() when a new batch is needed.
+      2. Files are added to local_paths_to_delete (and to transfer_data) as
+         hpss_put() is called for each tar.
+      3. The batch is submitted to Globus (task_id is set).
+      4. Once the Globus task succeeds, local_paths_to_delete are removed from disk.
+    """
 
     def __init__(self):
-        self.file_paths: List[str] = []
+        # Local tar files in this batch; deleted once the Globus transfer succeeds.
+        self.local_paths_to_delete: List[str] = []
         self.task_id: Optional[str] = None
         self.task_status: Optional[TaskStatus] = None
         self.is_globus: bool = False
         self.transfer_data: Optional[TransferData] = None  # Only for Globus
 
-    def delete_files(self):
-        for src_path in self.file_paths:
+    def delete_local_files(self):
+        """Delete all local tar files tracked by this batch."""
+        for path in self.local_paths_to_delete:
             try:
-                os.remove(src_path)
+                os.remove(path)
             except FileNotFoundError:
-                logger.warning(f"File already deleted: {src_path}")
+                logger.warning(f"File already deleted: {path}")
 
 
 class TransferManager:
     def __init__(self):
-        # All transfer batches (Globus or HPSS)
+        # All transfer batches (Globus or HPSS), in submission order.
         self.batches: List[TransferBatch] = []
         self.cumulative_tarfiles_pushed: int = 0
 
-        # Connection state (Globus-specific, None if not using Globus)
+        # Globus connection state; None when not using Globus.
         self.globus_config: Optional[GlobusConfig] = None
 
     def get_most_recent_batch(self) -> Optional[TransferBatch]:
-        """Get the last batch added to the manager, or None if no batches exist"""
+        """Return the last batch, or None if no batches exist."""
         return self.batches[-1] if self.batches else None
 
     def delete_successfully_transferred_files(self):
-        """Check transfer status and delete files from successful transfers"""
+        """
+        Delete local tar files for every batch whose Globus transfer has
+        succeeded (or for every non-Globus batch, which transfers synchronously).
+        Batches whose files have already been deleted are skipped.
+        """
         logger.info(
             f"{ts_utc()}: Checking for successfully transferred files to delete"
         )
-        # Clean up empty batches first
-        self.batches = [batch for batch in self.batches if batch.file_paths]
-        # Now delete files for successful transfers
         for batch in self.batches:
-            if (not batch.is_globus) or (batch.task_status == TaskStatus.SUCCEEDED):
-                # The files were transferred successfully, so delete them
-                logger.info(
-                    f"{ts_utc()}: Deleting {len(batch.file_paths)} files from successful transfer"
-                )
-                batch.delete_files()
-                logger.debug("Deletion completed")
-                batch.file_paths = []  # Mark as processed
+            if not batch.local_paths_to_delete:
+                continue  # Already processed
+            if batch.is_globus and batch.task_status != TaskStatus.SUCCEEDED:
+                continue  # Globus transfer not yet confirmed successful
+            logger.info(
+                f"{ts_utc()}: Deleting {len(batch.local_paths_to_delete)} files "
+                f"from successful transfer"
+            )
+            batch.delete_local_files()
+            batch.local_paths_to_delete = []  # Mark as processed

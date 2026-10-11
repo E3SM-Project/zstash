@@ -7,9 +7,143 @@ from typing import List, Optional
 from six.moves.urllib.parse import urlparse
 
 from .globus import globus_transfer
-from .settings import get_db_filename, logger
-from .transfer_tracking import GlobusConfig, TaskStatus, TransferBatch, TransferManager
+from .settings import logger
+from .transfer_tracking import GlobusConfig, TransferBatch, TransferManager
 from .utils import run_command, ts_utc
+
+# ---------------------------------------------------------------------------
+# Internal helpers for each transfer variant
+# ---------------------------------------------------------------------------
+
+
+def _local_put(
+    file_path: str,
+    cache: str,
+    is_index: bool,
+) -> None:
+    """
+    Handle hpss='none' for a put: do nothing for the index DB or for tar files
+    when keep=True.  For tar files (keep=False implied by caller), remove write
+    permissions so the local archive is read-only.
+    """
+    if is_index:
+        # Nothing to do; the DB is always kept locally.
+        return
+
+    # Remove write permissions from the tar file so the local-only archive
+    # behaves like an immutable store.
+    logger.info("put (local): removing write permissions from {}".format(file_path))
+
+    display_cmd: List[str] = "stat --format '%a' {}".format(file_path).split()
+    original_mode: bytes = subprocess.check_output(display_cmd).strip()
+    logger.info("{!r} original mode={!r}".format(file_path, original_mode))
+
+    subprocess.check_output("chmod ugo-w {}".format(file_path).split())
+
+    new_mode: bytes = subprocess.check_output(display_cmd).strip()
+    logger.info("{!r} new mode={!r}".format(file_path, new_mode))
+
+
+def _hsi_transfer(hpss: str, file_path: str, transfer_type: str) -> None:
+    """Transfer a single file to or from HPSS using the hsi command-line tool."""
+    if transfer_type == "put":
+        transfer_word, transfer_command = "to", "put"
+    else:
+        transfer_word, transfer_command = "from", "get"
+
+    _, name = os.path.split(file_path)
+    logger.info("Transferring file {} HPSS: {}".format(transfer_word, file_path))
+
+    command = 'hsi -q "cd {}; {} {}"'.format(hpss, transfer_command, name)
+    error_str = "Transferring file {} HPSS: {}".format(transfer_word, name)
+    run_command(command, error_str)
+
+
+def _globus_put_or_get(
+    hpss: str,
+    file_path: str,
+    transfer_type: str,
+    keep: bool,
+    non_blocking: bool,
+    is_index: bool,
+    transfer_manager: TransferManager,
+) -> None:
+    """
+    Transfer a file using the Globus Transfer Service, then delete local tar
+    files for any batches whose transfer has succeeded.
+    """
+    url = urlparse(hpss)
+    endpoint: str = url.netloc
+    url_path: str = url.path
+    path, name = os.path.split(file_path)
+
+    if not keep and not is_index:
+        # Track this tar for deletion once its Globus transfer succeeds.
+        transfer_manager.batches[-1].local_paths_to_delete.append(file_path)
+        logger.debug(
+            f"{ts_utc()}: Tracking {file_path} for deletion after transfer; "
+            f"batch now has {len(transfer_manager.batches[-1].local_paths_to_delete)} file(s)"
+        )
+
+    # hsi requires us to be in the directory containing the file.
+    cwd = os.getcwd()
+    if path:
+        if transfer_type == "get" and not os.path.isdir(path):
+            os.makedirs(path)
+        os.chdir(path)
+
+    logger.info(f"{ts_utc()}: globus_transfer() -> name={name!r}")
+    globus_transfer(
+        transfer_manager, endpoint, url_path, name, transfer_type, non_blocking
+    )
+    logger.info(f"{ts_utc()}: globus_transfer() returned for name={name!r}")
+
+    if path:
+        os.chdir(cwd)
+
+    if transfer_type == "put" and not keep:
+        transfer_manager.delete_successfully_transferred_files()
+
+
+def _hsi_put_or_get(
+    hpss: str,
+    file_path: str,
+    transfer_type: str,
+    keep: bool,
+    is_index: bool,
+    transfer_manager: TransferManager,
+) -> None:
+    """
+    Transfer a file using the hsi command-line tool, then delete local tar
+    files for any batches whose transfer has succeeded.
+    """
+    path, _ = os.path.split(file_path)
+
+    if not keep and not is_index:
+        transfer_manager.batches[-1].local_paths_to_delete.append(file_path)
+        logger.debug(
+            f"{ts_utc()}: Tracking {file_path} for deletion after transfer; "
+            f"batch now has {len(transfer_manager.batches[-1].local_paths_to_delete)} file(s)"
+        )
+
+    cwd = os.getcwd()
+    if path:
+        if transfer_type == "get" and not os.path.isdir(path):
+            os.makedirs(path)
+        os.chdir(path)
+
+    _hsi_transfer(hpss, file_path, transfer_type)
+
+    if path:
+        os.chdir(cwd)
+
+    if transfer_type == "put" and not keep:
+        transfer_manager.delete_successfully_transferred_files()
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
 
 def hpss_transfer(
@@ -28,122 +162,41 @@ def hpss_transfer(
     url = urlparse(hpss)
     scheme = url.scheme
 
-    # Create a new batch if needed (before we start adding files)
+    # Ensure there is an open batch to add files to.  A new batch is needed
+    # when none exists yet, or when the last batch has already been submitted
+    # (task_id is set), meaning we are starting a new submission window.
     if not transfer_manager.batches or transfer_manager.batches[-1].task_id:
-        # Either no batches exist, or the last batch was already submitted
         new_batch = TransferBatch()
         new_batch.is_globus = scheme == "globus"
         transfer_manager.batches.append(new_batch)
         logger.debug(
-            f"{ts_utc()}: Created new TransferBatch, total batches: {len(transfer_manager.batches)}"
+            f"{ts_utc()}: Created new TransferBatch "
+            f"(total batches: {len(transfer_manager.batches)})"
         )
 
     if hpss == "none":
         logger.info("{}: HPSS is unavailable".format(transfer_type))
-        if transfer_type == "put" and file_path != get_db_filename(cache):
-            # We are adding a file (that is not the cache) to the local non-HPSS archive
-            logger.info(
-                "{}: Keeping tar files locally and removing write permissions".format(
-                    transfer_type
-                )
-            )
-            # https://unix.stackexchange.com/questions/46915/get-the-chmod-numerical-value-for-a-file
-            display_mode_command: List[str] = "stat --format '%a' {}".format(
-                file_path
-            ).split()
-            display_mode_output: bytes = subprocess.check_output(
-                display_mode_command
-            ).strip()
-            logger.info(
-                "{!r} original mode={!r}".format(file_path, display_mode_output)
-            )
-            # https://www.washington.edu/doit/technology-tips-chmod-overview
-            # Remove write-permission from user, group, and others,
-            # without changing read or execute permissions for any.
-            change_mode_command: List[str] = "chmod ugo-w {}".format(file_path).split()
-            # An error will be raised if this line fails.
-            subprocess.check_output(change_mode_command)
-            new_display_mode_output: bytes = subprocess.check_output(
-                display_mode_command
-            ).strip()
-            logger.info("{!r} new mode={!r}".format(file_path, new_display_mode_output))
-        # else: no action needed
+        if transfer_type == "put":
+            _local_put(file_path, cache, is_index)
+        # get with hpss='none' means the file is already local; nothing to do.
+        return
+
+    if scheme == "globus":
+        if not transfer_manager.globus_config:
+            transfer_manager.globus_config = GlobusConfig()
+        _globus_put_or_get(
+            hpss,
+            file_path,
+            transfer_type,
+            keep,
+            non_blocking,
+            is_index,
+            transfer_manager,
+        )
     else:
-        transfer_word: str
-        transfer_command: str
-        if transfer_type == "put":
-            transfer_word = "to"
-            transfer_command = "put"
-        elif transfer_type == "get":
-            transfer_word = "from"
-            transfer_command = "get"
-        else:
-            raise ValueError("Invalid transfer_type={}".format(transfer_type))
-        logger.info("Transferring file {} HPSS: {}".format(transfer_word, file_path))
-
-        endpoint: str = url.netloc
-        url_path = url.path
-        path: str
-        name: str
-        path, name = os.path.split(file_path)
-
-        # Never track index.db for deletion, only the tar files
-        if (not keep) and (not is_index):
-            # Add this tar file to the current batch
-            transfer_manager.batches[-1].file_paths.append(file_path)
-            logger.debug(
-                f"{ts_utc()}: Added {file_path} to current batch, batch now has {len(transfer_manager.batches[-1].file_paths)} files"
-            )
-
-        # Need to be in local directory for `hsi` to work
-        cwd = os.getcwd()
-        if path != "":
-            if (transfer_type == "get") and (not os.path.isdir(path)):
-                # We are getting a file from HPSS.
-                # The directory the file is in doesn't exist locally.
-                # So, make the path locally
-                os.makedirs(path)
-            # Enter the path (directory)
-            # For `put`, this directory contains the file we want to transfer to HPSS.
-            # For `get`, this directory is where the file we get from HPSS will go.
-            os.chdir(path)
-
-        globus_status: TaskStatus = TaskStatus.UNKNOWN
-        if scheme == "globus":
-            if not transfer_manager.globus_config:
-                transfer_manager.globus_config = GlobusConfig()
-            # Transfer file using the Globus Transfer Service
-            logger.info(f"{ts_utc()}: DIVING: hpss calls globus_transfer(name={name})")
-            task_status: TaskStatus = globus_transfer(
-                transfer_manager, endpoint, url_path, name, transfer_type, non_blocking
-            )
-            logger.info(
-                f"{ts_utc()}: SURFACE: hpss globus_transfer(name={name}) returned task_status={task_status}"
-            )
-            mrb: Optional[TransferBatch] = transfer_manager.get_most_recent_batch()
-            if mrb and mrb.task_status:
-                globus_status = mrb.task_status
-                logger.info(
-                    f"{ts_utc()}: Most recent globus_transfer returned task_status={globus_status}"
-                )
-            # NOTE: Here, the status could be "EXHAUSTED_TIMEOUT_RETRIES", meaning a very long transfer
-            # or perhaps transfer is hanging. We should decide whether to ignore it, or cancel it, but
-            # we'd need the task_id to issue a cancellation.  Perhaps we should have globus_transfer
-            # return a tuple (task_id, status).
-        else:
-            # Transfer file using `hsi`
-            command: str = 'hsi -q "cd {}; {} {}"'.format(hpss, transfer_command, name)
-            error_str: str = "Transferring file {} HPSS: {}".format(transfer_word, name)
-            run_command(command, error_str)
-
-        # Return to original working directory
-        if path != "":
-            os.chdir(cwd)
-
-        if transfer_type == "put":
-            if not keep:
-                # We never delete if `--keep` is set.
-                transfer_manager.delete_successfully_transferred_files()
+        _hsi_put_or_get(
+            hpss, file_path, transfer_type, keep, is_index, transfer_manager
+        )
 
 
 def hpss_put(
@@ -153,11 +206,9 @@ def hpss_put(
     transfer_manager: TransferManager,
     keep: bool = True,
     non_blocking: bool = False,
-    is_index=False,
+    is_index: bool = False,
 ):
-    """
-    Put a file to the HPSS archive.
-    """
+    """Put a file to the HPSS archive."""
     hpss_transfer(
         hpss,
         file_path,
@@ -176,13 +227,11 @@ def hpss_get(
     cache: str,
     transfer_manager: Optional[TransferManager] = None,
 ):
-    """
-    Get a file from the HPSS archive.
-    """
+    """Get a file from the HPSS archive."""
     url = urlparse(hpss)
     if not transfer_manager:
         transfer_manager = TransferManager()
-    if (url.scheme == "globus") and not (transfer_manager.globus_config):
+    if url.scheme == "globus" and not transfer_manager.globus_config:
         transfer_manager.globus_config = GlobusConfig()
     hpss_transfer(
         hpss, file_path, "get", cache, False, transfer_manager=transfer_manager
@@ -190,17 +239,11 @@ def hpss_get(
 
 
 def hpss_chgrp(hpss: str, group: str, recurse: bool = False):
-    """
-    Change the group of the HPSS archive.
-    """
+    """Change the group of the HPSS archive."""
     if hpss == "none":
         logger.info("chgrp: HPSS is unavailable")
     else:
-        recurse_str: str
-        if recurse:
-            recurse_str = "-R "
-        else:
-            recurse_str = ""
-        command: str = "hsi chgrp {}{} {}".format(recurse_str, group, hpss)
-        error_str: str = "Changing group of HPSS archive {} to {}".format(hpss, group)
+        recurse_str = "-R " if recurse else ""
+        command = "hsi chgrp {}{} {}".format(recurse_str, group, hpss)
+        error_str = "Changing group of HPSS archive {} to {}".format(hpss, group)
         run_command(command, error_str)
