@@ -293,9 +293,29 @@ test_different_endpoint3()
 
 # Example usage:
 # ./globus_auth.bash 21 chrysalis /home/ac.forsyth2/ez/zstash /home/ac.forsyth2/zstash_tests /global/homes/f/forsyth/zstash_tests /home/f/forsyth/zstash_tests /compyfs/fors729/zstash_tests
+#
+# To skip everything that requires Compy, add --no-compy (anywhere in the args).
+# The compy_dst_basedir argument can then be omitted:
+# ./globus_auth.bash --no-compy 21 chrysalis /home/ac.forsyth2/ez/zstash /home/ac.forsyth2/zstash_tests /global/homes/f/forsyth/zstash_tests /home/f/forsyth/zstash_tests
 
 # NOTE: This test will not work from a repo on Compy located in /qfs/people/...
 # pic#compy-dtn will only transfer to/from /compyfs/...
+
+# Optional flag: --no-compy
+# Pull it out of the argument list so the positional parameters below are unaffected.
+skip_compy=false
+positional_args=()
+for arg in "$@"; do
+    case "${arg}" in
+        --no-compy)
+            skip_compy=true
+            ;;
+        *)
+            positional_args+=("${arg}")
+            ;;
+    esac
+done
+set -- "${positional_args[@]}"
 
 # Command line parameters:
 unique_id="$1"
@@ -304,7 +324,18 @@ path_to_repo="$3" # /home/ac.forsyth2/ez/zstash, /global/homes/f/forsyth/ez/zsta
 chrysalis_dst_basedir="$4" # /home/ac.forsyth2/zstash_tests
 perlmutter_dst_basedir="$5" # /global/homes/f/forsyth/zstash_tests
 hpss_dst_basedir="$6" # /home/f/forsyth/zstash_tests
-compy_dst_basedir="$7" # /compyfs/fors729/zstash_tests (/qfs/people/fors729/ => permission denied)
+compy_dst_basedir="$7" # /compyfs/fors729/zstash_tests (/qfs/people/fors729/ => permission denied); not needed with --no-compy
+
+if [ "${skip_compy}" = true ]; then
+    if [ "${src_machine}" = "compy" ]; then
+        echo "Cannot use --no-compy when src_machine is compy." >&2
+        exit 1
+    fi
+    echo "--no-compy specified: skipping all tests/steps that require Compy."
+elif [ -z "${compy_dst_basedir}" ]; then
+    echo "compy_dst_basedir (7th argument) is required unless --no-compy is specified." >&2
+    exit 1
+fi
 
 chrysalis_dst_dir=${chrysalis_dst_basedir}/test_globus_auth_${unique_id}
 perlmutter_dst_dir=${perlmutter_dst_basedir}/test_globus_auth_${unique_id}
@@ -312,7 +343,7 @@ hpss_dst_dir=${hpss_dst_basedir}/test_globus_auth_${unique_id}
 compy_dst_dir=${compy_dst_basedir}/test_globus_auth_${unique_id}
 
 # Determine which endpoints to use for the endpoint-switching tests
-# switch1 should never be the last-tested endpoint (i.e., compy)
+# switch1 should never be the last-tested endpoint (i.e., compy, or NERSC HPSS if --no-compy)
 # Neither switch1 nor switch2 should be the src endpoint.
 case ${src_machine} in
     chrysalis)
@@ -323,9 +354,15 @@ case ${src_machine} in
         ;;
     perlmutter)
         dst_endpoint_switch1=LCRC_IMPROV_DTN_ENDPOINT
-        dst_endpoint_switch2=PIC_COMPY_DTN_ENDPOINT
         dst_dir_switch1=${chrysalis_dst_dir}
-        dst_dir_switch2=${compy_dst_dir}
+        if [ "${skip_compy}" = true ]; then
+            # Compy is unavailable; use NERSC HPSS instead
+            dst_endpoint_switch2=NERSC_HPSS_ENDPOINT
+            dst_dir_switch2=${hpss_dst_dir}
+        else
+            dst_endpoint_switch2=PIC_COMPY_DTN_ENDPOINT
+            dst_dir_switch2=${compy_dst_dir}
+        fi
         ;;
     compy)
         dst_endpoint_switch1=NERSC_PERLMUTTER_ENDPOINT
@@ -342,7 +379,9 @@ esac
 echo "You may wish to clear your dst directories for a fresh start:"
 echo "Chrysalis: rm -rf ${chrysalis_dst_basedir}/test_globus_auth*"
 echo "Perlmutter: rm -rf ${perlmutter_dst_basedir}/test_globus_auth*"
-echo "Compy: rm -rf ${compy_dst_basedir}/test_globus_auth*"
+if [ "${skip_compy}" != true ]; then
+    echo "Compy: rm -rf ${compy_dst_basedir}/test_globus_auth*"
+fi
 echo "This won't work on HPSS, because -rf flags are unsupported:"
 echo "NERSC HPSS: rm -rf ${hpss_dst_basedir}/test_globus_auth*"
 echo ""
@@ -353,7 +392,11 @@ if ! confirm "Is the unique_id correct?"; then
 fi
 
 echo "Go to https://app.globus.org/file-manager?two_pane=true > For "Collection", choose each of the following endpoints and, if needed, authenticate:"
-echo "LCRC Improv DTN, NERSC Perlmutter, NERSC HPSS, pic#compy-dtn"
+if [ "${skip_compy}" = true ]; then
+    echo "LCRC Improv DTN, NERSC Perlmutter, NERSC HPSS"
+else
+    echo "LCRC Improv DTN, NERSC Perlmutter, NERSC HPSS, pic#compy-dtn"
+fi
 if ! confirm "Have you authenticated into all endpoints?"; then
     exit 1
 fi
@@ -368,8 +411,10 @@ if [ "$src_machine" != "perlmutter" ]; then
 fi
 echo "Testing transfer to NERSC HPSS #########################################"
 test_single_auth_code ${path_to_repo} NERSC_HPSS_ENDPOINT ${hpss_dst_dir}
-echo "Testing transfer to pic#compy-dtn ######################################"
-test_single_auth_code ${path_to_repo} PIC_COMPY_DTN_ENDPOINT ${compy_dst_dir}
+if [ "${skip_compy}" != true ]; then
+    echo "Testing transfer to pic#compy-dtn ######################################"
+    test_single_auth_code ${path_to_repo} PIC_COMPY_DTN_ENDPOINT ${compy_dst_dir}
+fi
 
 echo "Follow-up tests: behavior when switching to different endpoints"
 echo "NOTE: if you commented out tests above, and your last endpoint used was NERSC_PERLMUTTER_ENDPOINT, the following test will not work properly."
