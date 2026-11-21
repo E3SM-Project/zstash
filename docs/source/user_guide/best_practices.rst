@@ -15,33 +15,39 @@ of the data transfer nodes (dtn<01..15>.nersc.gov). Also, because
 archiving large amount of data with zstash can take several days,
 it is recommended to invoke zstash within a UNIX `screen` session
 to which you can detach and re-attach without killing zstash. You
-can access zstash on the data transfer nodes by loading the E3SM unified environment: ::
+can access zstash on the data transfer nodes by loading the E3SM unified environment:
 
-   $ ssh dtn01.nersc.gov
-   $ screen
-   $ bash
-   $ source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_pm-cpu.sh
+  .. code-block:: bash
+
+    ssh dtn01.nersc.gov
+    screen
+    bash
+    source /global/common/software/e3sm/anaconda_envs/load_latest_e3sm_unified_pm-cpu.sh
 
 To detach from the screen session, use CTRL-A followed by D (for detach).
 You can then safely close your window. To re-attach to an existing session
-later: ::
+later:
 
-   $ ssh dtn01.nersc.gov
-   $ screen -r
+  .. code-block:: bash
+
+    ssh dtn01.nersc.gov
+    screen -r
 
 Archive
 -------
 
 Typically, you should consider archiving the entire directory structure
 of a simulation. The first time, this is accomplished with ``zstash create``.
-For example: ::
+For example:
 
-   $ ssh dtn01.nersc.gov
-   $ screen -r
-   $ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
-   $ mkdir zstash
-   $ zstash create --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
-     --maxsize 128 . 2>&1 | tee zstash/zstash_create_20190226.log
+  .. code-block:: bash
+
+    ssh dtn01.nersc.gov
+    screen -r
+    cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+    mkdir zstash
+    zstash create --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
+      --maxsize 128 . 2>&1 | tee zstash/zstash_create_20190226.log
 
 The command above will archive the entire directory structure under
 `/global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison`.
@@ -51,36 +57,42 @@ recommends file size between 100 and 500 GB for best performance.
 
 If your model output has been reorganized using the CIME short-term archive utility, you can easily
 archive only a subset of the restart files to conserve space. For example, to **archive
-restart files every 5 years** only: ::
+restart files every 5 years** only:
 
-   $ ssh dtn01.nersc.gov
-   $ screen -r
-   $ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
-   $ mkdir zstash
-   $ zstash create --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
-     --exclude="archive/rest/???[!05]-*/" \
-     --maxsize 128 . 2>&1 | tee zstash/zstash_create_20190226.log
+  .. code-block:: bash
+
+    ssh dtn01.nersc.gov
+    screen -r
+    cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+    mkdir zstash
+    zstash create --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
+      --exclude="archive/rest/???[!05]-*/" \
+      --maxsize 128 . 2>&1 | tee zstash/zstash_create_20190226.log
 
 Update
 ------
 
 You can also add newly created files to an existing archive, or restart archiving after a 
-failure using the ``zstash update`` functionality: ::
+failure using the ``zstash update`` functionality:
 
-   $ ssh dtn01.nersc.gov
-   $ screen -r
-   $ cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
-   $ mkdir zstash
-   $ zstash update --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
-     --exclude="archive/rest/???[!05]-*/" 2>&1 | tee zstash/zstash_update_20190226.log
+  .. code-block:: bash
+
+    ssh dtn01.nersc.gov
+    screen -r
+    cd /global/cscratch1/sd/golaz/E3SM/simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+    mkdir zstash
+    zstash update --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison \
+      --exclude="archive/rest/???[!05]-*/" 2>&1 | tee zstash/zstash_update_20190226.log
 
 Check
 -----
 
 After archiving or updating, it is **highly recommended** that you verify the integrity
-of the tar files. The safest way to do so is go to a new, empty directory and run: ::
+of the tar files. The safest way to do so is go to a new, empty directory and run:
 
-  $ zstash check --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
+  .. code-block:: bash
+
+    zstash check --hpss=2018/E3SM_simulations/20180129.DECKv1b_piControl.ne30_oEC.edison
 
 ``zstash check`` will download the tar archives to the local disk cache (under 
 the zstash/ subdirectory) and verify the md5 checksum of every file against the 
@@ -125,10 +137,12 @@ With the second error, you might see something like: ::
   ReadError: unexpected end of data
 
 This seems to be caused by the filesystem. Simply run ``zstash check`` again.
-To save time, like ``zstash extract``, you can check for specific files or tar archives: ::
+To save time, like ``zstash extract``, you can check for specific files or tar archives:
 
-  $ zstash check --hpss=/path/to/hpss/archive "archive/ocn/hist/mpaso.hist.am.timeSeriesStatsMonthly.1892-04-01.nc"
-  $ zstash check --hpss=/path/to/hpss/archive "000012.tar"
+  .. code-block:: bash
+
+    zstash check --hpss=/path/to/hpss/archive "archive/ocn/hist/mpaso.hist.am.timeSeriesStatsMonthly.1892-04-01.nc"
+    zstash check --hpss=/path/to/hpss/archive "000012.tar"
 
 Compy/Anvil
 ===========
@@ -146,13 +160,15 @@ Archive
 -------
 
 Starting with v0.4, zstash supports the creation of local archives only (using the 
-``--hpss=none`` command line option). For example ::
+``--hpss=none`` command line option). For example
 
-   $ screen
-   $ cd /compyfs/gola749/E3SM_simulations/20191216.alpha20.piControl.ne30_r05_oECv3_ICG.compy
-   $ mkdir zstash
-   $ zstash create --hpss=none  --maxsize 128 . 2>&1 | tee zstash/zstash_create_20200224.log
-   ctrl-a d # to disconnect from screen session
+  .. code-block:: bash
+
+    screen
+    cd /compyfs/gola749/E3SM_simulations/20191216.alpha20.piControl.ne30_r05_oECv3_ICG.compy
+    mkdir zstash
+    zstash create --hpss=none  --maxsize 128 . 2>&1 | tee zstash/zstash_create_20200224.log
+    ctrl-a d # to disconnect from screen session
 
 
 .. _globus-compy:
@@ -166,7 +182,7 @@ Transfer all zstash files to NERSC HPSS using Globus.
 * On the leftmost pane, select 'ENDPOINT'
 * Search for 'NERSC HPSS'. Click on Green power button to activate endpoint.
 
-.. image:: globus/Globus_Screenshot_1.png
+.. image:: /_static/figures/Globus_Screenshot_1.png
    :scale: 50%
    :alt: Globus screenshot, NERSC HPSS endpoint
 
@@ -174,14 +190,14 @@ Transfer all zstash files to NERSC HPSS using Globus.
 * Search for 'compy-dtn'. Click on Green power button to activate endpoint. Login
   using your compy credentials (username, PIN+RSA).
 
-.. image:: globus/Globus_Screenshot_2.png
+.. image:: /_static/figures/Globus_Screenshot_2.png
    :scale: 50%
    :alt: Globus screenshot, compy-dtn endpoint
 
 * In the file manager, navigate to your local zstash directory.
 * Click on 'Transfer or Sync...'
 
-.. image:: globus/Globus_Screenshot_3.png
+.. image:: /_static/figures/Globus_Screenshot_3.png
    :scale: 50%
    :alt: Globus screenshot, file manager
 
@@ -198,15 +214,17 @@ Transfer all zstash files to NERSC HPSS using Globus.
 
 * Click 'Start ->'.
 
-.. image:: globus/Globus_Screenshot_4.png
+.. image:: /_static/figures/Globus_Screenshot_4.png
    :scale: 50%
    :alt: Globus screenshot, sync
 
 Check
 -----
 
-Once archiving is complete, run ``zstash check`` on NERSC to verify integrity of the archive: ::
+Once archiving is complete, run ``zstash check`` on NERSC to verify integrity of the archive:
 
-   $ ssh dtn01.nersc.gov
-   $ cd <scratch directory>
-   $ zstash check --hpss=<HPSS path>
+  .. code-block:: bash
+
+    ssh dtn01.nersc.gov
+    cd <scratch directory>
+    zstash check --hpss=<HPSS path>
